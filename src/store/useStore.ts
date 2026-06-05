@@ -19,7 +19,8 @@ interface AppState {
   activeChapterId: string | null;
   activeVerificationId: string | null;
   verifications: Verification[];
-  printVerificationIds: string[];
+  // Jedes Print-Item ist ein eigener eingefrorener Snapshot mit eindeutigem key
+  printItems: Array<{ key: string; snapshot: Verification }>;
 
   // Vom Backend geladene Holzdaten
   apiWoodTypes:    ApiWoodType[];
@@ -38,8 +39,8 @@ interface AppState {
   setActiveVerification:(id: string | null) => void;
   updateVariableValue:(verificationId: string, variableId: string, value: number | string) => void;
   updateComment:   (verificationId: string, comment: string) => void;
-  addVerificationToPrint:   (id: string) => void;
-  removeVerificationFromPrint:(id: string) => void;
+  addVerificationToPrint:      (id: string) => void;  // fügt immer eine neue Instanz hinzu
+  removeVerificationFromPrint: (key: string) => void; // entfernt genau diese Instanz
   addVerification: (v: Verification) => void;
   computeResult:   (verificationId: string) => void;
   setVerificationsFromApi: (data: any[], normId?: string) => void;
@@ -126,7 +127,7 @@ export const useStore = create<AppState>((set, get) => ({
   activeChapterId: null,
   activeVerificationId: null,
   verifications: defaultVerifications.map(v => computeVerification(v)),
-  printVerificationIds: [],
+  printItems: [],
   apiWoodTypes:   [],
   apiWoodClasses: [],
   rawChapterData: [],
@@ -201,17 +202,18 @@ export const useStore = create<AppState>((set, get) => ({
       ),
     })),
 
+  // Immer neue Instanz mit eindeutigem key — beliebig viele des gleichen Nachweises möglich
   addVerificationToPrint: (id) =>
-    set(state => ({
-      printVerificationIds: state.printVerificationIds.includes(id)
-        ? state.printVerificationIds
-        : [...state.printVerificationIds, id],
-    })),
+    set(state => {
+      const v = state.verifications.find(x => x.id === id);
+      if (!v) return state;
+      const key = `${id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      const snapshot: Verification = JSON.parse(JSON.stringify(v));
+      return { printItems: [...state.printItems, { key, snapshot }] };
+    }),
 
-  removeVerificationFromPrint: (id) =>
-    set(state => ({
-      printVerificationIds: state.printVerificationIds.filter(x => x !== id),
-    })),
+  removeVerificationFromPrint: (key) =>
+    set(state => ({ printItems: state.printItems.filter(item => item.key !== key) })),
 
   addVerification: (v) =>
     set(state => ({ verifications: [...state.verifications, computeVerification(v)] })),
@@ -254,43 +256,71 @@ export const useStore = create<AppState>((set, get) => ({
     });
   },
 
-  // Nachweise vom Backend laden und direkt Holzklasse einfüllen
+  // Nachweise vom Backend laden — bestehende User-Werte bleiben erhalten
   setVerificationsFromApi: (data, normId = 'sia265') => {
-    const mapped: Verification[] = (data || []).map((v: any) => ({
-      id: v.id,
-      chapterId: v.chapter_id,
-      title: v.title,
-      computeExpr: v.compute_expr,
-      comment: '',
-      variables: (v.variables || []).map((vr: any) => ({
-        id: vr.id,
-        name: vr.name,
-        label: vr.label,
-        unit: vr.unit,
-        type: vr.type as any,
-        value: isNaN(Number(vr.default_value)) ? vr.default_value : Number(vr.default_value),
-        description: vr.description,
-        options: (vr.options || []).map((o: any) => ({
-          label: o.label,
-          value: isNaN(Number(o.value)) ? o.value : Number(o.value),
-        })),
-      })),
-      formula: {
-        id: v.id,
-        latex: v.formula_latex,
-        description: v.formula_description || '',
-        variables: (v.variables || []).map((vr: any) => vr.id),
-        resultVariableId: 'eta',
-      },
-    }));
-
     set(state => {
+      // Vorhandene Werte aus Cache oder aktiver Norm holen
+      const existingVerifs = normId === state.normId
+        ? state.verifications
+        : (state._verifsByNorm[normId] || []);
+
       const woodClass = state.apiWoodClasses.find(c => c.id === state.woodClassId);
-      const withMaterial = applyWoodClassToVerifications(mapped, woodClass);
-      const computed = withMaterial.map(v => computeVerification(v));
-      // Im Cache speichern
+      const woodProps = new Map(woodClass?.properties.map(p => [p.key, p.value]) ?? []);
+
+      const mapped: Verification[] = (data || []).map((v: any) => {
+        const existingV = existingVerifs.find(ev => ev.id === v.id);
+        return {
+          id: v.id,
+          chapterId: v.chapter_id,
+          title: v.title,
+          computeExpr: v.compute_expr,
+          comment: existingV?.comment || '',
+          variables: (v.variables || []).map((vr: any) => {
+            // Holzklassen-Kennwerte immer aus aktueller Klasse
+            if (woodProps.has(vr.name)) {
+              return {
+                id: vr.id, name: vr.name, label: vr.label, unit: vr.unit,
+                type: vr.type as any, value: woodProps.get(vr.name)!,
+                description: vr.description,
+                options: (vr.options || []).map((o: any) => ({
+                  label: o.label,
+                  value: isNaN(Number(o.value)) ? o.value : Number(o.value),
+                })),
+              };
+            }
+            // Für alle anderen Variablen: vom User eingegebenen Wert erhalten
+            const existingVar = existingV?.variables.find(ev => ev.id === vr.id);
+            // table_column: Optionen kommen als Strings aus der DB-Tabelle (nicht als Zahlen konvertieren)
+            const isTableCol = vr.type === 'table_column';
+            const opts = (vr.options || []).map((o: any) => ({
+              label: o.label,
+              value: isTableCol ? String(o.value) : (isNaN(Number(o.value)) ? o.value : Number(o.value)),
+            }));
+            const defaultVal = isTableCol
+              ? (opts[0]?.value ?? vr.default_value ?? '')
+              : (isNaN(Number(vr.default_value)) ? vr.default_value : Number(vr.default_value));
+            return {
+              id: vr.id, name: vr.name, label: vr.label, unit: vr.unit,
+              type: vr.type as any,
+              table_ref: vr.table_ref ?? undefined,
+              table_col: vr.table_col != null ? Number(vr.table_col) : undefined,
+              value: existingVar !== undefined ? existingVar.value : defaultVal,
+              description: vr.description,
+              options: opts,
+            };
+          }),
+          formula: {
+            id: v.id,
+            latex: v.formula_latex,
+            description: v.formula_description || '',
+            variables: (v.variables || []).map((vr: any) => vr.id),
+            resultVariableId: 'eta',
+          },
+        };
+      });
+
+      const computed = mapped.map(v => computeVerification(v));
       const _verifsByNorm = { ...state._verifsByNorm, [normId]: computed };
-      // Nur in die UI übernehmen wenn diese Norm aktiv ist
       if (normId !== state.normId) return { _verifsByNorm };
       return { verifications: computed, _verifsByNorm };
     });

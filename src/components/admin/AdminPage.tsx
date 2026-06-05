@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import VerificationAdmin from './VerificationAdmin';
 import WoodAdmin from './WoodAdmin';
 import DbTableAdmin from './DbTableAdmin';
+import SqlImportAdmin from './SqlImportAdmin';
 import { api } from '../../api';
 
-type Tab = 'verifications' | 'wood' | 'database';
+type Tab = 'verifications' | 'wood' | 'database' | 'sql';
 
 interface Norm { id: string; name: string; label: string; year: number; description: string; }
 
@@ -12,6 +13,7 @@ const tabs: { id: Tab; label: string; icon: string }[] = [
   { id: 'verifications', label: 'Nachweise & Formeln', icon: '📐' },
   { id: 'wood',          label: 'Holzarten & Klassen', icon: '🌲' },
   { id: 'database',      label: 'Datenbank / Tabellen',  icon: '📊' },
+  { id: 'sql',           label: 'SQL-Import',           icon: '🗄' },
 ];
 
 // Context: aktive Norm fürs Backend
@@ -105,6 +107,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
           {activeTab === 'verifications' && <VerificationAdmin />}
           {activeTab === 'wood'          && <WoodAdmin />}
           {activeTab === 'database'      && <DbTableAdmin />}
+          {activeTab === 'sql'           && <SqlImportAdmin />}
         </div>
       </div>
     </NormContext.Provider>

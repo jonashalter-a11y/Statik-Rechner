@@ -31,6 +31,21 @@ app.delete('/api/chapters/:id', (req, res) => {
 });
 
 // ─── NACHWEISE (gefiltert nach Norm) ─────────────────────────────────────────
+// Hilfsfunktion: für type=table_column die Optionen aus db_tables laden
+function resolveTableColumnOptions(vr) {
+  if (vr.type !== 'table_column' || !vr.table_ref || vr.table_col == null) return [];
+  const tbl = db.prepare('SELECT headers, rows FROM db_tables WHERE id=?').get(vr.table_ref);
+  if (!tbl) return [];
+  try {
+    const rows = JSON.parse(tbl.rows);
+    const col = Number(vr.table_col);
+    const seen = new Set();
+    return rows
+      .map((row, i) => ({ label: String(row[col] ?? ''), value: String(row[col] ?? ''), sort_order: i }))
+      .filter(o => { if (seen.has(o.value)) return false; seen.add(o.value); return o.value !== ''; });
+  } catch { return []; }
+}
+
 app.get('/api/verifications', (req, res) => {
   const norm = req.query.norm || 'sia265';
   const vs = db.prepare('SELECT * FROM verifications WHERE norm_id=? AND active=1 ORDER BY sort_order').all(norm);
@@ -39,7 +54,12 @@ app.get('/api/verifications', (req, res) => {
   res.json(vs.map(v => ({
     ...v,
     variables: vars.filter(vr => vr.verification_id === v.id)
-      .map(vr => ({ ...vr, options: opts.filter(o => o.variable_id === vr.id) })),
+      .map(vr => ({
+        ...vr,
+        options: vr.type === 'table_column'
+          ? resolveTableColumnOptions(vr)
+          : opts.filter(o => o.variable_id === vr.id),
+      })),
   })));
 });
 
@@ -48,7 +68,12 @@ app.get('/api/verifications/:id', (req, res) => {
   if (!v) return res.status(404).json({ error: 'Not found' });
   const vars = db.prepare('SELECT * FROM variables WHERE verification_id=? ORDER BY sort_order').all(v.id);
   const opts = vars.length ? db.prepare(`SELECT * FROM variable_options WHERE variable_id IN (${vars.map(()=>'?').join(',')}) ORDER BY sort_order`).all(...vars.map(v=>v.id)) : [];
-  v.variables = vars.map(vr => ({ ...vr, options: opts.filter(o => o.variable_id === vr.id) }));
+  v.variables = vars.map(vr => ({
+    ...vr,
+    options: vr.type === 'table_column'
+      ? resolveTableColumnOptions(vr)
+      : opts.filter(o => o.variable_id === vr.id),
+  }));
   res.json(v);
 });
 
@@ -75,18 +100,22 @@ app.get('/api/verifications/:vid/variables', (req, res) => {
   res.json(vars.map(v => ({ ...v, options: opts.filter(o => o.variable_id === v.id) })));
 });
 app.post('/api/verifications/:vid/variables', (req, res) => {
-  const { name, label, unit='', type='number', default_value='0', description='', options=[] } = req.body;
+  const { name, label, unit='', type='number', default_value='0', description='', options=[], table_ref=null, table_col=null } = req.body;
   const id = req.params.vid + '_' + name + '_' + Date.now().toString(36);
   const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM variables WHERE verification_id=?').get(req.params.vid).m || 0;
-  db.prepare('INSERT INTO variables (id, verification_id, name, label, unit, type, default_value, description, sort_order) VALUES (?,?,?,?,?,?,?,?,?)').run(id, req.params.vid, name, label, unit, type, String(default_value), description, maxOrder+1);
-  options.forEach((o, i) => db.prepare('INSERT INTO variable_options (variable_id, label, value, sort_order) VALUES (?,?,?,?)').run(id, o.label, o.value, i));
+  db.prepare('INSERT INTO variables (id, verification_id, name, label, unit, type, default_value, description, sort_order, table_ref, table_col) VALUES (?,?,?,?,?,?,?,?,?,?,?)').run(id, req.params.vid, name, label, unit, type, String(default_value), description, maxOrder+1, table_ref, table_col != null ? Number(table_col) : null);
+  if (type !== 'table_column') {
+    options.forEach((o, i) => db.prepare('INSERT INTO variable_options (variable_id, label, value, sort_order) VALUES (?,?,?,?)').run(id, o.label, o.value, i));
+  }
   res.json({ id });
 });
 app.put('/api/variables/:id', (req, res) => {
-  const { name, label, unit='', type, default_value, description='', options=[] } = req.body;
-  db.prepare('UPDATE variables SET name=?, label=?, unit=?, type=?, default_value=?, description=? WHERE id=?').run(name, label, unit, type, String(default_value), description, req.params.id);
+  const { name, label, unit='', type, default_value, description='', options=[], table_ref=null, table_col=null } = req.body;
+  db.prepare('UPDATE variables SET name=?, label=?, unit=?, type=?, default_value=?, description=?, table_ref=?, table_col=? WHERE id=?').run(name, label, unit, type, String(default_value), description, table_ref, table_col != null ? Number(table_col) : null, req.params.id);
   db.prepare('DELETE FROM variable_options WHERE variable_id=?').run(req.params.id);
-  options.forEach((o, i) => db.prepare('INSERT INTO variable_options (variable_id, label, value, sort_order) VALUES (?,?,?,?)').run(req.params.id, o.label, o.value, i));
+  if (type !== 'table_column') {
+    options.forEach((o, i) => db.prepare('INSERT INTO variable_options (variable_id, label, value, sort_order) VALUES (?,?,?,?)').run(req.params.id, o.label, o.value, i));
+  }
   res.json({ ok: true });
 });
 app.delete('/api/variables/:id', (req, res) => {
@@ -172,6 +201,18 @@ app.put('/api/db-tables/:id', (req, res) => {
 app.delete('/api/db-tables/:id', (req, res) => {
   db.prepare('DELETE FROM db_tables WHERE id=?').run(req.params.id);
   res.json({ ok: true });
+});
+
+// ─── SQL-IMPORT ───────────────────────────────────────────────────────────────
+app.post('/api/sql-import', (req, res) => {
+  const { sql } = req.body;
+  if (!sql || typeof sql !== 'string') return res.status(400).json({ error: 'Kein SQL übergeben' });
+  try {
+    db.exec(sql);
+    res.json({ ok: true, message: 'SQL erfolgreich ausgeführt' });
+  } catch (err) {
+    res.status(500).json({ error: String(err.message || err) });
+  }
 });
 
 const PORT = process.env.PORT || 3001;

@@ -73,6 +73,9 @@ try { db.exec(`ALTER TABLE verifications ADD COLUMN norm_id TEXT NOT NULL DEFAUL
 try { db.exec(`ALTER TABLE verifications ADD COLUMN compute_expr TEXT DEFAULT ''`); } catch (_) {}
 try { db.exec(`ALTER TABLE db_tables ADD COLUMN norm_id TEXT NOT NULL DEFAULT 'sia265'`); } catch (_) {}
 try { db.exec(`ALTER TABLE db_tables ADD COLUMN category TEXT DEFAULT ''`); } catch (_) {}
+// table_column: Dropdown-Optionen aus einer db_tables-Spalte laden
+try { db.exec(`ALTER TABLE variables ADD COLUMN table_ref TEXT DEFAULT NULL`); } catch (_) {}
+try { db.exec(`ALTER TABLE variables ADD COLUMN table_col INTEGER DEFAULT NULL`); } catch (_) {}
 
 // ─── Seed ────────────────────────────────────────────────────────────────────
 const normCount = db.prepare('SELECT COUNT(*) as n FROM norms').get().n;
@@ -117,7 +120,7 @@ const chapCount = db.prepare("SELECT COUNT(*) as n FROM chapters").get().n;
 if (chapCount === 0) {
   const iC = db.prepare('INSERT INTO chapters (id, norm_id, parent_id, number, title, sort_order) VALUES (?, ?, ?, ?, ?, ?)');
   const iV = db.prepare('INSERT INTO verifications (id, norm_id, chapter_id, title, formula_latex, formula_description, compute_expr, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-  const iVr= db.prepare('INSERT INTO variables (id, verification_id, name, label, unit, type, default_value, description, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
+  const iVr= db.prepare('INSERT INTO variables (id, verification_id, name, label, unit, type, default_value, description, sort_order, table_ref, table_col) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
   const iO = db.prepare('INSERT INTO variable_options (variable_id, label, value, sort_order) VALUES (?, ?, ?, ?)');
 
   // SIA 265 Kapitel
@@ -129,7 +132,7 @@ if (chapCount === 0) {
     iV.run(v.id, 'sia265', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, i);
     v.variables.forEach((vr, j) => {
       const vid = v.id + '__' + vr.name;
-      iVr.run(vid, v.id, vr.name, vr.label, vr.unit||'', vr.type||'number', vr.default_value, vr.description||'', j);
+      iVr.run(vid, v.id, vr.name, vr.label, vr.unit||'', vr.type||'number', vr.default_value, vr.description||'', j, vr.table_ref||null, vr.table_col||null);
       (vr.options||[]).forEach((o, k) => iO.run(vid, o.label, o.value, k));
     });
   });
@@ -143,7 +146,7 @@ if (chapCount === 0) {
     iV.run(v.id, 'sia261', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, i);
     v.variables.forEach((vr, j) => {
       const vid = v.id + '__' + vr.name;
-      iVr.run(vid, v.id, vr.name, vr.label, vr.unit||'', vr.type||'number', vr.default_value, vr.description||'', j);
+      iVr.run(vid, v.id, vr.name, vr.label, vr.unit||'', vr.type||'number', vr.default_value, vr.description||'', j, vr.table_ref||null, vr.table_col||null);
       (vr.options||[]).forEach((o, k) => iO.run(vid, o.label, o.value, k));
     });
   });

@@ -5,10 +5,14 @@ import { NormContext } from './AdminPage';
 import { nameToLatex } from '../../utils/formatName';
 
 interface Option { label: string; value: string; }
+interface DbTableMeta { id: string; title: string; }
+interface DbTableFull extends DbTableMeta { headers: string[]; }
 interface Variable {
   id?: string; name: string; label: string; unit: string;
   type: string; default_value: string; description: string;
   options?: Option[];
+  table_ref?: string;
+  table_col?: number;
 }
 interface Verification {
   id: string; chapter_id: string; title: string;
@@ -50,8 +54,9 @@ function buildTree(chapters: Chapter[], verifications: Verification[]): ChapterN
 
 const emptyVar = (): Variable => ({ name: '', label: '', unit: '', type: 'number', default_value: '0', description: '', options: [] });
 
-function VariableEditor({ variable, onChange, onDelete }: {
+function VariableEditor({ variable, onChange, onDelete, dbTables }: {
   variable: Variable; onChange: (v: Variable) => void; onDelete: () => void;
+  dbTables: DbTableMeta[];
 }) {
   const addOption = () => onChange({ ...variable, options: [...(variable.options || []), { label: '', value: '' }] });
   const updateOption = (i: number, field: 'label' | 'value', val: string) => {
@@ -60,6 +65,18 @@ function VariableEditor({ variable, onChange, onDelete }: {
     onChange({ ...variable, options: opts });
   };
   const removeOption = (i: number) => onChange({ ...variable, options: (variable.options || []).filter((_, j) => j !== i) });
+
+  // Headers der ausgewählten Tabelle — lazy laden wenn Tabelle gewählt wird
+  const [selectedTableFull, setSelectedTableFull] = React.useState<DbTableFull | null>(null);
+  React.useEffect(() => {
+    if (variable.type === 'table_column' && variable.table_ref) {
+      api.getDbTableFull(variable.table_ref)
+        .then((full: any) => setSelectedTableFull({ id: full.id, title: full.title, headers: full.headers || [] }))
+        .catch(() => setSelectedTableFull(null));
+    } else {
+      setSelectedTableFull(null);
+    }
+  }, [variable.type, variable.table_ref]);
 
   const inp = (field: keyof Variable, placeholder = '') => (
     <input
@@ -88,12 +105,13 @@ function VariableEditor({ variable, onChange, onDelete }: {
           <div style={labelStyle}>Einheit</div>
           {inp('unit', 'N/mm²')}
         </div>
-        <div style={{ width: 110 }}>
+        <div style={{ width: 130 }}>
           <div style={labelStyle}>Typ</div>
           <select value={variable.type} onChange={e => onChange({ ...variable, type: e.target.value })}
             style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '4px 8px', fontSize: 12, width: '100%' }}>
             <option value="number">Zahl</option>
             <option value="dropdown">Dropdown</option>
+            <option value="table_column">Tabellen-Dropdown</option>
             <option value="number_info">Zahl + Info</option>
           </select>
         </div>
@@ -123,6 +141,51 @@ function VariableEditor({ variable, onChange, onDelete }: {
               <button onClick={() => removeOption(i)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer' }}>✕</button>
             </div>
           ))}
+        </div>
+      )}
+
+      {variable.type === 'table_column' && (
+        <div style={{ marginTop: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, padding: 10 }}>
+          <div style={{ fontSize: 10, color: '#166534', fontWeight: 600, textTransform: 'uppercase', marginBottom: 6 }}>
+            🗄 Tabellen-Dropdown — Quelle auswählen
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ flex: 2, minWidth: 180 }}>
+              <div style={labelStyle}>Tabelle</div>
+              <select
+                value={variable.table_ref || ''}
+                onChange={e => onChange({ ...variable, table_ref: e.target.value, table_col: 0 })}
+                style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '4px 8px', fontSize: 12, width: '100%' }}
+              >
+                <option value="">— Tabelle wählen —</option>
+                {dbTables.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+              </select>
+            </div>
+            {selectedTableFull && (
+              <div style={{ flex: 2, minWidth: 160 }}>
+                <div style={labelStyle}>Spalte</div>
+                <select
+                  value={variable.table_col ?? 0}
+                  onChange={e => onChange({ ...variable, table_col: Number(e.target.value) })}
+                  style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '4px 8px', fontSize: 12, width: '100%' }}
+                >
+                  {selectedTableFull.headers.map((h, i) => (
+                    <option key={i} value={i}>{h} (Spalte {i + 1})</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {variable.table_ref && !selectedTableFull && (
+              <div style={{ flex: 2, display: 'flex', alignItems: 'center', fontSize: 12, color: '#9ca3af' }}>
+                Lädt Spalten…
+              </div>
+            )}
+          </div>
+          {selectedTableFull && variable.table_col != null && (
+            <div style={{ marginTop: 6, fontSize: 11, color: '#6b7280' }}>
+              Optionen werden aus Spalte «{selectedTableFull.headers[variable.table_col ?? 0]}» geladen
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -209,11 +272,19 @@ export default function VerificationAdmin() {
   const { normId, normLabel } = useContext(NormContext);
   const [verifications, setVerifications] = useState<Verification[]>([]);
   const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [dbTables, setDbTables] = useState<DbTableMeta[]>([]);
   const [selected, setSelected] = useState<Verification | null>(null);
   const [editing, setEditing] = useState<Verification | null>(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  // DB-Tabellen-Liste laden (nur Meta — Headers werden lazy geladen)
+  useEffect(() => {
+    api.getDbTables()
+      .then((metas: any[]) => setDbTables(metas.map((t: any) => ({ id: t.id, title: t.title }))))
+      .catch(() => {});
+  }, []);
 
   const reload = () => {
     api.getVerifications(normId).then((vs: Verification[]) => {
@@ -295,7 +366,11 @@ export default function VerificationAdmin() {
         }
       }
       for (const v of editing.variables) {
-        await api.createVariable(id, v);
+        await api.createVariable(id, {
+          ...v,
+          table_ref: v.table_ref ?? null,
+          table_col: v.table_col != null ? v.table_col : null,
+        });
       }
       const fresh = await api.getVerifications(normId);
       setVerifications(fresh);
@@ -420,7 +495,7 @@ export default function VerificationAdmin() {
               <button onClick={addVariable} style={{ background: '#dbeafe', border: 'none', borderRadius: 5, padding: '4px 12px', cursor: 'pointer', color: '#1e40af', fontSize: 12 }}>+ Variable</button>
             </div>
             {editing.variables.map((v, i) => (
-              <VariableEditor key={i} variable={v} onChange={nv => updateVar(i, nv)} onDelete={() => deleteVar(i)} />
+              <VariableEditor key={i} variable={v} onChange={nv => updateVar(i, nv)} onDelete={() => deleteVar(i)} dbTables={dbTables} />
             ))}
             {editing.variables.length === 0 && (
               <div style={{ color: '#9ca3af', fontSize: 13, padding: 16, textAlign: 'center', border: '2px dashed #e5e7eb', borderRadius: 8 }}>

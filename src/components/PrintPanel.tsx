@@ -3,13 +3,12 @@ import { useStore } from '../store/useStore';
 import MathDisplay from './MathDisplay';
 import { nameToLatex } from '../utils/formatName';
 import { substituteValues, formatNumber } from '../utils/substituteFormula';
+import { Verification } from '../types';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-function PrintVerification({ verificationId, index }: { verificationId: string; index: number }) {
-  const { verifications, removeVerificationFromPrint } = useStore();
-  const v = verifications.find(x => x.id === verificationId);
-  if (!v) return null;
+function PrintVerification({ itemKey, snapshot: v, index }: { itemKey: string; snapshot: Verification; index: number }) {
+  const { removeVerificationFromPrint } = useStore();
 
   // Variablen-Werte sammeln (für Substitution)
   const vars: Record<string, number> = {};
@@ -43,7 +42,7 @@ function PrintVerification({ verificationId, index }: { verificationId: string; 
         </span>
         <button
           className="no-print"
-          onClick={() => removeVerificationFromPrint(v.id)}
+          onClick={() => removeVerificationFromPrint(itemKey)}
           style={{ background: 'none', border: 'none', color: '#93c5fd', cursor: 'pointer', fontSize: 14 }}
           title="Entfernen"
         >✕</button>
@@ -180,7 +179,7 @@ const cellStyle: React.CSSProperties = {
 };
 
 export default function PrintPanel() {
-  const { printVerificationIds, verifications, woodClassId } = useStore() as any;
+  const { printItems, woodClassId } = useStore();
   const printRef = useRef<HTMLDivElement>(null);
   const [exporting, setExporting] = useState(false);
 
@@ -240,7 +239,7 @@ export default function PrintPanel() {
     }
   };
 
-  if (printVerificationIds.length === 0) {
+  if (printItems.length === 0) {
     return (
       <div style={{
         display: 'flex',
@@ -273,7 +272,7 @@ export default function PrintPanel() {
         background: '#f8fafc',
       }}>
         <span style={{ fontSize: 12, color: '#6b7280', flex: 1 }}>
-          {printVerificationIds.length} Nachweis{printVerificationIds.length > 1 ? 'e' : ''}
+          {printItems.length} Nachweis{printItems.length > 1 ? 'e' : ''}
         </span>
         <button
           onClick={exportPDF}
@@ -330,14 +329,14 @@ export default function PrintPanel() {
               <div style={{ fontSize: 11, color: '#6b7280', textAlign: 'right' }}>
                 <div>Datum: {new Date().toLocaleDateString('de-CH', { day: '2-digit', month: '2-digit', year: 'numeric' })}</div>
                 {woodClassId && <div>Holzklasse: <strong>{woodClassId}</strong></div>}
-                <div>{printVerificationIds.length} Nachweis{printVerificationIds.length > 1 ? 'e' : ''}</div>
+                <div>{printItems.length} Nachweis{printItems.length > 1 ? 'e' : ''}</div>
               </div>
             </div>
           </div>
 
-          {/* Verifications */}
-          {printVerificationIds.map((id: string, i: number) => (
-            <PrintVerification key={id} verificationId={id} index={i + 1} />
+          {/* Verifications — jedes Item ist ein eigener eingefrorener Snapshot */}
+          {printItems.map((item, i) => (
+            <PrintVerification key={item.key} itemKey={item.key} snapshot={item.snapshot} index={i + 1} />
           ))}
 
           {/* Footer */}

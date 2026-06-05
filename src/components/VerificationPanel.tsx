@@ -9,6 +9,28 @@ const SIA261_VALUE_IDS = ['schnee_dach', 'wind_staudruck', 'wind_druck_aussen', 
 
 function VariableRow({ variable, verificationId, even }: { variable: Variable; verificationId: string; even: boolean }) {
   const { updateVariableValue } = useStore();
+  const [tableRows, setTableRows] = useState<any[]>([]);
+
+  // Lade Tabelle wenn type=table_column
+  React.useEffect(() => {
+    if (variable.type === 'table_column' && variable.table_ref) {
+      fetch(`/api/db-tables/${variable.table_ref}`)
+        .then(r => r.json())
+        .then(data => setTableRows(data.rows || []))
+        .catch(e => console.error('Tabelle nicht geladen:', e));
+    }
+  }, [variable.table_ref]);
+
+  // Extrahiere Wert aus Tabelle
+  const handleTableRowSelect = (rowIndex: number) => {
+    const row = tableRows[rowIndex];
+    if (row && variable.table_col !== undefined) {
+      const cellValue = row[variable.table_col];
+      // Parse numerisch oder behalte String
+      const numValue = parseFloat(String(cellValue).replace(/[^0-9.-]/g, ''));
+      updateVariableValue(verificationId, variable.id, isNaN(numValue) ? cellValue : numValue);
+    }
+  };
 
   return (
     <tr style={{ borderBottom: '1px solid #f1f5f9', background: even ? '#fff' : '#fafafa' }}>
@@ -20,7 +42,32 @@ function VariableRow({ variable, verificationId, even }: { variable: Variable; v
         <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 1 }}>{variable.description}</div>
       </td>
       <td style={{ padding: '6px 8px', width: '45%' }}>
-        {variable.type === 'dropdown' && variable.options ? (
+        {/* Tabellen-Spalten-Auswahl */}
+        {variable.type === 'table_column' && tableRows.length > 0 ? (
+          <select
+            value={String(variable.value ?? '')}
+            onChange={e => {
+              const rowIdx = tableRows.findIndex(r => String(r[0]) === e.target.value);
+              if (rowIdx >= 0) handleTableRowSelect(rowIdx);
+            }}
+            style={{
+              border: '1px solid #d1d5db',
+              borderRadius: 4,
+              padding: '3px 6px',
+              fontSize: 12,
+              width: '100%',
+              background: '#fff',
+            }}
+          >
+            <option value="">— Zeile wählen —</option>
+            {tableRows.map((row, i) => (
+              <option key={i} value={String(row[0])}>
+                {row[0]}
+              </option>
+            ))}
+          </select>
+        ) : /* Standard Dropdown */
+        variable.type === 'dropdown' && variable.options ? (
           <select
             value={String(variable.value)}
             onChange={e => updateVariableValue(verificationId, variable.id, Number(e.target.value))}
@@ -40,6 +87,7 @@ function VariableRow({ variable, verificationId, even }: { variable: Variable; v
             ))}
           </select>
         ) : (
+          /* Zahlen-Input */
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <input
               type="number"
@@ -64,7 +112,7 @@ function VariableRow({ variable, verificationId, even }: { variable: Variable; v
 }
 
 export default function VerificationPanel() {
-  const { verifications, activeVerificationId, updateComment, addVerificationToPrint, printVerificationIds } = useStore();
+  const { verifications, activeVerificationId, updateComment, addVerificationToPrint, printItems } = useStore();
   const verification = verifications.find(v => v.id === activeVerificationId);
 
   if (!verification) {
@@ -87,7 +135,7 @@ export default function VerificationPanel() {
     );
   }
 
-  const inPrint = printVerificationIds.includes(verification.id);
+  const printCount = printItems.filter(item => item.snapshot.id === verification.id).length;
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
@@ -97,21 +145,20 @@ export default function VerificationPanel() {
         </h2>
         <button
           onClick={() => addVerificationToPrint(verification.id)}
-          disabled={inPrint}
           style={{
-            background: inPrint ? '#d1fae5' : '#2563eb',
-            color: inPrint ? '#065f46' : '#fff',
+            background: '#2563eb',
+            color: '#fff',
             border: 'none',
             borderRadius: 6,
             padding: '6px 12px',
             fontSize: 12,
-            cursor: inPrint ? 'default' : 'pointer',
+            cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: 4,
           }}
         >
-          {inPrint ? '✓ Im Ausdruck' : '+ Zum Ausdruck'}
+          + Zum Ausdruck{printCount > 0 ? ` (${printCount}×)` : ''}
         </button>
       </div>
 

@@ -9,22 +9,20 @@ export interface WoodClass {
   properties: Record<string, number>;
 }
 
-export interface VariableType {
-  type: 'number' | 'dropdown' | 'number_info' | 'table';
-}
-
 export interface Variable {
   id: string;
   name: string; // e.g. "f_m_k" -> renders as f_{m,k}
   label: string;
   unit: string;
-  type: 'number' | 'dropdown' | 'number_info' | 'table';
+  type: 'number' | 'dropdown' | 'number_info' | 'table' | 'table_column';
   value: number | string | null;
   options?: { label: string; value: number | string }[];
   tableId?: string;
+  table_ref?: string;   // db_tables.id  (nur bei type=table_column)
+  table_col?: number;   // Spaltenindex   (nur bei type=table_column)
   infoText?: string;
   description: string;
-  formula?: string; // LaTeX formula for display
+  formula?: string;
 }
 
 export interface Formula {

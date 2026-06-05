@@ -42,4 +42,7 @@ export const api = {
   createDbTable:   (data: object) => post('/db-tables', data),
   updateDbTable:   (id: string, data: object) => put(`/db-tables/${id}`, data),
   deleteDbTable:   (id: string) => del(`/db-tables/${id}`),
+
+  // SQL-Import
+  sqlImport: (sql: string) => post('/sql-import', { sql }),
 };

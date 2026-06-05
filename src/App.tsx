@@ -11,6 +11,7 @@ import { useStore } from './store/useStore';
 const MIN_SIDEBAR  = 160;
 const MIN_MIDDLE   = 300;
 const MIN_PRINT    = 260;
+const SPLITTER_W   = 5;
 const DEFAULT_SIDEBAR = 270;
 const DEFAULT_PRINT   = 360;
 
@@ -21,9 +22,49 @@ export default function App() {
 
   const [sidebarW, setSidebarW] = useState(DEFAULT_SIDEBAR);
   const [printW,   setPrintW]   = useState(DEFAULT_PRINT);
+  const [containerW, setContainerW] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const onResizeSidebar = useCallback((delta: number) => setSidebarW(w => Math.max(MIN_SIDEBAR, w + delta)), []);
-  const onResizePrint   = useCallback((delta: number) => setPrintW(w => Math.max(MIN_PRINT, w - delta)), []);
+  // Containerbreite live tracken — alle Panels haben dann explizite Breiten
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const obs = new ResizeObserver(() => setContainerW(el.clientWidth));
+    obs.observe(el);
+    setContainerW(el.clientWidth);
+    return () => obs.disconnect();
+  }, []);
+
+  const splitterCount = showPrint ? 2 : 1;
+  const currentPrintW = showPrint ? printW : 0;
+  // Explizite Mitte-Breite sobald containerW bekannt; vorher flex:1 als Fallback
+  const middleW = containerW > 0
+    ? Math.max(MIN_MIDDLE, containerW - sidebarW - splitterCount * SPLITTER_W - currentPrintW)
+    : undefined;
+
+  // Sidebar-Splitter: Sidebar wächst/schrumpft, Mitte folgt sofort (middleW abgeleitet)
+  const onResizeSidebar = useCallback((delta: number) => {
+    const totalW = containerRef.current?.clientWidth || containerW;
+    if (totalW > 0) {
+      const splCount = showPrint ? 2 : 1;
+      const curPrintW = showPrint ? printW : 0;
+      const maxSidebar = totalW - curPrintW - splCount * SPLITTER_W - MIN_MIDDLE;
+      setSidebarW(w => Math.max(MIN_SIDEBAR, Math.min(maxSidebar, w + delta)));
+    } else {
+      setSidebarW(w => Math.max(MIN_SIDEBAR, w + delta));
+    }
+  }, [showPrint, printW, containerW]);
+
+  // Print-Splitter: Maus nach links → Print wächst, Mitte schrumpft (und umgekehrt)
+  const onResizePrint = useCallback((delta: number) => {
+    const totalW = containerRef.current?.clientWidth || containerW;
+    if (totalW > 0) {
+      const maxPrint = totalW - sidebarW - 2 * SPLITTER_W - MIN_MIDDLE;
+      setPrintW(pw => Math.max(MIN_PRINT, Math.min(maxPrint, pw - delta)));
+    } else {
+      setPrintW(pw => Math.max(MIN_PRINT, pw - delta));
+    }
+  }, [sidebarW, containerW]);
 
   // Normdaten (Kapitel + Nachweise) laden und direkt aktiv setzen
   const loadNormData = useCallback(async (nId: string) => {
@@ -78,7 +119,7 @@ export default function App() {
 
       <Header onAdminClick={() => setShowAdmin(true)} onNormChange={handleNormChange} />
 
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+      <div ref={containerRef} style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
         {/* Sidebar */}
         <div style={{ width: sidebarW, minWidth: MIN_SIDEBAR, display: 'flex', flexDirection: 'column', background: '#fff', overflow: 'hidden', borderRight: '1px solid #e5e7eb', flexShrink: 0 }}>
@@ -86,8 +127,8 @@ export default function App() {
         </div>
         <Splitter onResize={onResizeSidebar} />
 
-        {/* Nachweis-Panel */}
-        <div style={{ flex: 1, minWidth: MIN_MIDDLE, display: 'flex', flexDirection: 'column', background: '#fff', overflow: 'hidden' }}>
+        {/* Nachweis-Panel — explizite Breite (wenn containerW bekannt), sonst flex:1 */}
+        <div style={{ ...(middleW !== undefined ? { width: middleW, flexShrink: 0 } : { flex: 1 }), minWidth: MIN_MIDDLE, display: 'flex', flexDirection: 'column', background: '#fff', overflow: 'hidden' }}>
           <div style={colHeader}><span>Nachweis</span></div>
           <VerificationPanel />
         </div>
