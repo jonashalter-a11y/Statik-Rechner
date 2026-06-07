@@ -76,6 +76,8 @@ try { db.exec(`ALTER TABLE db_tables ADD COLUMN category TEXT DEFAULT ''`); } ca
 // table_column: Dropdown-Optionen aus einer db_tables-Spalte laden
 try { db.exec(`ALTER TABLE variables ADD COLUMN table_ref TEXT DEFAULT NULL`); } catch (_) {}
 try { db.exec(`ALTER TABLE variables ADD COLUMN table_col INTEGER DEFAULT NULL`); } catch (_) {}
+// graph_json: Node-Editor-Graph (React Flow) pro Nachweis
+try { db.exec(`ALTER TABLE verifications ADD COLUMN graph_json TEXT DEFAULT NULL`); } catch (_) {}
 
 // ─── Seed ────────────────────────────────────────────────────────────────────
 const normCount = db.prepare('SELECT COUNT(*) as n FROM norms').get().n;

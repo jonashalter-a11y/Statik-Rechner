@@ -1,0 +1,107 @@
+// ─── LaTeX → JavaScript-Ausdruck (best effort) ─────────────────────────────────
+// Wandelt eine Anzeige-Formel in einen rechenbaren JS-Ausdruck um, damit der Nutzer
+// die Rechnung nur einmal (als LaTeX) eingeben muss.
+//
+// Unterstützt: = (nimmt die rechte Seite), \leq/\geq-Schwanz wird entfernt,
+// \cdot/\times → *, \frac{a}{b} → ((a)/(b)), \sqrt{x} → Math.sqrt(x),
+// x^{n} / x^n → Math.pow(x,n), Indizes f_{m,k} → f_m_k, griechische Buchstaben.
+//
+// Grenzen: implizite Multiplikation (z.B. "2\alpha") wird NICHT erkannt — dort
+// \cdot schreiben. Das JS-Feld bleibt editierbar für Sonderfälle.
+
+const GREEK = ['alpha','beta','gamma','delta','epsilon','zeta','eta','theta','iota','kappa','lambda','mu','nu','xi','pi','rho','sigma','tau','upsilon','phi','chi','psi','omega'];
+
+function readBrace(s: string, open: number): { inner: string; end: number } {
+  let depth = 0;
+  for (let i = open; i < s.length; i++) {
+    if (s[i] === '{') depth++;
+    else if (s[i] === '}') { depth--; if (depth === 0) return { inner: s.slice(open + 1, i), end: i }; }
+  }
+  return { inner: s.slice(open + 1), end: s.length };
+}
+
+function replaceFrac(s: string): string {
+  let out = ''; let i = 0;
+  while (i < s.length) {
+    if (s.startsWith('\\frac', i)) {
+      let j = i + 5; while (s[j] === ' ') j++;
+      if (s[j] === '{') {
+        const a = readBrace(s, j);
+        let k = a.end + 1; while (s[k] === ' ') k++;
+        if (s[k] === '{') {
+          const b = readBrace(s, k);
+          out += '((' + replaceFrac(a.inner) + ')/(' + replaceFrac(b.inner) + '))';
+          i = b.end + 1; continue;
+        }
+      }
+    }
+    out += s[i]; i++;
+  }
+  return out;
+}
+
+function replaceCmdBrace(s: string, cmd: string, js: string): string {
+  let out = ''; let i = 0; const tag = '\\' + cmd;
+  while (i < s.length) {
+    if (s.startsWith(tag, i)) {
+      let j = i + tag.length; while (s[j] === ' ') j++;
+      if (s[j] === '{') { const a = readBrace(s, j); out += js + '(' + a.inner + ')'; i = a.end + 1; continue; }
+    }
+    out += s[i]; i++;
+  }
+  return out;
+}
+
+function convertSubscripts(s: string): string {
+  // f_{m,k} → f_m_k ; q_{p0} → q_p0
+  return s.replace(/_\{([^{}]*)\}/g, (_m, p1: string) => '_' + p1.trim().replace(/[,\s]+/g, '_'));
+}
+
+function convertPowers(s: string): string {
+  let guard = 0;
+  while (s.indexOf('^') >= 0 && guard++ < 200) {
+    const idx = s.indexOf('^');
+    // rechte Seite
+    let r = idx + 1; while (s[r] === ' ') r++;
+    let right: string; let rEnd: number;
+    if (s[r] === '{') { const b = readBrace(s, r); right = b.inner; rEnd = b.end + 1; }
+    else { let k = r; while (k < s.length && /[\w.]/.test(s[k])) k++; right = s.slice(r, k); rEnd = k; }
+    // linke Seite
+    let l = idx - 1; while (s[l] === ' ') l--;
+    let left: string; let lStart: number;
+    if (s[l] === ')') {
+      let depth = 0; let k = l;
+      for (; k >= 0; k--) { if (s[k] === ')') depth++; else if (s[k] === '(') { depth--; if (depth === 0) break; } }
+      lStart = k; left = s.slice(k, l + 1);
+    } else {
+      let k = l; while (k >= 0 && /[\w.]/.test(s[k])) k--; lStart = k + 1; left = s.slice(k + 1, l + 1);
+    }
+    s = s.slice(0, lStart) + 'Math.pow(' + left.trim() + ',' + right.trim() + ')' + s.slice(rEnd);
+  }
+  return s;
+}
+
+export function latexToJs(tex: string): string {
+  if (!tex || !tex.trim()) return '';
+  let s = tex;
+  // Ungleichungs-Schwanz entfernen
+  s = s.replace(/\\(leq|geq|le|ge|approx|neq|leqslant|geqslant)\b[\s\S]*$/, '');
+  // rechte Seite der letzten Gleichung
+  if (s.includes('=')) { const parts = s.split('='); s = parts[parts.length - 1]; }
+  s = s.replace(/\\left|\\right/g, '');
+  s = s.replace(/\{,\}/g, '.');                 // 1{,}6 → 1.6
+  s = s.replace(/\\,|\\;|\\!|\\quad|\\qquad/g, ' ');
+  s = s.replace(/\\cdot|\\times|\\ast/g, '*');
+  s = replaceFrac(s);
+  s = replaceCmdBrace(s, 'sqrt', 'Math.sqrt');
+  for (const g of GREEK) {
+    s = s.replace(new RegExp('\\\\' + g + '\\b', 'g'), g);
+    s = s.replace(new RegExp('\\\\' + g[0].toUpperCase() + g.slice(1) + '\\b', 'g'), g);
+  }
+  s = convertSubscripts(s);
+  s = convertPowers(s);
+  s = s.replace(/\\[a-zA-Z]+/g, '');            // übrige Befehle
+  s = s.replace(/[{}]/g, '');
+  s = s.replace(/\s+/g, ' ').trim();
+  return s;
+}

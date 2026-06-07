@@ -78,14 +78,19 @@ app.get('/api/verifications/:id', (req, res) => {
 });
 
 app.post('/api/verifications', (req, res) => {
-  const { norm_id='sia265', chapter_id, title, formula_latex='', formula_description='', compute_expr='' } = req.body;
+  const { norm_id='sia265', chapter_id, title, formula_latex='', formula_description='', compute_expr='', graph_json=null } = req.body;
   const id = title.toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,30) + '_' + Date.now().toString(36);
-  db.prepare('INSERT INTO verifications (id, norm_id, chapter_id, title, formula_latex, formula_description, compute_expr) VALUES (?,?,?,?,?,?,?)').run(id, norm_id, chapter_id, title, formula_latex, formula_description, compute_expr);
+  const gj = graph_json == null ? null : (typeof graph_json === 'string' ? graph_json : JSON.stringify(graph_json));
+  db.prepare('INSERT INTO verifications (id, norm_id, chapter_id, title, formula_latex, formula_description, compute_expr, graph_json) VALUES (?,?,?,?,?,?,?,?)').run(id, norm_id, chapter_id, title, formula_latex, formula_description, compute_expr, gj);
   res.json({ id });
 });
 app.put('/api/verifications/:id', (req, res) => {
-  const { title, chapter_id, formula_latex, formula_description, compute_expr } = req.body;
+  const { title, chapter_id, formula_latex, formula_description, compute_expr, graph_json } = req.body;
   db.prepare('UPDATE verifications SET title=?, chapter_id=?, formula_latex=?, formula_description=?, compute_expr=? WHERE id=?').run(title, chapter_id, formula_latex, formula_description, compute_expr||'', req.params.id);
+  if (graph_json !== undefined) {
+    const gj = graph_json == null ? null : (typeof graph_json === 'string' ? graph_json : JSON.stringify(graph_json));
+    db.prepare('UPDATE verifications SET graph_json=? WHERE id=?').run(gj, req.params.id);
+  }
   res.json({ ok: true });
 });
 app.delete('/api/verifications/:id', (req, res) => {

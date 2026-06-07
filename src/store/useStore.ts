@@ -274,6 +274,7 @@ export const useStore = create<AppState>((set, get) => ({
           chapterId: v.chapter_id,
           title: v.title,
           computeExpr: v.compute_expr,
+          graph_json: v.graph_json ?? null,
           comment: existingV?.comment || '',
           variables: (v.variables || []).map((vr: any) => {
             // Holzklassen-Kennwerte immer aus aktueller Klasse

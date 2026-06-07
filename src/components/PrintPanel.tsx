@@ -4,6 +4,7 @@ import MathDisplay from './MathDisplay';
 import { nameToLatex } from '../utils/formatName';
 import { substituteValues, formatNumber } from '../utils/substituteFormula';
 import { Verification } from '../types';
+import GraphVerificationView from './GraphVerificationView';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -49,6 +50,9 @@ function PrintVerification({ itemKey, snapshot: v, index }: { itemKey: string; s
       </div>
 
       <div style={{ padding: 14 }}>
+        {v.graph_json ? (
+          <GraphVerificationView verification={v} readOnly />
+        ) : (<>
         {/* 1. Symbolische Formel */}
         <div style={{ marginBottom: 12 }}>
           <div style={sectionLabel}>Formel</div>
@@ -134,6 +138,7 @@ function PrintVerification({ itemKey, snapshot: v, index }: { itemKey: string; s
             </div>
           </div>
         )}
+        </>)}
 
         {/* 5. Kommentar */}
         {v.comment && (

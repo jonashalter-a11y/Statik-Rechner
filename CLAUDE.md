@@ -72,11 +72,33 @@ Variablen vom Typ `dropdown` speichern den Wert als String (z.B. `'III'` für Ge
 ### DB-Schema (wichtigste Tabellen)
 ```
 chapters        id, norm_id, parent_id, number, title, sort_order
-verifications   id, norm_id, chapter_id, title, formula_latex, formula_description, compute_expr, active
-variables       id, verification_id, name, label, unit, type, default_value, description, sort_order
+verifications   id, norm_id, chapter_id, title, formula_latex, formula_description, compute_expr, active, graph_json
+variables       id, verification_id, name, label, unit, type, default_value, description, sort_order, table_ref, table_col
 variable_options variable_id, label, value, sort_order
 db_tables       id, norm_id, category, title, description, headers(JSON), rows(JSON)
 ```
+
+### Node-Editor / Block-System (Nachweis-Erstellung)
+Neue Nachweise werden im Backend als **Graph aus Blöcken** gebaut (React Flow, `@xyflow/react`)
+und in `verifications.graph_json` gespeichert. Das Frontend rendert denselben Graphen als
+sequentielle Eingabemaske mit Live-Berechnung.
+
+**Block-Typen** (`src/types/graph.ts`):
+`variable` 🟪 · `dropdown` 🟧 · `tablevalue` 🟩 · `calc` 🟥 · `stdcalc` 🟫 ·
+`tablecalc` 🟦 · `condition` 🔶 · `output` ⬜. Kanten: `workflow` (Standard) und `condition`.
+
+**Schlüsseldateien:**
+- `src/types/graph.ts` — Graph-/Block-Datentypen, `graph_json = {version,nodes,edges}`
+- `src/utils/evalGraph.ts` — Auswertung (topo-sort über Workflow-Kanten, reuse `evalFormula`)
+- `src/utils/legacyToGraph.ts` — `getGraph(v)`: nutzt `graph_json`, sonst Adapter aus
+  `variables`+`compute_expr` (bestehende Nachweise rendern ohne Migration weiter)
+- `src/components/admin/graph/` — `GraphEditor.tsx` (Canvas+Palette), `BlockNodes.tsx`
+  (Custom Nodes), `graphContext.ts`
+- `src/components/GraphVerificationView.tsx` — Frontend-Rendering + Live-Eval (Prop `readOnly`
+  für die PDF-Ansicht in `PrintPanel`)
+
+`evalGraph` toleriert Fehler/Zyklen (gibt `NaN`/null statt Crash). Ergebnis = letzter
+`calc`/`stdcalc`-Block; SIA 265 → η (≤1 bestanden), SIA 261 → Wert.
 
 ### Gebäudeskizzen (SVG)
 `db_tables.description` kann das Format `shape:KEY|Beschreibungstext` enthalten.  

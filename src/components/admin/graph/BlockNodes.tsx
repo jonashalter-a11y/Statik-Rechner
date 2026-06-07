@@ -1,0 +1,334 @@
+import React, { useState, useEffect } from 'react';
+import { Handle, Position, NodeProps } from '@xyflow/react';
+import MathDisplay from '../../MathDisplay';
+import { nameToLatex } from '../../../utils/formatName';
+import { useGraphCtx, DbTableFull } from './graphContext';
+import {
+  VariableData, DropdownData, TableValueData, CalcData,
+  StdCalcData, TableCalcData, ConditionData, OutputData,
+} from '../../../types/graph';
+
+// ── Block-Stil je Typ ────────────────────────────────────────────────────────
+const THEME: Record<string, { bg: string; border: string; icon: string; label: string }> = {
+  variable:   { bg: '#f5f3ff', border: '#7c3aed', icon: '🟪', label: 'Variabel' },
+  dropdown:   { bg: '#fff7ed', border: '#ea580c', icon: '🟧', label: 'Dropdown' },
+  tablevalue: { bg: '#f0fdf4', border: '#16a34a', icon: '🟩', label: 'Tabellenwert' },
+  calc:       { bg: '#fef2f2', border: '#dc2626', icon: '🟥', label: 'Rechnung' },
+  stdcalc:    { bg: '#f5f0e8', border: '#92400e', icon: '🟫', label: 'Std-Berechnung' },
+  tablecalc:  { bg: '#eff6ff', border: '#2563eb', icon: '🟦', label: 'Tabellenberechnung' },
+  condition:  { bg: '#fefce8', border: '#ca8a04', icon: '🔶', label: 'Bedingung' },
+  output:     { bg: '#f9fafb', border: '#6b7280', icon: '⬜', label: 'PDF / Ausgabe' },
+};
+
+const inp: React.CSSProperties = {
+  border: '1px solid #d1d5db', borderRadius: 4, padding: '3px 6px',
+  fontSize: 11, width: '100%', boxSizing: 'border-box',
+};
+const lbl: React.CSSProperties = { fontSize: 9, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 1, marginTop: 4 };
+
+function Shell({ id, type, children, extraHandles }: { id: string; type: string; children: React.ReactNode; extraHandles?: React.ReactNode }) {
+  const { removeNode } = useGraphCtx();
+  const t = THEME[type];
+  return (
+    <div style={{ background: t.bg, border: `2px solid ${t.border}`, borderRadius: 10, width: 230, fontFamily: '-apple-system, sans-serif', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' }}>
+      <Handle type="target" position={Position.Left} style={{ background: t.border, width: 9, height: 9 }} />
+      <div style={{ background: t.border, color: '#fff', padding: '4px 8px', borderRadius: '7px 7px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, fontWeight: 600 }}>
+        <span>{t.icon} {t.label}</span>
+        <button className="nodrag" onClick={() => removeNode(id)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1 }}>✕</button>
+      </div>
+      <div style={{ padding: 8 }}>{children}</div>
+      {extraHandles ?? <Handle type="source" position={Position.Right} style={{ background: t.border, width: 9, height: 9 }} />}
+    </div>
+  );
+}
+
+const F = (props: React.InputHTMLAttributes<HTMLInputElement>) => <input className="nodrag" {...props} style={{ ...inp, ...(props.style || {}) }} />;
+
+// ── 🟪 Variabel ──────────────────────────────────────────────────────────────
+export function VariableNode({ id, data }: NodeProps) {
+  const d = data as unknown as VariableData;
+  const { updateNodeData, dbTables, loadTableFull } = useGraphCtx();
+  const set = (p: Partial<VariableData>) => updateNodeData(id, p);
+  const [headers, setHeaders] = useState<string[]>([]);
+  useEffect(() => {
+    if (d.inputKind === 'table_column' && d.table_ref) loadTableFull(d.table_ref).then(t => setHeaders(t?.headers || []));
+  }, [d.inputKind, d.table_ref]);
+  return (
+    <Shell id={id} type="variable">
+      <div style={lbl}>Name (LaTeX)</div>
+      <F value={d.name} placeholder="q_0" onChange={e => set({ name: e.target.value })} />
+      <div style={{ fontSize: 11, marginTop: 2 }}><MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} /></div>
+      <div style={lbl}>Bezeichnung</div>
+      <F value={d.label} placeholder="Referenz-Staudruck" onChange={e => set({ label: e.target.value })} />
+      <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ flex: 1 }}>
+          <div style={lbl}>Einheit</div>
+          <F value={d.unit} placeholder="kN/m²" onChange={e => set({ unit: e.target.value })} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={lbl}>Standard</div>
+          <F value={d.default_value} placeholder="0" onChange={e => set({ default_value: e.target.value })} />
+        </div>
+      </div>
+      <div style={lbl}>Eingabe-Art</div>
+      <select className="nodrag" value={d.inputKind || 'number'} onChange={e => set({ inputKind: e.target.value as any })} style={inp}>
+        <option value="number">Zahl</option>
+        <option value="dropdown">Feste Optionen</option>
+        <option value="table_column">Tabellen-Spalte</option>
+      </select>
+      {d.inputKind === 'table_column' && (
+        <>
+          <div style={lbl}>Tabelle</div>
+          <select className="nodrag" value={d.table_ref || ''} onChange={e => set({ table_ref: e.target.value, table_col: 0 })} style={inp}>
+            <option value="">— wählen —</option>
+            {dbTables.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+          </select>
+          {headers.length > 0 && (
+            <>
+              <div style={lbl}>Spalte</div>
+              <select className="nodrag" value={d.table_col ?? 0} onChange={e => set({ table_col: Number(e.target.value) })} style={inp}>
+                {headers.map((h, i) => <option key={i} value={i}>{h}</option>)}
+              </select>
+            </>
+          )}
+        </>
+      )}
+    </Shell>
+  );
+}
+
+// ── 🟧 Dropdown ──────────────────────────────────────────────────────────────
+export function DropdownNode({ id, data }: NodeProps) {
+  const d = data as unknown as DropdownData;
+  const { updateNodeData, dbTables, loadTableFull } = useGraphCtx();
+  const set = (p: Partial<DropdownData>) => updateNodeData(id, p);
+  const [headers, setHeaders] = useState<string[]>([]);
+  useEffect(() => {
+    if ((d.mode === 'table' || d.mode === 'table_column') && d.table_ref) loadTableFull(d.table_ref).then(t => setHeaders(t?.headers || []));
+  }, [d.mode, d.table_ref]);
+  const addOpt = () => set({ options: [...(d.options || []), { label: '', value: '' }] });
+  const updOpt = (i: number, k: 'label' | 'value', v: string) => { const o = [...(d.options || [])]; o[i] = { ...o[i], [k]: v }; set({ options: o }); };
+  return (
+    <Shell id={id} type="dropdown">
+      <div style={lbl}>Bezeichnung</div>
+      <F value={d.label} placeholder="Geländekategorie" onChange={e => set({ label: e.target.value })} />
+      <div style={lbl}>Art</div>
+      <select className="nodrag" value={d.mode} onChange={e => set({ mode: e.target.value as any })} style={inp}>
+        <option value="custom">Selbst erstellen</option>
+        <option value="table">Ganze Tabelle</option>
+        <option value="table_column">Tabellen-Spalte</option>
+      </select>
+      {(d.mode === 'table' || d.mode === 'table_column') && (
+        <>
+          <div style={lbl}>Tabelle</div>
+          <select className="nodrag" value={d.table_ref || ''} onChange={e => set({ table_ref: e.target.value, label_col: 0 })} style={inp}>
+            <option value="">— wählen —</option>
+            {dbTables.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+          </select>
+          {headers.length > 0 && (
+            <>
+              <div style={lbl}>Anzeige-Spalte</div>
+              <select className="nodrag" value={d.label_col ?? 0} onChange={e => set({ label_col: Number(e.target.value) })} style={inp}>
+                {headers.map((h, i) => <option key={i} value={i}>{h}</option>)}
+              </select>
+            </>
+          )}
+        </>
+      )}
+      {d.mode === 'custom' && (
+        <>
+          <div style={lbl}>Name (für Wert, optional)</div>
+          <F value={d.name || ''} placeholder="GK" onChange={e => set({ name: e.target.value })} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={lbl}>Optionen</div>
+            <button className="nodrag" onClick={addOpt} style={{ fontSize: 10, border: 'none', background: '#fed7aa', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>+</button>
+          </div>
+          {(d.options || []).map((o, i) => (
+            <div key={i} style={{ display: 'flex', gap: 3, marginBottom: 2 }}>
+              <F value={o.label} placeholder="Label" onChange={e => updOpt(i, 'label', e.target.value)} style={{ flex: 2 }} />
+              <F value={o.value} placeholder="Wert" onChange={e => updOpt(i, 'value', e.target.value)} style={{ flex: 1 }} />
+            </div>
+          ))}
+        </>
+      )}
+    </Shell>
+  );
+}
+
+// ── 🟩 Tabellenwert ──────────────────────────────────────────────────────────
+export function TableValueNode({ id, data }: NodeProps) {
+  const d = data as unknown as TableValueData;
+  const { updateNodeData } = useGraphCtx();
+  const set = (p: Partial<TableValueData>) => updateNodeData(id, p);
+  return (
+    <Shell id={id} type="tablevalue">
+      <div style={{ fontSize: 10, color: '#15803d', marginBottom: 2 }}>nutzt Zeile des verbundenen Dropdowns</div>
+      <div style={lbl}>Name (LaTeX)</div>
+      <F value={d.name} placeholder="z_g" onChange={e => set({ name: e.target.value })} />
+      <div style={{ fontSize: 11, marginTop: 2 }}><MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} /></div>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ flex: 1 }}>
+          <div style={lbl}>Einheit</div>
+          <F value={d.unit} placeholder="m" onChange={e => set({ unit: e.target.value })} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={lbl}>Spalten-Index</div>
+          <F type="number" value={String(d.table_col ?? 0)} onChange={e => set({ table_col: Number(e.target.value) })} />
+        </div>
+      </div>
+    </Shell>
+  );
+}
+
+// ── Klickbare Variablen-Chips (für Rechnungen) ───────────────────────────────
+function NameChips({ targetId }: { targetId: string }) {
+  const { allNames, insertName } = useGraphCtx();
+  const others = allNames.filter(n => n.id !== targetId && n.name);
+  if (!others.length) return null;
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 3 }}>
+      {others.map(n => (
+        <button key={n.id} className="nodrag" onClick={() => insertName(targetId, n.name)}
+          title={n.label}
+          style={{ fontSize: 10, border: '1px solid #cbd5e1', background: '#fff', borderRadius: 4, padding: '1px 5px', cursor: 'pointer' }}>
+          {n.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── 🟥 Rechnung ──────────────────────────────────────────────────────────────
+export function CalcNode({ id, data }: NodeProps) {
+  const d = data as unknown as CalcData;
+  const { updateNodeData } = useGraphCtx();
+  const set = (p: Partial<CalcData>) => updateNodeData(id, p);
+  return (
+    <Shell id={id} type="calc">
+      <div style={lbl}>Ergebnis-Name (LaTeX)</div>
+      <F value={d.name} placeholder="c_h" onChange={e => set({ name: e.target.value })} />
+      <div style={{ fontSize: 11, marginTop: 2 }}><MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} /></div>
+      <div style={lbl}>Anzeige-Formel (LaTeX)</div>
+      <textarea className="nodrag" value={d.latex} placeholder="c_h = 1.6 \cdot (...)" onChange={e => set({ latex: e.target.value })} style={{ ...inp, minHeight: 32, fontFamily: 'monospace' }} />
+      {d.latex && <div style={{ background: '#fff', borderRadius: 4, padding: 4, marginTop: 2, overflowX: 'auto' }}><MathDisplay latex={d.latex} display /></div>}
+      <div style={lbl}>Berechnung (JS)</div>
+      <textarea className="nodrag" value={d.expr} placeholder="1.6 * Math.pow(z/z_g, 2*alpha_r) + 0.375" onChange={e => set({ expr: e.target.value })} style={{ ...inp, minHeight: 32, fontFamily: 'monospace', background: '#fffbeb' }} />
+      <NameChips targetId={id} />
+      <div style={lbl}>Einheit</div>
+      <F value={d.unit} placeholder="–" onChange={e => set({ unit: e.target.value })} />
+    </Shell>
+  );
+}
+
+// ── 🟫 Standard-Berechnung ───────────────────────────────────────────────────
+export function StdCalcNode({ id, data }: NodeProps) {
+  const d = data as unknown as StdCalcData;
+  const { updateNodeData } = useGraphCtx();
+  const set = (p: Partial<StdCalcData>) => updateNodeData(id, p);
+  return (
+    <Shell id={id} type="stdcalc">
+      <div style={{ fontSize: 10, color: '#92400e', marginBottom: 2 }}>ein Wert wird im Frontend aus Tabellenberechnung gewählt</div>
+      <div style={lbl}>Ergebnis-Name</div>
+      <F value={d.name} placeholder="q_k" onChange={e => set({ name: e.target.value })} />
+      <div style={lbl}>Auswahl-Variable (Frontend)</div>
+      <F value={d.picker_name} placeholder="c_pe" onChange={e => set({ picker_name: e.target.value })} />
+      <div style={lbl}>Anzeige-Formel (LaTeX)</div>
+      <textarea className="nodrag" value={d.latex} placeholder="q_{k} = (c_d \cdot c_{pe} - c_{pi}) \cdot q_p" onChange={e => set({ latex: e.target.value })} style={{ ...inp, minHeight: 30, fontFamily: 'monospace' }} />
+      {d.latex && <div style={{ background: '#fff', borderRadius: 4, padding: 4, marginTop: 2, overflowX: 'auto' }}><MathDisplay latex={d.latex} display /></div>}
+      <div style={lbl}>Berechnung (JS)</div>
+      <textarea className="nodrag" value={d.expr} placeholder="(c_d * c_pe - c_pi) * q_p" onChange={e => set({ expr: e.target.value })} style={{ ...inp, minHeight: 30, fontFamily: 'monospace', background: '#fffbeb' }} />
+      <NameChips targetId={id} />
+      <div style={lbl}>Einheit</div>
+      <F value={d.unit} placeholder="kN/m²" onChange={e => set({ unit: e.target.value })} />
+    </Shell>
+  );
+}
+
+// ── 🟦 Tabellenberechnung ────────────────────────────────────────────────────
+export function TableCalcNode({ id, data }: NodeProps) {
+  const d = data as unknown as TableCalcData;
+  const { updateNodeData, dbTables } = useGraphCtx();
+  const set = (p: Partial<TableCalcData>) => updateNodeData(id, p);
+  return (
+    <Shell id={id} type="tablecalc">
+      <div style={lbl}>Name</div>
+      <F value={d.name} placeholder="q_k" onChange={e => set({ name: e.target.value })} />
+      <div style={lbl}>Quell-Tabelle (Zonen-Beiwerte)</div>
+      <select className="nodrag" value={d.table_ref || ''} onChange={e => set({ table_ref: e.target.value })} style={inp}>
+        <option value="">— wählen —</option>
+        {dbTables.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+      </select>
+      <div style={lbl}>Zonen (Spaltennamen, kommagetrennt)</div>
+      <F value={(d.zones || []).join(',')} placeholder="A,B,C,D,E,F,G,H" onChange={e => set({ zones: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} />
+      <div style={lbl}>Berechnung je Zone (JS, cell=Zonenwert)</div>
+      <textarea className="nodrag" value={d.expr} placeholder="cell * q_p" onChange={e => set({ expr: e.target.value })} style={{ ...inp, minHeight: 30, fontFamily: 'monospace', background: '#fffbeb' }} />
+      <NameChips targetId={id} />
+      <div style={lbl}>Einheit</div>
+      <F value={d.unit} placeholder="kN/m²" onChange={e => set({ unit: e.target.value })} />
+    </Shell>
+  );
+}
+
+// ── 🔶 Bedingung ─────────────────────────────────────────────────────────────
+export function ConditionNode({ id, data }: NodeProps) {
+  const d = data as unknown as ConditionData;
+  const { updateNodeData } = useGraphCtx();
+  const set = (p: Partial<ConditionData>) => updateNodeData(id, p);
+  const conds = d.conditions || [];
+  const add = () => set({ conditions: [...conds, { id: 'c' + (conds.length + 1), latex: '', expr: '' }] });
+  const upd = (i: number, k: 'latex' | 'expr', v: string) => { const c = [...conds]; c[i] = { ...c[i], [k]: v }; set({ conditions: c }); };
+  return (
+    <Shell id={id} type="condition" extraHandles={
+      <>
+        {conds.map((c, i) => (
+          <Handle key={c.id} id={c.id} type="source" position={Position.Right} style={{ top: 80 + i * 46, background: '#ca8a04', width: 9, height: 9 }} />
+        ))}
+      </>
+    }>
+      <div style={lbl}>Bezeichnung</div>
+      <F value={d.label} placeholder="Verzweigung" onChange={e => set({ label: e.target.value })} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={lbl}>Bedingungen</div>
+        <button className="nodrag" onClick={add} style={{ fontSize: 10, border: 'none', background: '#fde68a', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>+</button>
+      </div>
+      {conds.map((c, i) => (
+        <div key={c.id} style={{ borderTop: '1px dashed #e5e7eb', paddingTop: 3, marginTop: 3 }}>
+          <div style={{ fontSize: 9, color: '#a16207' }}>Zweig {c.id} →</div>
+          <F value={c.latex} placeholder="h/b > 1" onChange={e => upd(i, 'latex', e.target.value)} style={{ marginBottom: 2 }} />
+          <F value={c.expr} placeholder="(h/b) > 1 ? 1 : 0" onChange={e => upd(i, 'expr', e.target.value)} style={{ fontFamily: 'monospace', background: '#fffbeb' }} />
+        </div>
+      ))}
+    </Shell>
+  );
+}
+
+// ── ⬜ PDF / Ausgabe ─────────────────────────────────────────────────────────
+export function OutputNode({ id, data }: NodeProps) {
+  const d = data as unknown as OutputData;
+  const { updateNodeData, allNames } = useGraphCtx();
+  const set = (p: Partial<OutputData>) => updateNodeData(id, p);
+  const blocks = d.blocks || [];
+  const toggle = (nid: string) => set({ blocks: blocks.includes(nid) ? blocks.filter(b => b !== nid) : [...blocks, nid] });
+  return (
+    <Shell id={id} type="output" extraHandles={<span />}>
+      <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 4 }}>Diese Blöcke ins PDF-Protokoll:</div>
+      {allNames.filter(n => n.id !== id).map(n => (
+        <label key={n.id} className="nodrag" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer' }}>
+          <input type="checkbox" className="nodrag" checked={blocks.includes(n.id)} onChange={() => toggle(n.id)} />
+          {n.name || n.label}
+        </label>
+      ))}
+    </Shell>
+  );
+}
+
+export const nodeTypes = {
+  variable: VariableNode,
+  dropdown: DropdownNode,
+  tablevalue: TableValueNode,
+  calc: CalcNode,
+  stdcalc: StdCalcNode,
+  tablecalc: TableCalcNode,
+  condition: ConditionNode,
+  output: OutputNode,
+};

@@ -24,7 +24,10 @@ Interaktiver Statik-Rechner für Schweizer Baunormen. Unterstützt SIA 265 (Holz
 - Resizable Columns (Sidebar, Nachweis-Panel, Ausdruckprotokoll)
 - PDF-Export (jsPDF + html2canvas)
 - SVG-Gebäudeskizzen für 6 Grundformen (Flachdach, Satteldach, Pultdach)
-- Admin-UI zum Bearbeiten von Kapiteln, Verifikationen und Tabellen
+- **Node-Editor zum Erstellen von Nachweisen** (React Flow): Blöcke per Drag &
+  Verbindungen statt Formular — Variabel, Dropdown, Tabellenwert, Rechnung,
+  Std-Berechnung, Tabellenberechnung, Bedingung, PDF-Ausgabe
+- Admin-UI zum Bearbeiten von Kapiteln, Tabellen und (als Graph) Verifikationen
 
 ---
 
@@ -85,13 +88,19 @@ src/
   components/
     Header.tsx          Norm-Switcher, Holzart/Klasse
     LeftSidebar.tsx     Inhaltsverzeichnis + Statistik
-    VerificationPanel.tsx  Formeln, Variablen, Ergebnis
-    PrintPanel.tsx      Ausdruckprotokoll, PDF-Export
+    VerificationPanel.tsx  Hülle: Titel + Graph-Ansicht + Kommentar
+    GraphVerificationView.tsx  Rendert Nachweis-Graph als Eingabemaske (Live-Eval)
+    PrintPanel.tsx      Ausdruckprotokoll, PDF-Export (graph + legacy)
     BuildingShape.tsx   SVG-Gebäudeskizzen
-    admin/              Backend-UI (Kapitel/Verifikation/Tabellen-Editor)
+    admin/              Backend-UI (Kapitel/Tabellen-Editor)
+      graph/            Node-Editor (React Flow): GraphEditor, BlockNodes, graphContext
   utils/
     evalFormula.ts      JavaScript-Formel-Evaluator (new Function)
-  types/index.ts        TypeScript-Interfaces
+    evalGraph.ts        Graph-Auswertung (topo-sort, Blocktypen)
+    legacyToGraph.ts    Adapter: alte Nachweise → Graph (getGraph)
+  types/
+    index.ts            TypeScript-Interfaces
+    graph.ts            Graph-/Block-Datentypen
 ```
 
 ---
@@ -183,3 +192,4 @@ Spaltenbedeutung: A=Luv Wand, B=Lee Wand, C=Seite, D-H=Dachzonen, cf1=Kraftbeiwe
 | v2.0 | SIA 261 hinzugefügt, Dual-Norm-System, Anhang-C-Windtabellen, SVG-Skizzen |
 | v2.1 | 19 Anhang-C-Tabellen, 6 SVG-Formen, Grundberechnungen |
 | v2.2 | Schneelast-Formel korrigiert (`h₀/350)²`), Wind-Geländekategorie als Einzel-Dropdown, Tabellen 31–45 Excel-verifiziert, Tabs 46–49 entfernt, neuer `wind_druck_lokal`-Nachweis |
+| v3.0 | **Node-Editor (React Flow)** für die Nachweis-Erstellung: Block-/Graph-System (`graph_json`) mit 8 Block-Typen, Workflow-/Bedingungs-Kanten, Live-Auswertung (`evalGraph`), Legacy-Adapter für bestehende Nachweise, Graph-Ausgabe im PDF-Protokoll |

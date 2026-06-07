@@ -40,6 +40,7 @@ export interface Verification {
   variables: Variable[];
   formula: Formula;
   computeExpr?: string;
+  graph_json?: string | null;
   comment: string;
   result?: number;
   passed?: boolean;
