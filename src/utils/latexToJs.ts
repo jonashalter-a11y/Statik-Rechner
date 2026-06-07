@@ -81,6 +81,67 @@ function convertPowers(s: string): string {
   return s;
 }
 
+// Wandelt eine LaTeX-Ungleichung in einen JS-Ausdruck um, der 1 (wahr) oder 0 (falsch) zurückgibt.
+// z.B. "\lambda_{\text{rel},m} \leq 0{,}75" → "(lambda_rel_m) <= (0.75) ? 1 : 0"
+// Gibt '' zurück wenn keine Ungleichung erkannt.
+function latexExprToJs(tex: string): string {
+  if (!tex || !tex.trim()) return '';
+  let s = tex;
+  s = s.replace(/\\left|\\right/g, '');
+  s = s.replace(/\\text\s*\{([^{}]*)\}/g, '$1');
+  s = s.replace(/\{,\}/g, '.');
+  s = s.replace(/\\,|\\;|\\!|\\quad|\\qquad/g, ' ');
+  s = s.replace(/\\cdot|\\times|\\ast/g, '*');
+  s = replaceFrac(s);
+  s = replaceCmdBrace(s, 'sqrt', 'Math.sqrt');
+  for (const g of GREEK) {
+    s = s.replace(new RegExp('\\\\' + g + '(?=\\b|_|\\{|$)', 'g'), g);
+    s = s.replace(new RegExp('\\\\' + g[0].toUpperCase() + g.slice(1) + '(?=\\b|_|\\{|$)', 'g'), g);
+  }
+  s = convertSubscripts(s);
+  s = s.replace(/([A-Za-z][A-Za-z0-9_]*)_([A-Za-z0-9]+)\.([A-Za-z0-9_]+)/g, '$1_$2_$3');
+  s = convertPowers(s);
+  s = s.replace(/\\[a-zA-Z]+/g, '');
+  s = s.replace(/[{}]/g, '');
+  // Primes (q' → q, q'' → q) — Apostroph ist kein gültiger JS-Identifier-Bestandteil
+  s = s.replace(/([A-Za-z0-9_])'+/g, '$1');
+  s = s.replace(/\s+/g, ' ').trim();
+  return s;
+}
+
+const INEQ_OPS = [
+  { re: /\\leqslant\b|\\leq\b|\\le\b/, js: '<=' },
+  { re: /\\geqslant\b|\\geq\b|\\ge\b/, js: '>=' },
+  { re: /<(?!=)/, js: '<' },
+  { re: />(?!=)/, js: '>' },
+];
+
+export function latexCondToJs(tex: string): string {
+  if (!tex?.trim()) return '';
+  // LaTeX-Anzeige-Befehle zuerst normalisieren (für die Suche nach dem Operator)
+  let s = tex.trim()
+    .replace(/\\text\s*\{([^{}]*)\}/g, '$1')
+    .replace(/\\left|\\right/g, '');
+  for (const { re, js: jsOp } of INEQ_OPS) {
+    const match = s.match(re);
+    if (!match) continue;
+    const idx = s.search(re);
+    const lhsTex = s.slice(0, idx).trim();
+    const rhsTex = s.slice(idx + match[0].length).trim();
+    const lhsJs = latexExprToJs(lhsTex);
+    const rhsJs = latexExprToJs(rhsTex);
+    if (!lhsJs || !rhsJs) continue;
+    return `(${lhsJs}) ${jsOp} (${rhsJs}) ? 1 : 0`;
+  }
+  return '';
+}
+
+// Erkennt ob ein LaTeX-String eine Ungleichung enthält
+export function latexHasIneq(tex: string): boolean {
+  if (!tex?.trim()) return false;
+  return /\\leq|\\leqslant|\\le\b|\\geq|\\geqslant|\\ge\b|<|>/.test(tex);
+}
+
 export function latexToJs(tex: string): string {
   if (!tex || !tex.trim()) return '';
   let s = tex;
@@ -89,6 +150,7 @@ export function latexToJs(tex: string): string {
   // rechte Seite der letzten Gleichung
   if (s.includes('=')) { const parts = s.split('='); s = parts[parts.length - 1]; }
   s = s.replace(/\\left|\\right/g, '');
+  s = s.replace(/\\text\s*\{([^{}]*)\}/g, '$1'); // \text{crit} → crit (reiner Anzeige-Befehl)
   s = s.replace(/\{,\}/g, '.');                 // 1{,}6 → 1.6
   s = s.replace(/\\,|\\;|\\!|\\quad|\\qquad/g, ' ');
   s = s.replace(/\\cdot|\\times|\\ast/g, '*');
@@ -105,6 +167,7 @@ export function latexToJs(tex: string): string {
   s = convertPowers(s);
   s = s.replace(/\\[a-zA-Z]+/g, '');            // übrige Befehle
   s = s.replace(/[{}]/g, '');
+  s = s.replace(/([A-Za-z0-9_])'+/g, '$1');    // q' → q (Prime kein gültiger JS-Identifier)
   s = s.replace(/\s+/g, ' ').trim();
   return s;
 }

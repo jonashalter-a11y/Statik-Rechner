@@ -211,7 +211,7 @@ export default function VerificationAdmin() {
   useEffect(() => {
     const timer = window.setInterval(() => {
       saveEditing(editingRef.current, true);
-    }, 10000);
+    }, 2000);
     return () => window.clearInterval(timer);
   }, [saveEditing]);
 

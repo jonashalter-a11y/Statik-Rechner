@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Handle, Position, NodeProps } from '@xyflow/react';
+import { Handle, Position, NodeProps, NodeResizer } from '@xyflow/react';
 import MathDisplay from '../../MathDisplay';
 import { nameToLatex } from '../../../utils/formatName';
-import { latexToJs } from '../../../utils/latexToJs';
+import { latexToJs, latexCondToJs, latexHasIneq } from '../../../utils/latexToJs';
 import { useGraphCtx, DbTableFull } from './graphContext';
 import {
   VariableData, DropdownData, WoodClassData, TableValueData, CalcData,
-  StdCalcData, TableCalcData, ConditionData, OutputData,
+  StdCalcData, TableCalcData, ConditionData, CheckData, OutputData,
 } from '../../../types/graph';
 
 // ── Block-Stil je Typ ────────────────────────────────────────────────────────
@@ -19,32 +19,88 @@ const THEME: Record<string, { bg: string; border: string; icon: string; label: s
   stdcalc:    { bg: '#f5f0e8', border: '#92400e', icon: '🟫', label: 'Std-Berechnung' },
   tablecalc:  { bg: '#eff6ff', border: '#2563eb', icon: '🟦', label: 'Tabellenberechnung' },
   condition:  { bg: '#fefce8', border: '#ca8a04', icon: '🔶', label: 'Bedingung' },
+  check:      { bg: '#f0fdf4', border: '#059669', icon: '✅', label: 'Nachweis' },
   output:     { bg: '#f9fafb', border: '#6b7280', icon: '⬜', label: 'PDF / Ausgabe' },
 };
 
 const inp: React.CSSProperties = {
-  border: '1px solid #d1d5db', borderRadius: 4, padding: '3px 6px',
-  fontSize: 11, width: '100%', boxSizing: 'border-box',
+  border: '1px solid #d1d5db', borderRadius: 3, padding: '2px 5px',
+  fontSize: 10, width: '100%', boxSizing: 'border-box',
 };
-const lbl: React.CSSProperties = { fontSize: 9, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 1, marginTop: 4 };
+const lbl: React.CSSProperties = { fontSize: 8, color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 1, marginTop: 3 };
 
-function Shell({ id, type, children, extraHandles }: { id: string; type: string; children: React.ReactNode; extraHandles?: React.ReactNode }) {
+function Shell({ id, type, children, extraHandles, selected }: { id: string; type: string; children: React.ReactNode; extraHandles?: React.ReactNode; selected?: boolean }) {
   const { removeNode } = useGraphCtx();
   const t = THEME[type];
   return (
-    <div style={{ background: t.bg, border: `2px solid ${t.border}`, borderRadius: 10, width: 230, fontFamily: '-apple-system, sans-serif', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' }}>
-      <Handle type="target" position={Position.Left} style={{ background: t.border, width: 9, height: 9 }} />
-      <div style={{ background: t.border, color: '#fff', padding: '4px 8px', borderRadius: '7px 7px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, fontWeight: 600 }}>
+    <div style={{ background: t.bg, border: `2px solid ${t.border}`, borderRadius: 7, width: '100%', minWidth: 180, height: '100%', minHeight: 40, fontFamily: '-apple-system, sans-serif', boxShadow: '0 1px 4px rgba(0,0,0,0.07)', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+      <NodeResizer
+        isVisible={selected}
+        minWidth={180}
+        minHeight={40}
+        color={t.border}
+        lineStyle={{ borderWidth: 1.5, borderColor: t.border, opacity: 0.5 }}
+        handleStyle={{ width: 7, height: 7, borderRadius: 2, background: t.border, borderColor: t.border }}
+      />
+      <Handle type="target" position={Position.Left} style={{ background: t.border, width: 7, height: 7 }} />
+      <div style={{ background: t.border, color: '#fff', padding: '3px 7px', borderRadius: '4px 4px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 10, fontWeight: 600, flexShrink: 0 }}>
         <span>{t.icon} {t.label}</span>
-        <button className="nodrag" onClick={() => removeNode(id)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 12, lineHeight: 1 }}>✕</button>
+        <button className="nodrag" onClick={() => removeNode(id)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}>✕</button>
       </div>
-      <div style={{ padding: 8 }}>{children}</div>
-      {extraHandles ?? <Handle type="source" position={Position.Right} style={{ background: t.border, width: 9, height: 9 }} />}
+      <div style={{ padding: 6, flex: 1, overflow: 'auto' }}>{children}</div>
+      {extraHandles ?? <Handle type="source" position={Position.Right} style={{ background: t.border, width: 7, height: 7 }} />}
     </div>
   );
 }
 
-const F = (props: React.InputHTMLAttributes<HTMLInputElement>) => <input className="nodrag" {...props} style={{ ...inp, ...(props.style || {}) }} />;
+// Uncontrolled input: kein Cursor-Springen beim Tippen in der Mitte
+function F({ value, onChange, style, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || document.activeElement === el) return;
+    const strVal = String(value ?? '');
+    if (el.value !== strVal) el.value = strVal;
+  }, [value]);
+  return (
+    <input
+      ref={ref}
+      className="nodrag"
+      defaultValue={String(value ?? '')}
+      onChange={onChange}
+      {...props}
+      style={{ ...inp, ...(style || {}) }}
+    />
+  );
+}
+
+// Uncontrolled textarea: React setzt den DOM-Wert nur wenn das Feld nicht fokussiert ist,
+// damit der Cursor beim Tippen in der Mitte nicht springt.
+function LatexArea({ value, onChange, placeholder, style, elRef }: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  style?: React.CSSProperties;
+  elRef?: React.RefObject<HTMLTextAreaElement>;
+}) {
+  const innerRef = useRef<HTMLTextAreaElement>(null);
+  const ref = elRef || innerRef;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || document.activeElement === el) return;
+    if (el.value !== value) el.value = value;
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      className="nodrag"
+      defaultValue={value}
+      placeholder={placeholder}
+      style={style}
+      onChange={e => onChange(e.target.value)}
+    />
+  );
+}
 
 function UnitField({ value, onChange, placeholder = 'kN/m^2' }: { value: string; onChange: (value: string) => void; placeholder?: string }) {
   const { unitOptions } = useGraphCtx();
@@ -67,10 +123,10 @@ function UnitField({ value, onChange, placeholder = 'kN/m^2' }: { value: string;
         className="nodrag"
         onClick={() => setOpen(v => !v)}
         style={{
-          width: '100%', minHeight: 34, boxSizing: 'border-box',
-          border: '1px solid #d1d5db', borderRadius: 6, background: '#fff',
-          padding: '5px 28px 5px 8px', cursor: 'pointer', textAlign: 'left',
-          position: 'relative', fontSize: 13,
+          width: '100%', minHeight: 26, boxSizing: 'border-box',
+          border: '1px solid #d1d5db', borderRadius: 3, background: '#fff',
+          padding: '2px 22px 2px 6px', cursor: 'pointer', textAlign: 'left',
+          position: 'relative', fontSize: 10,
         }}
       >
         {value ? <MathDisplay latex={value} /> : <span style={{ color: '#9ca3af' }}>Einheit wählen</span>}
@@ -94,7 +150,7 @@ function UnitField({ value, onChange, placeholder = 'kN/m^2' }: { value: string;
               style={{
                 display: 'block', width: '100%', border: 'none',
                 borderBottom: '1px solid #f1f5f9', background: unit === value ? '#eff6ff' : '#fff',
-                padding: '7px 8px', cursor: 'pointer', textAlign: 'left', fontSize: 13,
+                padding: '4px 7px', cursor: 'pointer', textAlign: 'left', fontSize: 10,
               }}
             >
               <MathDisplay latex={unit} />
@@ -110,8 +166,8 @@ function UnitField({ value, onChange, placeholder = 'kN/m^2' }: { value: string;
             }}
             style={{
               display: 'block', width: '100%', border: 'none', background: '#f8fafc',
-              padding: '7px 8px', cursor: 'pointer', textAlign: 'left',
-              color: '#1e40af', fontWeight: 700, fontSize: 11,
+              padding: '4px 7px', cursor: 'pointer', textAlign: 'left',
+              color: '#1e40af', fontWeight: 700, fontSize: 10,
             }}
           >
             + Neue Einheit...
@@ -169,7 +225,7 @@ function UnitField({ value, onChange, placeholder = 'kN/m^2' }: { value: string;
 }
 
 // ── 🟪 Variabel ──────────────────────────────────────────────────────────────
-export function VariableNode({ id, data }: NodeProps) {
+export function VariableNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as VariableData;
   const { updateNodeData, dbTables, loadTableFull } = useGraphCtx();
   const set = (p: Partial<VariableData>) => updateNodeData(id, p);
@@ -178,10 +234,10 @@ export function VariableNode({ id, data }: NodeProps) {
     if (d.inputKind === 'table_column' && d.table_ref) loadTableFull(d.table_ref).then(t => setHeaders(t?.headers || []));
   }, [d.inputKind, d.table_ref]);
   return (
-    <Shell id={id} type="variable">
+    <Shell id={id} type="variable" selected={selected}>
       <div style={lbl}>Name (LaTeX)</div>
       <F value={d.name} placeholder="q_0" onChange={e => set({ name: e.target.value })} />
-      <div style={{ fontSize: 11, marginTop: 2 }}><MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} /></div>
+      <div style={{ fontSize: 10, marginTop: 1 }}><MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} /></div>
       <div style={lbl}>Bezeichnung</div>
       <F value={d.label} placeholder="Referenz-Staudruck" onChange={e => set({ label: e.target.value })} />
       <div style={{ display: 'flex', gap: 6 }}>
@@ -222,7 +278,7 @@ export function VariableNode({ id, data }: NodeProps) {
 }
 
 // ── 🟧 Dropdown ──────────────────────────────────────────────────────────────
-export function DropdownNode({ id, data }: NodeProps) {
+export function DropdownNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as DropdownData;
   const { updateNodeData, dbTables, loadTableFull } = useGraphCtx();
   const set = (p: Partial<DropdownData>) => updateNodeData(id, p);
@@ -233,7 +289,7 @@ export function DropdownNode({ id, data }: NodeProps) {
   const addOpt = () => set({ options: [...(d.options || []), { label: '', value: '' }] });
   const updOpt = (i: number, k: 'label' | 'value', v: string) => { const o = [...(d.options || [])]; o[i] = { ...o[i], [k]: v }; set({ options: o }); };
   return (
-    <Shell id={id} type="dropdown">
+    <Shell id={id} type="dropdown" selected={selected}>
       <div style={lbl}>Bezeichnung</div>
       <F value={d.label} placeholder="Geländekategorie" onChange={e => set({ label: e.target.value })} />
       <div style={lbl}>Art</div>
@@ -280,35 +336,35 @@ export function DropdownNode({ id, data }: NodeProps) {
 }
 
 // ── 🟨 Holzklasse ───────────────────────────────────────────────────────────
-export function WoodClassNode({ id, data }: NodeProps) {
+export function WoodClassNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as WoodClassData;
   const { updateNodeData } = useGraphCtx();
   const set = (p: Partial<WoodClassData>) => updateNodeData(id, p);
   return (
-    <Shell id={id} type="woodclass">
-      <div style={{ fontSize: 10, color: '#92400e', marginBottom: 4 }}>
+    <Shell id={id} type="woodclass" selected={selected}>
+      <div style={{ fontSize: 9, color: '#92400e', marginBottom: 3 }}>
         nutzt im Frontend die aktuell gewählte Holzklasse
       </div>
       <div style={lbl}>Backend-Info</div>
       <F value={d.label} placeholder="Aktuelle Holzklasse" onChange={e => set({ label: e.target.value })} />
-      <div style={{ fontSize: 10, color: '#6b7280', marginTop: 5, lineHeight: 1.35 }}>
-        Mit 🟩 Tabellenwert verbinden. Der grüne Name muss dem Kennwert entsprechen, z.B. f_m_k, f_v_k oder E_0_mean.
+      <div style={{ fontSize: 9, color: '#6b7280', marginTop: 3, lineHeight: 1.3 }}>
+        Mit 🟩 Tabellenwert verbinden. Name = Kennwert, z.B. f_m_k, E_0_mean.
       </div>
     </Shell>
   );
 }
 
 // ── 🟩 Tabellenwert ──────────────────────────────────────────────────────────
-export function TableValueNode({ id, data }: NodeProps) {
+export function TableValueNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as TableValueData;
   const { updateNodeData } = useGraphCtx();
   const set = (p: Partial<TableValueData>) => updateNodeData(id, p);
   return (
-    <Shell id={id} type="tablevalue">
-      <div style={{ fontSize: 10, color: '#15803d', marginBottom: 2 }}>nutzt Zeile des verbundenen Dropdowns</div>
+    <Shell id={id} type="tablevalue" selected={selected}>
+      <div style={{ fontSize: 9, color: '#15803d', marginBottom: 2 }}>nutzt Zeile des verbundenen Dropdowns</div>
       <div style={lbl}>Name (LaTeX)</div>
       <F value={d.name} placeholder="z_g" onChange={e => set({ name: e.target.value })} />
-      <div style={{ fontSize: 11, marginTop: 2 }}><MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} /></div>
+      <div style={{ fontSize: 10, marginTop: 1 }}><MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} /></div>
       <div style={{ display: 'flex', gap: 6 }}>
         <div style={{ flex: 1 }}>
           <div style={lbl}>Einheit</div>
@@ -351,7 +407,7 @@ function NameChips({ targetId, onInsert }: { targetId: string; onInsert?: (name:
       {others.map(n => (
         <button key={n.id} className="nodrag" onClick={() => onInsert ? onInsert(n.name) : insertName(targetId, n.name)}
           title={n.label}
-          style={{ fontSize: 10, border: '1px solid #cbd5e1', background: '#fff', borderRadius: 4, padding: '1px 5px', cursor: 'pointer' }}>
+          style={{ fontSize: 9, border: '1px solid #cbd5e1', background: '#fff', borderRadius: 3, padding: '1px 4px', cursor: 'pointer' }}>
           {n.name}
         </button>
       ))}
@@ -360,7 +416,7 @@ function NameChips({ targetId, onInsert }: { targetId: string; onInsert?: (name:
 }
 
 // ── 🟥 Rechnung ──────────────────────────────────────────────────────────────
-export function CalcNode({ id, data }: NodeProps) {
+export function CalcNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as CalcData;
   const { updateNodeData } = useGraphCtx();
   const set = (p: Partial<CalcData>) => updateNodeData(id, p);
@@ -385,13 +441,13 @@ export function CalcNode({ id, data }: NodeProps) {
     }, 0);
   };
   return (
-    <Shell id={id} type="calc">
+    <Shell id={id} type="calc" selected={selected}>
       <div style={lbl}>Ergebnis-Name (LaTeX)</div>
       <F value={d.name} placeholder="c_h" onChange={e => setName(e.target.value)} />
-      <div style={{ fontSize: 11, marginTop: 2 }}><MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} /></div>
+      <div style={{ fontSize: 10, marginTop: 1 }}><MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} /></div>
       <div style={lbl}>Anzeige-Formel (LaTeX)</div>
-      <textarea ref={textareaRef} className="nodrag" value={d.latex} placeholder={d.name ? `${formulaName(d.name)} = 1.6 \\cdot (...)` : 'c_h = 1.6 \\cdot (...)'} onChange={e => setLatex(e.target.value)} style={{ ...inp, minHeight: 32, fontFamily: 'monospace' }} />
-      {d.latex && <div style={{ background: '#fff', borderRadius: 4, padding: 4, marginTop: 2, overflowX: 'auto' }}><MathDisplay latex={d.latex} display /></div>}
+      <LatexArea elRef={textareaRef} value={d.latex} placeholder={d.name ? `${formulaName(d.name)} = 1.6 \\cdot (...)` : 'c_h = 1.6 \\cdot (...)'} onChange={setLatex} style={{ ...inp, minHeight: 48, fontFamily: 'monospace', resize: 'vertical' }} />
+      {d.latex && <div style={{ background: '#fff', borderRadius: 3, padding: 3, marginTop: 2, overflowX: 'auto', fontSize: 10 }}><MathDisplay latex={d.latex} display /></div>}
       <NameChips targetId={id} onInsert={insertFormulaName} />
       <div style={lbl}>Einheit</div>
       <UnitField value={d.unit} onChange={unit => set({ unit })} placeholder="-" />
@@ -400,7 +456,7 @@ export function CalcNode({ id, data }: NodeProps) {
 }
 
 // ── 🟫 Standard-Berechnung ───────────────────────────────────────────────────
-export function StdCalcNode({ id, data }: NodeProps) {
+export function StdCalcNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as StdCalcData;
   const { updateNodeData } = useGraphCtx();
   const set = (p: Partial<StdCalcData>) => updateNodeData(id, p);
@@ -425,15 +481,15 @@ export function StdCalcNode({ id, data }: NodeProps) {
     }, 0);
   };
   return (
-    <Shell id={id} type="stdcalc">
-      <div style={{ fontSize: 10, color: '#92400e', marginBottom: 2 }}>ein Wert wird im Frontend aus Tabellenberechnung gewählt</div>
+    <Shell id={id} type="stdcalc" selected={selected}>
+      <div style={{ fontSize: 9, color: '#92400e', marginBottom: 2 }}>ein Wert wird im Frontend aus Tabellenberechnung gewählt</div>
       <div style={lbl}>Ergebnis-Name</div>
       <F value={d.name} placeholder="q_k" onChange={e => setName(e.target.value)} />
       <div style={lbl}>Auswahl-Variable (Frontend)</div>
       <F value={d.picker_name} placeholder="c_pe" onChange={e => set({ picker_name: e.target.value })} />
       <div style={lbl}>Anzeige-Formel (LaTeX)</div>
-      <textarea ref={textareaRef} className="nodrag" value={d.latex} placeholder={d.name ? `${formulaName(d.name)} = (c_d \\cdot c_{pe} - c_{pi}) \\cdot q_p` : 'q_{k} = (c_d \\cdot c_{pe} - c_{pi}) \\cdot q_p'} onChange={e => setLatex(e.target.value)} style={{ ...inp, minHeight: 30, fontFamily: 'monospace' }} />
-      {d.latex && <div style={{ background: '#fff', borderRadius: 4, padding: 4, marginTop: 2, overflowX: 'auto' }}><MathDisplay latex={d.latex} display /></div>}
+      <LatexArea elRef={textareaRef} value={d.latex} placeholder={d.name ? `${formulaName(d.name)} = (c_d \\cdot c_{pe} - c_{pi}) \\cdot q_p` : 'q_{k} = (c_d \\cdot c_{pe} - c_{pi}) \\cdot q_p'} onChange={setLatex} style={{ ...inp, minHeight: 48, fontFamily: 'monospace', resize: 'vertical' }} />
+      {d.latex && <div style={{ background: '#fff', borderRadius: 3, padding: 3, marginTop: 2, overflowX: 'auto', fontSize: 10 }}><MathDisplay latex={d.latex} display /></div>}
       <NameChips targetId={id} onInsert={insertFormulaName} />
       <div style={lbl}>Einheit</div>
       <UnitField value={d.unit} onChange={unit => set({ unit })} />
@@ -442,12 +498,12 @@ export function StdCalcNode({ id, data }: NodeProps) {
 }
 
 // ── 🟦 Tabellenberechnung ────────────────────────────────────────────────────
-export function TableCalcNode({ id, data }: NodeProps) {
+export function TableCalcNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as TableCalcData;
   const { updateNodeData, dbTables } = useGraphCtx();
   const set = (p: Partial<TableCalcData>) => updateNodeData(id, p);
   return (
-    <Shell id={id} type="tablecalc">
+    <Shell id={id} type="tablecalc" selected={selected}>
       <div style={lbl}>Name</div>
       <F value={d.name} placeholder="q_k" onChange={e => set({ name: e.target.value })} />
       <div style={lbl}>Quell-Tabelle (Zonen-Beiwerte)</div>
@@ -458,7 +514,7 @@ export function TableCalcNode({ id, data }: NodeProps) {
       <div style={lbl}>Zonen (Spaltennamen, kommagetrennt)</div>
       <F value={(d.zones || []).join(',')} placeholder="A,B,C,D,E,F,G,H" onChange={e => set({ zones: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })} />
       <div style={lbl}>Berechnung je Zone (JS, cell=Zonenwert)</div>
-      <textarea className="nodrag" value={d.expr} placeholder="cell * q_p" onChange={e => set({ expr: e.target.value })} style={{ ...inp, minHeight: 30, fontFamily: 'monospace', background: '#fffbeb' }} />
+      <LatexArea value={d.expr} placeholder="cell * q_p" onChange={v => set({ expr: v })} style={{ ...inp, minHeight: 30, fontFamily: 'monospace', background: '#fffbeb' }} />
       <NameChips targetId={id} />
       <div style={lbl}>Einheit</div>
       <UnitField value={d.unit} onChange={unit => set({ unit })} />
@@ -467,7 +523,7 @@ export function TableCalcNode({ id, data }: NodeProps) {
 }
 
 // ── 🔶 Bedingung ─────────────────────────────────────────────────────────────
-export function ConditionNode({ id, data }: NodeProps) {
+export function ConditionNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as ConditionData;
   const { updateNodeData, graphNodes, dbTables, loadTableFull } = useGraphCtx();
   const set = (p: Partial<ConditionData>) => updateNodeData(id, p);
@@ -481,7 +537,27 @@ export function ConditionNode({ id, data }: NodeProps) {
     )
   );
   const add = () => set({ conditions: [...conds, { id: 'c' + (conds.length + 1), latex: '', expr: '', match: '' }] });
-  const upd = (i: number, k: 'latex' | 'expr' | 'match', v: string) => { const c = [...conds]; c[i] = { ...c[i], [k]: v }; set({ conditions: c }); };
+  // Beim ersten Rendern: fehlende exprs aus LaTeX ableiten
+  useEffect(() => {
+    if (mode === 'select') return;
+    const needsUpdate = conds.some(c => !c.expr && latexHasIneq(c.latex || ''));
+    if (!needsUpdate) return;
+    const updated = conds.map(c => {
+      if (c.expr || !latexHasIneq(c.latex || '')) return c;
+      return { ...c, expr: latexCondToJs(c.latex) };
+    });
+    set({ conditions: updated });
+  }, []);
+
+  const upd = (i: number, k: 'latex' | 'expr' | 'match', v: string) => {
+    const c = [...conds]; c[i] = { ...c[i], [k]: v };
+    // Beim Ändern des LaTeX-Felds: JS-Ausdruck automatisch ableiten (falls Ungleichung)
+    if (k === 'latex' && mode !== 'select') {
+      const auto = latexCondToJs(v);
+      if (auto) c[i] = { ...c[i], expr: auto };
+    }
+    set({ conditions: c });
+  };
   const fillFromSource = async () => {
     if ((d.source || 'woodType') !== 'woodType') return;
     const woodTable = dbTables.find(t => String(t.title || '').trim().toLowerCase() === 'holzart');
@@ -504,10 +580,10 @@ export function ConditionNode({ id, data }: NodeProps) {
     });
   };
   return (
-    <Shell id={id} type="condition" extraHandles={
+    <Shell id={id} type="condition" selected={selected} extraHandles={
       <>
         {conds.map((c, i) => (
-          <Handle key={c.id} id={c.id} type="source" position={Position.Right} style={{ top: 80 + i * 46, background: '#ca8a04', width: 9, height: 9 }} />
+          <Handle key={c.id} id={c.id} type="source" position={Position.Right} style={{ top: 60 + i * 38, background: '#ca8a04', width: 7, height: 7 }} />
         ))}
       </>
     }>
@@ -540,8 +616,8 @@ export function ConditionNode({ id, data }: NodeProps) {
         </div>
       </div>
       {conds.map((c, i) => (
-        <div key={c.id} style={{ borderTop: '1px dashed #e5e7eb', paddingTop: 3, marginTop: 3 }}>
-          <div style={{ fontSize: 9, color: '#a16207' }}>Zweig {c.id} →</div>
+        <div key={c.id} style={{ borderTop: '1px dashed #e5e7eb', paddingTop: 2, marginTop: 2 }}>
+          <div style={{ fontSize: 8, color: '#a16207' }}>Zweig {c.id} →</div>
           {mode === 'select' ? (
             <>
               <F value={c.latex} placeholder="Anzeige, z.B. Vollholz" onChange={e => upd(i, 'latex', e.target.value)} style={{ marginBottom: 2 }} />
@@ -550,7 +626,13 @@ export function ConditionNode({ id, data }: NodeProps) {
           ) : (
             <>
               <F value={c.latex} placeholder="h/b > 1" onChange={e => upd(i, 'latex', e.target.value)} style={{ marginBottom: 2 }} />
-              <F value={c.expr} placeholder="(h/b) > 1 ? 1 : 0" onChange={e => upd(i, 'expr', e.target.value)} style={{ fontFamily: 'monospace', background: '#fffbeb' }} />
+              {latexHasIneq(c.latex) ? (
+                <div style={{ fontSize: 9, color: '#92400e', fontFamily: 'monospace', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 3, padding: '2px 5px', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.expr}>
+                  ⚙ {c.expr}
+                </div>
+              ) : (
+                <F value={c.expr} placeholder="(h/b) > 1 ? 1 : 0" onChange={e => upd(i, 'expr', e.target.value)} style={{ fontFamily: 'monospace', background: '#fffbeb' }} />
+              )}
             </>
           )}
         </div>
@@ -559,18 +641,57 @@ export function ConditionNode({ id, data }: NodeProps) {
   );
 }
 
+// ── ✅ Nachweis-Prüfung ──────────────────────────────────────────────────────
+export function CheckNode({ id, data, selected }: NodeProps) {
+  const d = data as unknown as CheckData;
+  const { updateNodeData } = useGraphCtx();
+  const set = (p: Partial<CheckData>) => updateNodeData(id, p);
+  const setLatex = (latex: string) => {
+    const expr = latexCondToJs(latex);
+    set({ latex, expr });
+  };
+  return (
+    <Shell id={id} type="check" selected={selected} extraHandles={<span />}>
+      <div style={{ fontSize: 9, color: '#065f46', marginBottom: 2 }}>
+        Ungleichung eingeben → im Frontend grün/rot
+      </div>
+      <div style={lbl}>Bezeichnung</div>
+      <F value={d.label} placeholder="Biegenachweis" onChange={e => set({ label: e.target.value })} />
+      <div style={lbl}>Bedingung (LaTeX)</div>
+      <F
+        value={d.latex}
+        placeholder="\sigma_{m,d} \leq f_{m,d,eff}"
+        onChange={e => setLatex(e.target.value)}
+        style={{ fontFamily: 'monospace' }}
+      />
+      {d.latex && (
+        <div style={{ background: '#fff', borderRadius: 3, padding: 3, marginTop: 2, overflowX: 'auto', fontSize: 10 }}>
+          <MathDisplay latex={d.latex} display />
+        </div>
+      )}
+      {d.expr && (
+        <div style={{ fontSize: 8, color: '#059669', fontFamily: 'monospace', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 3, padding: '2px 5px', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={d.expr}>
+          ⚙ {d.expr}
+        </div>
+      )}
+      <div style={lbl}>Einheit</div>
+      <UnitField value={d.unit || ''} onChange={unit => set({ unit })} placeholder="N/mm^2" />
+    </Shell>
+  );
+}
+
 // ── ⬜ PDF / Ausgabe ─────────────────────────────────────────────────────────
-export function OutputNode({ id, data }: NodeProps) {
+export function OutputNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as OutputData;
   const { updateNodeData, allNames } = useGraphCtx();
   const set = (p: Partial<OutputData>) => updateNodeData(id, p);
   const blocks = d.blocks || [];
   const toggle = (nid: string) => set({ blocks: blocks.includes(nid) ? blocks.filter(b => b !== nid) : [...blocks, nid] });
   return (
-    <Shell id={id} type="output" extraHandles={<span />}>
-      <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 4 }}>Diese Blöcke ins PDF-Protokoll:</div>
+    <Shell id={id} type="output" selected={selected} extraHandles={<span />}>
+      <div style={{ fontSize: 9, color: '#6b7280', marginBottom: 3 }}>Diese Blöcke ins PDF-Protokoll:</div>
       {allNames.filter(n => n.id !== id).map(n => (
-        <label key={n.id} className="nodrag" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer' }}>
+        <label key={n.id} className="nodrag" style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, cursor: 'pointer' }}>
           <input type="checkbox" className="nodrag" checked={blocks.includes(n.id)} onChange={() => toggle(n.id)} />
           {n.name || n.label}
         </label>
@@ -588,5 +709,6 @@ export const nodeTypes = {
   stdcalc: StdCalcNode,
   tablecalc: TableCalcNode,
   condition: ConditionNode,
+  check: CheckNode,
   output: OutputNode,
 };

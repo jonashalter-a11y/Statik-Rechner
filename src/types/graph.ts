@@ -12,6 +12,7 @@ export type BlockType =
   | 'stdcalc'     // 🟫 Standard-Berechnung (ein Operand aus Tabellenberechnung)
   | 'tablecalc'   // 🟦 Tabellenberechnung (Formel über Tabellenspalten)
   | 'condition'   // 🔶 Bedingung (verzweigt Workflow)
+  | 'check'       // ✅ Nachweis-Prüfung (Ungleichung → grün/rot)
   | 'output';     // ⬜ PDF/Ausgabe
 
 export type EdgeKind = 'workflow' | 'condition';
@@ -98,6 +99,14 @@ export interface ConditionData {
   conditions: { id: string; latex: string; expr: string; match?: string }[]; // je Zweig 1 Bedingung/Auswahlwert
 }
 
+export interface CheckData {
+  kind: 'check';
+  label: string;          // Bezeichnung, z.B. "Biegenachweis"
+  latex: string;          // Ungleichung als LaTeX, z.B. "\sigma_{m,d} \leq f_{m,d,eff}"
+  expr: string;           // auto-abgeleitet: "(sigma_m_d) <= (f_m_d_eff) ? 1 : 0"
+  unit?: string;          // Einheit der verglichenen Grösse, z.B. "N/mm^2"
+}
+
 export interface OutputData {
   kind: 'output';
   label: string;
@@ -106,7 +115,7 @@ export interface OutputData {
 
 export type BlockData =
   | VariableData | DropdownData | WoodClassData | TableValueData | CalcData
-  | StdCalcData | TableCalcData | ConditionData | OutputData;
+  | StdCalcData | TableCalcData | ConditionData | CheckData | OutputData;
 
 // ── React-Flow-kompatible Node/Edge-Strukturen ──────────────────────────────
 export interface GraphNode {

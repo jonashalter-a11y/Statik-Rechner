@@ -30,13 +30,15 @@ const lbl: React.CSSProperties = { fontSize: 11, color: '#6b7280', fontWeight: 6
 const card: React.CSSProperties = { border: '1px solid #e2e8f0', borderRadius: 8, padding: 12, marginBottom: 12, background: '#fff' };
 const sel: React.CSSProperties = { border: '1px solid #d1d5db', borderRadius: 6, padding: '5px 8px', fontSize: 13, width: '100%', background: '#fff' };
 
-export default function GraphVerificationView({ verification, readOnly = false }: { verification: Verification; readOnly?: boolean }) {
+export default function GraphVerificationView({ verification, readOnly = false, initialInputs }: { verification: Verification; readOnly?: boolean; initialInputs?: Record<string, string> }) {
   const woodType = useStore(s => s.woodType);
   const woodClassId = useStore(s => s.woodClassId);
   const apiWoodClasses = useStore(s => s.apiWoodClasses);
+  const setGraphInputs = useStore(s => s.setGraphInputs);
   const graph = useMemo(() => getGraph(toLegacyShape(verification)), [verification.id, verification.graph_json]);
   const [tables, setTables] = useState<Record<string, DbTableData>>({});
-  const [inputs, setInputs] = useState<Record<string, string>>({});
+  // Im Print-Modus: initialInputs als Startzustand; sonst leer (Defaults kommen via useEffect)
+  const [inputs, setInputs] = useState<Record<string, string>>(initialInputs || {});
   const materialProps = useMemo(() => {
     const woodClass = apiWoodClasses.find(c => c.id === woodClassId);
     return Object.fromEntries((woodClass?.properties || []).map(p => [p.key, p.value]));
@@ -54,8 +56,9 @@ export default function GraphVerificationView({ verification, readOnly = false }
     return () => { alive = false; };
   }, [graph]);
 
-  // Default-Eingaben setzen
+  // Default-Eingaben setzen (nur für Felder, die noch nicht belegt sind)
   useEffect(() => {
+    if (readOnly) return; // Im Print-Modus: initialInputs sind bereits gesetzt, keine Defaults nötig
     setInputs(prev => {
       const next = { ...prev };
       for (const n of graph.nodes) {
@@ -77,13 +80,27 @@ export default function GraphVerificationView({ verification, readOnly = false }
           next[n.id] = (tc?.data as any)?.zones?.[0] ?? '';
         }
       }
+      // Store aktualisieren damit addVerificationToPrint den korrekten Snapshot bekommt
+      setGraphInputs(verification.id, next);
       return next;
     });
   }, [graph, tables]);
 
-  const setInput = (id: string, val: string) => setInputs(prev => ({ ...prev, [id]: val }));
+  const setInput = (id: string, val: string) => setInputs(prev => {
+    const next = { ...prev, [id]: val };
+    if (!readOnly) setGraphInputs(verification.id, next);
+    return next;
+  });
   const ev = useMemo(() => evalGraph(graph, inputs, tables, materialProps, { woodType, woodClassId }), [graph, inputs, tables, materialProps, woodType, woodClassId]);
   const ordered = useMemo(() => topoSort(graph), [graph]);
+  // Welche Bedingung führt via Condition-Kante zu welchem Node?
+  const conditionAfterNode = useMemo(() => {
+    const map = new Map<string, string>(); // targetNodeId → conditionNodeId
+    for (const e of graph.edges) {
+      if ((e.data?.kind ?? 'workflow') === 'condition') map.set(e.target, e.source);
+    }
+    return map;
+  }, [graph]);
 
   // Tabellen-Spalten-Optionen (für variable inputKind=table_column)
   const colOptions = (tableId?: string, col?: number) => {
@@ -132,6 +149,24 @@ export default function GraphVerificationView({ verification, readOnly = false }
   const resultName = resultNode ? String((resultNode.data as any).name || '') : '';
   const isEta = /^\\?eta(?:_|$)/.test(resultName.trim()) || resultName.trim() === '\\eta';
 
+  const renderCondition = (condId: string) => {
+    const cn = graph.nodes.find(n => n.id === condId);
+    if (!cn) return null;
+    const d: any = cn.data;
+    const r = ev.results[condId] || {};
+    return (
+      <div key={`cond_after_${condId}`} style={{ ...card, background: '#fefce8', borderColor: '#fde68a' }}>
+        <div style={lbl}>🔶 {d.label || 'Bedingung'}</div>
+        {(d.conditions || []).map((c: any) => (
+          <div key={c.id} style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0', color: r.activeConditionId === c.id ? '#15803d' : '#9ca3af' }}>
+            <span>{r.activeConditionId === c.id ? '✓' : '○'}</span>
+            <MathDisplay latex={c.latex || c.expr} />
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div>
       {ordered.map(n => {
@@ -139,6 +174,8 @@ export default function GraphVerificationView({ verification, readOnly = false }
         const r = ev.results[n.id] || {};
         if (r.skipped) return null;
         if (n.type === 'output' || n.type === 'woodclass') return null;
+        // Bedingungsblöcke werden inline nach ihrem Ziel-Block gerendert
+        if (n.type === 'condition') return null;
 
         if (n.type === 'variable') {
           return (
@@ -190,43 +227,47 @@ export default function GraphVerificationView({ verification, readOnly = false }
         }
 
         if (n.type === 'calc' || n.type === 'stdcalc') {
+          const parentCondId = conditionAfterNode.get(n.id);
           return (
-            <div key={n.id} style={{ ...card, background: '#fafafa' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} />
-                <span style={{ color: '#6b7280', fontSize: 12 }}>{d.label}</span>
-              </div>
-              {n.type === 'stdcalc' && (() => {
-                const srcEdge = graph.edges.find(e => e.target === n.id);
-                const tc = graph.nodes.find(x => x.type === 'tablecalc' && srcEdge && x.id === srcEdge.source) || graph.nodes.find(x => x.type === 'tablecalc');
-                const zones = (tc?.data as any)?.zones || [];
-                return (
-                  <div style={{ marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, color: '#92400e' }}>Auswahl {d.picker_name}: </span>
-                    <select style={{ ...sel, width: 'auto', display: 'inline-block' }} disabled={readOnly} value={inputs[n.id] ?? ''} onChange={e => setInput(n.id, e.target.value)}>
-                      {zones.map((z: string, i: number) => <option key={i} value={z}>{z}</option>)}
-                    </select>
+            <React.Fragment key={n.id}>
+              <div style={{ ...card, background: '#fafafa' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} />
+                  <span style={{ color: '#6b7280', fontSize: 12 }}>{d.label}</span>
+                </div>
+                {n.type === 'stdcalc' && (() => {
+                  const srcEdge = graph.edges.find(e => e.target === n.id);
+                  const tc = graph.nodes.find(x => x.type === 'tablecalc' && srcEdge && x.id === srcEdge.source) || graph.nodes.find(x => x.type === 'tablecalc');
+                  const zones = (tc?.data as any)?.zones || [];
+                  return (
+                    <div style={{ marginBottom: 6 }}>
+                      <span style={{ fontSize: 11, color: '#92400e' }}>Auswahl {d.picker_name}: </span>
+                      <select style={{ ...sel, width: 'auto', display: 'inline-block' }} disabled={readOnly} value={inputs[n.id] ?? ''} onChange={e => setInput(n.id, e.target.value)}>
+                        {zones.map((z: string, i: number) => <option key={i} value={z}>{z}</option>)}
+                      </select>
+                    </div>
+                  );
+                })()}
+                {d.latex && <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: '6px 10px', marginBottom: 4, overflowX: 'auto' }}><MathDisplay latex={d.latex} display /></div>}
+                {r.substitutedLatex && (
+                  <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '6px 10px', marginBottom: 4, overflowX: 'auto' }}>
+                    <MathDisplay latex={isFiniteNumber(r.value) ? `${r.substitutedLatex} = ${resultLatex(r.value, d.unit)}` : r.substitutedLatex} display />
                   </div>
-                );
-              })()}
-              {d.latex && <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: '6px 10px', marginBottom: 4, overflowX: 'auto' }}><MathDisplay latex={d.latex} display /></div>}
-              {r.substitutedLatex && (
-                <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '6px 10px', marginBottom: 4, overflowX: 'auto' }}>
-                  <MathDisplay latex={isFiniteNumber(r.value) ? `${r.substitutedLatex} = ${resultLatex(r.value, d.unit)}` : r.substitutedLatex} display />
-                </div>
-              )}
-              {(r.missingSymbols || []).length > 0 && (
-                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', borderRadius: 4, padding: '6px 10px', marginBottom: 4, fontSize: 12 }}>
-                  Fehlende Variable{(r.missingSymbols || []).length > 1 ? 'n' : ''}:{' '}
-                  {(r.missingSymbols || []).map((name: string, i: number) => (
-                    <React.Fragment key={name}>
-                      {i > 0 && ', '}
-                      <MathDisplay latex={displayName(name)} />
-                    </React.Fragment>
-                  ))}
-                </div>
-              )}
-            </div>
+                )}
+                {(r.missingSymbols || []).length > 0 && (
+                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', borderRadius: 4, padding: '6px 10px', marginBottom: 4, fontSize: 12 }}>
+                    Fehlende Variable{(r.missingSymbols || []).length > 1 ? 'n' : ''}:{' '}
+                    {(r.missingSymbols || []).map((name: string, i: number) => (
+                      <React.Fragment key={name}>
+                        {i > 0 && ', '}
+                        <MathDisplay latex={displayName(name)} />
+                      </React.Fragment>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {parentCondId && renderCondition(parentCondId)}
+            </React.Fragment>
           );
         }
 
@@ -245,16 +286,33 @@ export default function GraphVerificationView({ verification, readOnly = false }
           );
         }
 
-        if (n.type === 'condition') {
+        if (n.type === 'check') {
+          const passed = r.passed;
+          const unknown = passed === undefined;
+          const bg = unknown ? '#f9fafb' : passed ? '#d1fae5' : '#fee2e2';
+          const borderColor = unknown ? '#d1d5db' : passed ? '#6ee7b7' : '#fca5a5';
+          const textColor = unknown ? '#6b7280' : passed ? '#065f46' : '#991b1b';
           return (
-            <div key={n.id} style={{ ...card, background: '#fefce8', borderColor: '#fde68a' }}>
-              <div style={lbl}>🔶 {d.label || 'Bedingung'}</div>
-              {(d.conditions || []).map((c: any) => (
-                <div key={c.id} style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0', color: r.activeConditionId === c.id ? '#15803d' : '#9ca3af' }}>
-                  <span>{r.activeConditionId === c.id ? '✓' : '○'}</span>
-                  <MathDisplay latex={c.latex || c.expr} />
+            <div key={n.id} style={{ ...card, background: bg, borderColor, borderWidth: 2 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 22 }}>{unknown ? '⬜' : passed ? '✅' : '❌'}</span>
+                <div style={{ flex: 1 }}>
+                  {d.label && <div style={{ fontWeight: 700, fontSize: 13, color: textColor, marginBottom: 4 }}>{d.label}</div>}
+                  {d.latex && (
+                    <div style={{ background: '#fff', border: `1px solid ${borderColor}`, borderRadius: 6, padding: '6px 10px', overflowX: 'auto', marginBottom: 4 }}>
+                      <MathDisplay latex={d.latex} display />
+                    </div>
+                  )}
+                  {r.substitutedLatex && r.substitutedLatex !== d.latex && (
+                    <div style={{ background: unknown ? '#f1f5f9' : passed ? '#ecfdf5' : '#fef2f2', border: `1px solid ${borderColor}`, borderRadius: 6, padding: '6px 10px', overflowX: 'auto', marginBottom: 4 }}>
+                      <MathDisplay latex={d.unit ? `${r.substitutedLatex} \\; [${unitLatex(d.unit)}]` : r.substitutedLatex} display />
+                    </div>
+                  )}
+                  <div style={{ fontWeight: 700, fontSize: 14, color: textColor }}>
+                    {unknown ? 'Berechnung läuft…' : passed ? 'Nachweis erfüllt' : 'Nachweis nicht erfüllt'}
+                  </div>
                 </div>
-              ))}
+              </div>
             </div>
           );
         }

@@ -8,7 +8,7 @@ import GraphVerificationView from './GraphVerificationView';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-function PrintVerification({ itemKey, snapshot: v, index }: { itemKey: string; snapshot: Verification; index: number }) {
+function PrintVerification({ itemKey, snapshot: v, index, graphInputs }: { itemKey: string; snapshot: Verification; index: number; graphInputs?: Record<string, string> }) {
   const { removeVerificationFromPrint } = useStore();
 
   // Variablen-Werte sammeln (für Substitution)
@@ -51,7 +51,7 @@ function PrintVerification({ itemKey, snapshot: v, index }: { itemKey: string; s
 
       <div style={{ padding: 14 }}>
         {v.graph_json ? (
-          <GraphVerificationView verification={v} readOnly />
+          <GraphVerificationView verification={v} readOnly initialInputs={graphInputs} />
         ) : (<>
         {/* 1. Symbolische Formel */}
         <div style={{ marginBottom: 12 }}>
@@ -341,7 +341,7 @@ export default function PrintPanel() {
 
           {/* Verifications — jedes Item ist ein eigener eingefrorener Snapshot */}
           {printItems.map((item, i) => (
-            <PrintVerification key={item.key} itemKey={item.key} snapshot={item.snapshot} index={i + 1} />
+            <PrintVerification key={item.key} itemKey={item.key} snapshot={item.snapshot} index={i + 1} graphInputs={item.graphInputs} />
           ))}
 
           {/* Footer */}

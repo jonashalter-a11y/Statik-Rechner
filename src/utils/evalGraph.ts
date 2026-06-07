@@ -5,7 +5,7 @@
 
 import { VerificationGraph, GraphNode } from '../types/graph';
 import { evalFormula } from './evalFormula';
-import { latexToJs } from './latexToJs';
+import { latexToJs, latexCondToJs } from './latexToJs';
 import { formatNumber, substituteValues } from './substituteFormula';
 import { nameToLatex } from './formatName';
 
@@ -18,6 +18,7 @@ export interface NodeResult {
   selected?: { tableId?: string; rowIndex?: number; label?: string }; // dropdown
   table?: Record<string, number>; // tablecalc (Zone → Wert)
   activeConditionId?: string;     // condition
+  passed?: boolean;               // check: Nachweis erfüllt (true) oder nicht (false)
   skipped?: boolean;              // inaktiver Bedingungszweig
   error?: string;
 }
@@ -39,8 +40,14 @@ export function parseNum(s: unknown): number {
   return m ? parseFloat(m[0]) : NaN;
 }
 
+// \text{...} ist ein reiner Anzeige-Befehl; für die Namens-/Symbol-Logik zählt nur sein Inhalt,
+// damit z.B. "\sigma_{m,\text{crit}}" überall zum selben Symbol wie "\sigma_{m,crit}" wird.
+function stripLatexText(s: string): string {
+  return String(s || '').replace(/\\text\s*\{([^{}]*)\}/g, '$1');
+}
+
 function normalizeMaterialKey(name: string): string {
-  return String(name || '')
+  return stripLatexText(name)
     .trim()
     .replace(/_\{([^{}]+)\}/g, (_m, sub: string) => '_' + sub.replace(/[,\s]+/g, '_'))
     .replace(/[{},\s]+/g, '_')
@@ -49,13 +56,13 @@ function normalizeMaterialKey(name: string): string {
 }
 
 function latexName(name: string): string {
-  const trimmed = String(name || '').trim();
+  const trimmed = stripLatexText(name).trim();
   if (!trimmed) return '';
   return /_\{/.test(trimmed) ? trimmed : nameToLatex(trimmed);
 }
 
 function symbolAliases(name: string): string[] {
-  const raw = String(name || '').trim();
+  const raw = stripLatexText(name).trim();
   const normalized = normalizeMaterialKey(raw);
   const latex = latexName(raw);
   const latexNormalized = normalizeMaterialKey(latex);
@@ -76,6 +83,7 @@ function setSymbol(symbols: Record<string, number>, name: string, value: number)
   for (const alias of symbolAliases(name)) {
     const jsName = alias
       .replace(/\\/g, '')
+      .replace(/([A-Za-z0-9_])'+/g, '$1') // q' → q (Prime)
       .replace(/_\{([^{}]+)\}/g, (_m, sub: string) => '_' + sub.replace(/[,\s.]+/g, '_'))
       .replace(/[{},\s.]+/g, '_')
       .replace(/_+/g, '_')
@@ -108,12 +116,15 @@ function replaceLatexSymbol(formula: string, symbol: string, value: number) {
 
 function substituteLatexValues(latex: string, symbols: Record<string, number>): string {
   if (!latex) return '';
+  // Anzeige-Befehle vereinheitlichen, damit "\text{crit}" und "0{,}05"-Indizes
+  // dieselben Symbolnamen treffen, die unten generiert werden.
+  const normalized = stripLatexText(latex).replace(/\{,\}/g, ',');
   const entries = Object.entries(symbols)
     .filter(([, value]) => typeof value === 'number' && isFinite(value))
     .flatMap(([name, value]) => symbolAliases(name).map(alias => [latexName(alias), value] as const))
     .filter(([alias]) => alias)
     .sort((a, b) => b[0].length - a[0].length);
-  let result = latex;
+  let result = normalized;
   const seen = new Set<string>();
   for (const [alias, value] of entries) {
     if (seen.has(alias)) continue;
@@ -290,11 +301,21 @@ export function evalGraph(
             }
           } else {
             for (const c of (d.conditions || [])) {
-              const v = evalFormula(c.expr || '', symbols);
+              // c.expr kann fehlen wenn Graph vor dem Auto-Ableitungs-Feature gespeichert wurde
+              const expr = c.expr || latexCondToJs(c.latex || '');
+              const v = evalFormula(expr, symbols);
               if (v != null && v !== 0) { active = c.id; break; }
             }
           }
           results[node.id] = { activeConditionId: active };
+          break;
+        }
+        case 'check': {
+          const expr = d.expr || latexCondToJs(d.latex || '');
+          const v = evalFormula(expr, symbols);
+          const passed = v != null && v !== 0;
+          const substitutedLatex = d.latex ? substituteLatexValues(d.latex, symbols) : '';
+          results[node.id] = { value: passed ? 1 : 0, passed, substitutedLatex };
           break;
         }
         case 'output': {

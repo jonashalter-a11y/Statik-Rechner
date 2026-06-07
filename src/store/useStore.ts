@@ -20,7 +20,9 @@ interface AppState {
   activeVerificationId: string | null;
   verifications: Verification[];
   // Jedes Print-Item ist ein eigener eingefrorener Snapshot mit eindeutigem key
-  printItems: Array<{ key: string; snapshot: Verification }>;
+  printItems: Array<{ key: string; snapshot: Verification; graphInputs: Record<string, string> }>;
+  // Graph-Eingaben je Nachweis (Node-ID → Wert); wird beim Snapshot mitkapturiert
+  graphInputsByVerif: Record<string, Record<string, string>>;
 
   // Vom Backend geladene Holzdaten
   apiWoodTypes:    ApiWoodType[];
@@ -41,6 +43,7 @@ interface AppState {
   updateComment:   (verificationId: string, comment: string) => void;
   addVerificationToPrint:      (id: string) => void;  // fügt immer eine neue Instanz hinzu
   removeVerificationFromPrint: (key: string) => void; // entfernt genau diese Instanz
+  setGraphInputs: (verifId: string, inputs: Record<string, string>) => void;
   addVerification: (v: Verification) => void;
   computeResult:   (verificationId: string) => void;
   setVerificationsFromApi: (data: any[], normId?: string) => void;
@@ -128,6 +131,7 @@ export const useStore = create<AppState>((set, get) => ({
   activeVerificationId: null,
   verifications: defaultVerifications.map(v => computeVerification(v)),
   printItems: [],
+  graphInputsByVerif: {},
   apiWoodTypes:   [],
   apiWoodClasses: [],
   rawChapterData: [],
@@ -209,11 +213,15 @@ export const useStore = create<AppState>((set, get) => ({
       if (!v) return state;
       const key = `${id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       const snapshot: Verification = JSON.parse(JSON.stringify(v));
-      return { printItems: [...state.printItems, { key, snapshot }] };
+      const graphInputs = { ...(state.graphInputsByVerif[id] || {}) };
+      return { printItems: [...state.printItems, { key, snapshot, graphInputs }] };
     }),
 
   removeVerificationFromPrint: (key) =>
     set(state => ({ printItems: state.printItems.filter(item => item.key !== key) })),
+
+  setGraphInputs: (verifId, inputs) =>
+    set(state => ({ graphInputsByVerif: { ...state.graphInputsByVerif, [verifId]: inputs } })),
 
   addVerification: (v) =>
     set(state => ({ verifications: [...state.verifications, computeVerification(v)] })),

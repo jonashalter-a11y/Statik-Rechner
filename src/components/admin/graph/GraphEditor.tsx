@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow, Background, Controls, MiniMap, addEdge,
-  useNodesState, useEdgesState, Connection, Edge, Node, MarkerType,
+  useNodesState, useEdgesState, useReactFlow, ReactFlowProvider,
+  Connection, Edge, Node, MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { nodeTypes } from './BlockNodes';
@@ -20,6 +21,7 @@ const PALETTE: { type: BlockType; icon: string; label: string; color: string }[]
   { type: 'stdcalc',    icon: '🟫', label: 'Std-Berechnung',    color: '#92400e' },
   { type: 'tablecalc',  icon: '🟦', label: 'Tabellenberechnung', color: '#2563eb' },
   { type: 'condition',  icon: '🔶', label: 'Bedingung',         color: '#ca8a04' },
+  { type: 'check',      icon: '✅', label: 'Nachweis',          color: '#059669' },
   { type: 'output',     icon: '⬜', label: 'PDF / Ausgabe',     color: '#6b7280' },
 ];
 
@@ -33,6 +35,7 @@ function defaultData(type: BlockType): BlockData {
     case 'stdcalc':    return { kind: 'stdcalc', name: '', label: '', unit: '', latex: '', expr: '', picker_name: '' };
     case 'tablecalc':  return { kind: 'tablecalc', name: '', label: '', unit: '', zones: [], expr: 'cell' };
     case 'condition':  return { kind: 'condition', label: '', conditions: [] };
+    case 'check':      return { kind: 'check', label: '', latex: '', expr: '' };
     case 'output':     return { kind: 'output', label: 'PDF', blocks: [] };
   }
 }
@@ -91,7 +94,8 @@ function remapCopiedNodeData(data: any, idMap: Map<string, string>) {
   return next;
 }
 
-export default function GraphEditor({ graph, onChange, dbTables }: Props) {
+function GraphEditorInner({ graph, onChange, dbTables }: Props) {
+  const { screenToFlowPosition } = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(
     graph.nodes.map(n => ({ id: n.id, type: n.type, position: n.position, data: n.data as any })),
   );
@@ -202,13 +206,27 @@ export default function GraphEditor({ graph, onChange, dbTables }: Props) {
     if (confirm('Diese Verbindung löschen?')) setEdges(eds => eds.filter(e => e.id !== edge.id));
   }, [setEdges]);
 
-  const addNode = (type: BlockType) => {
+  const addNode = (type: BlockType, position?: { x: number; y: number }) => {
     const id = newId(type);
     setNodes(nds => [...nds, {
-      id, type, position: { x: 120 + (nds.length % 4) * 60, y: 60 + nds.length * 30 },
+      id, type,
+      position: position ?? { x: 120 + (nds.length % 4) * 60, y: 60 + nds.length * 30 },
       data: defaultData(type) as any,
     }]);
   };
+
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const onDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const type = e.dataTransfer.getData('application/reactflow') as BlockType;
+    if (!type) return;
+    const position = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+    addNode(type, position);
+  }, [screenToFlowPosition, setNodes]);
 
   const copySelected = useCallback(() => {
     const selectedNodes = nodes.filter(n => n.selected);
@@ -346,11 +364,20 @@ export default function GraphEditor({ graph, onChange, dbTables }: Props) {
             </button>
           </div>
           {PALETTE.map(p => (
-            <button key={p.type} onClick={() => addNode(p.type)} style={{
-              display: 'flex', alignItems: 'center', gap: 6, width: '100%', marginBottom: 4,
-              border: `1px solid ${p.color}`, borderLeft: `4px solid ${p.color}`, background: '#fff',
-              borderRadius: 6, padding: '5px 7px', cursor: 'pointer', fontSize: 11, textAlign: 'left',
-            }}>
+            <button
+              key={p.type}
+              draggable
+              onClick={() => addNode(p.type)}
+              onDragStart={e => {
+                e.dataTransfer.setData('application/reactflow', p.type);
+                e.dataTransfer.effectAllowed = 'copy';
+              }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6, width: '100%', marginBottom: 4,
+                border: `1px solid ${p.color}`, borderLeft: `4px solid ${p.color}`, background: '#fff',
+                borderRadius: 6, padding: '5px 7px', cursor: 'grab', fontSize: 11, textAlign: 'left',
+              }}
+            >
               <span>{p.icon}</span><span>{p.label}</span>
             </button>
           ))}
@@ -360,7 +387,7 @@ export default function GraphEditor({ graph, onChange, dbTables }: Props) {
         </div>
 
         {/* Canvas */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0, background: 'rgba(219, 234, 254, 0.25)' }} onDragOver={onDragOver} onDrop={onDrop}>
           <ReactFlow
             nodes={nodes} edges={edges}
             onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
@@ -368,13 +395,22 @@ export default function GraphEditor({ graph, onChange, dbTables }: Props) {
             nodeTypes={nodeTypes as any}
             fitView proOptions={{ hideAttribution: true }}
             defaultEdgeOptions={{ markerEnd: { type: MarkerType.ArrowClosed } }}
+            style={{ background: 'transparent' }}
           >
-            <Background color="#e5e7eb" gap={18} />
+            <Background color="#bfdbfe" gap={18} />
             <Controls />
             <MiniMap nodeStrokeWidth={3} pannable zoomable style={{ width: 120, height: 80 }} />
           </ReactFlow>
         </div>
       </div>
     </GraphCtx.Provider>
+  );
+}
+
+export default function GraphEditor(props: Props) {
+  return (
+    <ReactFlowProvider>
+      <GraphEditorInner {...props} />
+    </ReactFlowProvider>
   );
 }
