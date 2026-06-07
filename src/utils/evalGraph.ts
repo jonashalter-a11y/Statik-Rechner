@@ -15,11 +15,16 @@ export interface NodeResult {
   selected?: { tableId?: string; rowIndex?: number; label?: string }; // dropdown
   table?: Record<string, number>; // tablecalc (Zone → Wert)
   activeConditionId?: string;     // condition
+  skipped?: boolean;              // inaktiver Bedingungszweig
   error?: string;
 }
 export interface EvalResult {
   results: Record<string, NodeResult>;
   symbols: Record<string, number>;
+}
+export interface EvalContext {
+  woodType?: string;
+  woodClassId?: string;
 }
 
 // Zahl aus String robust extrahieren ("−0.21", "±0.10", "+0.15/−0.21" → erste Zahl)
@@ -31,14 +36,23 @@ export function parseNum(s: unknown): number {
   return m ? parseFloat(m[0]) : NaN;
 }
 
+function normalizeMaterialKey(name: string): string {
+  return String(name || '')
+    .trim()
+    .replace(/_\{([^{}]+)\}/g, (_m, sub: string) => '_' + sub.replace(/[,\s]+/g, '_'))
+    .replace(/[{},\s]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+}
+
 // Topologische Sortierung über Workflow-Kanten (Kahn). Bei Zyklen: Rest in Originalreihenfolge.
 export function topoSort(graph: VerificationGraph): GraphNode[] {
   const nodes = graph.nodes;
-  const wf = graph.edges.filter(e => (e.data?.kind ?? 'workflow') === 'workflow');
+  const flowEdges = graph.edges.filter(e => ['workflow', 'condition'].includes(e.data?.kind ?? 'workflow'));
   const indeg = new Map<string, number>();
   const adj = new Map<string, string[]>();
   nodes.forEach(n => { indeg.set(n.id, 0); adj.set(n.id, []); });
-  wf.forEach(e => {
+  flowEdges.forEach(e => {
     if (!adj.has(e.source) || !indeg.has(e.target)) return;
     adj.get(e.source)!.push(e.target);
     indeg.set(e.target, (indeg.get(e.target) || 0) + 1);
@@ -64,6 +78,8 @@ export function evalGraph(
   graph: VerificationGraph,
   inputs: Record<string, string | number>,
   tables: Record<string, DbTableData> = {},
+  materialProps: Record<string, number> = {},
+  context: EvalContext = {},
 ): EvalResult {
   const results: Record<string, NodeResult> = {};
   const symbols: Record<string, number> = {};
@@ -71,10 +87,26 @@ export function evalGraph(
 
   const incomingFrom = (targetId: string, kind: 'workflow' | 'condition' = 'workflow') =>
     graph.edges.filter(e => e.target === targetId && (e.data?.kind ?? 'workflow') === kind).map(e => e.source);
+  const incomingConditionEdges = (targetId: string) =>
+    graph.edges.filter(e => e.target === targetId && (e.data?.kind ?? 'workflow') === 'condition');
+  const getSelectionValue = (source?: string): string => {
+    if (!source || source === 'woodType') return context.woodType || '';
+    if (source === 'woodClass') return context.woodClassId || '';
+    const node = graph.nodes.find(n => n.id === source);
+    if (!node) return '';
+    if (node.type === 'dropdown' || node.type === 'variable' || node.type === 'stdcalc') return String(inputs[source] ?? '');
+    if (node.type === 'woodclass') return context.woodClassId || '';
+    return String(results[source]?.selected?.label ?? results[source]?.value ?? '');
+  };
 
   for (const node of ordered) {
     const d: any = node.data;
     try {
+      const condEdges = incomingConditionEdges(node.id);
+      if (condEdges.length > 0 && !condEdges.some(e => results[e.source]?.activeConditionId === (e.data?.conditionId || e.sourceHandle))) {
+        results[node.id] = { skipped: true };
+        continue;
+      }
       switch (node.type) {
         case 'variable': {
           const raw = inputs[node.id] ?? d.default_value ?? '';
@@ -101,11 +133,19 @@ export function evalGraph(
           }
           break;
         }
+        case 'woodclass': {
+          results[node.id] = { selected: { label: d.label || 'Aktuelle Holzklasse' } };
+          break;
+        }
         case 'tablevalue': {
-          const dropId = d.source_dropdown || incomingFrom(node.id).find(id => graph.nodes.find(n => n.id === id)?.type === 'dropdown');
-          const sel = dropId ? results[dropId]?.selected : undefined;
+          const sourceId = d.source_dropdown || incomingFrom(node.id).find(id => ['dropdown', 'woodclass'].includes(String(graph.nodes.find(n => n.id === id)?.type)));
+          const sourceType = graph.nodes.find(n => n.id === sourceId)?.type;
+          const sel = sourceId ? results[sourceId]?.selected : undefined;
           let val = NaN;
-          if (sel?.tableId && sel.rowIndex != null && sel.rowIndex >= 0) {
+          if (sourceType === 'woodclass') {
+            const key = normalizeMaterialKey(d.name);
+            val = parseNum(materialProps[d.name] ?? materialProps[key]);
+          } else if (sel?.tableId && sel.rowIndex != null && sel.rowIndex >= 0) {
             const tbl = tables[sel.tableId];
             if (tbl) val = parseNum(tbl.rows[sel.rowIndex]?.[d.table_col]);
           }
@@ -152,9 +192,17 @@ export function evalGraph(
         }
         case 'condition': {
           let active = '';
-          for (const c of (d.conditions || [])) {
-            const v = evalFormula(c.expr || '', symbols);
-            if (v != null && v !== 0) { active = c.id; break; }
+          if ((d.mode || 'expr') === 'select') {
+            const selected = getSelectionValue(d.source || 'woodType').trim().toLowerCase();
+            for (const c of (d.conditions || [])) {
+              const match = String(c.match || c.latex || '').trim().toLowerCase();
+              if (match && selected === match) { active = c.id; break; }
+            }
+          } else {
+            for (const c of (d.conditions || [])) {
+              const v = evalFormula(c.expr || '', symbols);
+              if (v != null && v !== 0) { active = c.id; break; }
+            }
           }
           results[node.id] = { activeConditionId: active };
           break;

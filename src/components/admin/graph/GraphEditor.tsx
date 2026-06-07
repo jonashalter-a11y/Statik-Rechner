@@ -14,6 +14,7 @@ import {
 const PALETTE: { type: BlockType; icon: string; label: string; color: string }[] = [
   { type: 'variable',   icon: '🟪', label: 'Variabel',          color: '#7c3aed' },
   { type: 'dropdown',   icon: '🟧', label: 'Dropdown',          color: '#ea580c' },
+  { type: 'woodclass',  icon: '🟨', label: 'Holzklasse',        color: '#ca8a04' },
   { type: 'tablevalue', icon: '🟩', label: 'Tabellenwert',      color: '#16a34a' },
   { type: 'calc',       icon: '🟥', label: 'Rechnung',          color: '#dc2626' },
   { type: 'stdcalc',    icon: '🟫', label: 'Std-Berechnung',    color: '#92400e' },
@@ -26,6 +27,7 @@ function defaultData(type: BlockType): BlockData {
   switch (type) {
     case 'variable':   return { kind: 'variable', name: '', label: '', unit: '', default_value: '0', inputKind: 'number', options: [] };
     case 'dropdown':   return { kind: 'dropdown', name: '', label: '', mode: 'custom', options: [] };
+    case 'woodclass':  return { kind: 'woodclass', label: 'Aktuelle Holzklasse' };
     case 'tablevalue': return { kind: 'tablevalue', name: '', label: '', unit: '', table_col: 1 };
     case 'calc':       return { kind: 'calc', name: '', label: '', unit: '', latex: '', expr: '' };
     case 'stdcalc':    return { kind: 'stdcalc', name: '', label: '', unit: '', latex: '', expr: '', picker_name: '' };
@@ -101,6 +103,10 @@ export default function GraphEditor({ graph, onChange, dbTables }: Props) {
     () => nodes.map(n => ({ id: n.id, name: (n.data as any).name || '', label: (n.data as any).label || '' })),
     [nodes],
   );
+  const graphNodes = useMemo(
+    () => nodes.map(n => ({ id: n.id, type: String(n.type || ''), name: (n.data as any).name || '', label: (n.data as any).label || '' })),
+    [nodes],
+  );
 
   const onConnect = useCallback((c: Connection) => {
     const srcNode = nodes.find(n => n.id === c.source);
@@ -128,8 +134,8 @@ export default function GraphEditor({ graph, onChange, dbTables }: Props) {
 
   const ctxValue = useMemo(() => ({
     updateNodeData, removeNode, dbTables, loadTableFull,
-    allNames, pickTargetId, setPickTargetId, insertName,
-  }), [updateNodeData, removeNode, dbTables, loadTableFull, allNames, pickTargetId, insertName]);
+    allNames, graphNodes, pickTargetId, setPickTargetId, insertName,
+  }), [updateNodeData, removeNode, dbTables, loadTableFull, allNames, graphNodes, pickTargetId, insertName]);
 
   return (
     <GraphCtx.Provider value={ctxValue}>

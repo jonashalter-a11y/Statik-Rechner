@@ -8,6 +8,19 @@ app.use(express.json());
 
 // ─── NORMEN ──────────────────────────────────────────────────────────────────
 app.get('/api/norms', (_, res) => res.json(db.prepare('SELECT * FROM norms').all()));
+app.post('/api/norms', (req, res) => {
+  const { id, name, label, year, description = '' } = req.body;
+  if (!id || !name || !label || !year) {
+    return res.status(400).json({ error: 'id, name, label und year sind erforderlich' });
+  }
+  try {
+    db.prepare('INSERT INTO norms (id, name, label, year, description) VALUES (?, ?, ?, ?, ?)')
+      .run(String(id).trim(), String(name).trim(), String(label).trim(), Number(year), String(description || '').trim());
+    res.json({ id: String(id).trim() });
+  } catch (err) {
+    res.status(400).json({ error: String(err.message || err) });
+  }
+});
 
 // ─── KAPITEL (gefiltert nach Norm) ───────────────────────────────────────────
 app.get('/api/chapters', (req, res) => {

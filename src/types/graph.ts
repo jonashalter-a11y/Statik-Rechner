@@ -6,6 +6,7 @@
 export type BlockType =
   | 'variable'    // 🟪 Eingabe-Variable
   | 'dropdown'    // 🟧 Auswahl (Liste / Tabelle / Tabellenspalte)
+  | 'woodclass'   // 🟨 aktuelle Holzklasse aus dem Frontend-Header
   | 'tablevalue'  // 🟩 Wert aus der vom Dropdown gewählten Zeile
   | 'calc'        // 🟥 Rechnung (LaTeX + JS-Ausdruck)
   | 'stdcalc'     // 🟫 Standard-Berechnung (ein Operand aus Tabellenberechnung)
@@ -42,6 +43,11 @@ export interface DropdownData {
   table_ref?: string;     // mode=table | table_column → db_tables.id
   table_col?: number;     // mode=table_column → Spaltenindex (Anzeige)
   label_col?: number;     // Spalte, die als Auswahl-Label dient (Default 0)
+}
+
+export interface WoodClassData {
+  kind: 'woodclass';
+  label: string;          // nur Backend-Info, im Frontend nicht sichtbar
 }
 
 export interface TableValueData {
@@ -87,7 +93,9 @@ export interface TableCalcData {
 export interface ConditionData {
   kind: 'condition';
   label: string;
-  conditions: { id: string; latex: string; expr: string }[]; // je Zweig 1 Bedingung
+  mode?: 'expr' | 'select';
+  source?: string; // mode=select: "woodType", "woodClass" oder Node-ID eines Dropdowns
+  conditions: { id: string; latex: string; expr: string; match?: string }[]; // je Zweig 1 Bedingung/Auswahlwert
 }
 
 export interface OutputData {
@@ -97,7 +105,7 @@ export interface OutputData {
 }
 
 export type BlockData =
-  | VariableData | DropdownData | TableValueData | CalcData
+  | VariableData | DropdownData | WoodClassData | TableValueData | CalcData
   | StdCalcData | TableCalcData | ConditionData | OutputData;
 
 // ── React-Flow-kompatible Node/Edge-Strukturen ──────────────────────────────

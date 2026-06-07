@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useContext } from 'react';
 import { api } from '../../api';
 import { NormContext } from './AdminPage';
 import GraphEditor from './graph/GraphEditor';
@@ -38,7 +38,11 @@ function buildTree(chapters: Chapter[], verifications: Verification[]): ChapterN
     return n.totalCount;
   };
   roots.forEach(computeCount);
-  return roots;
+  const pruneEmpty = (nodes: ChapterNode[]): ChapterNode[] =>
+    nodes
+      .filter(n => n.totalCount > 0)
+      .map(n => ({ ...n, children: pruneEmpty(n.children) }));
+  return pruneEmpty(roots);
 }
 
 const labelStyle: React.CSSProperties = { fontSize: 10, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 };
@@ -78,6 +82,16 @@ function ChapterTreeNode({ node, depth, selectedId, expanded, onToggle, onSelect
 
 interface Editing { id: string; chapter_id: string; title: string; graph: VerificationGraph; }
 
+function editingSnapshot(editing: Editing | null): string {
+  if (!editing) return '';
+  return JSON.stringify({
+    id: editing.id,
+    chapter_id: editing.chapter_id,
+    title: editing.title,
+    graph: editing.graph,
+  });
+}
+
 export default function VerificationAdmin() {
   const { normId, normLabel } = useContext(NormContext);
   const [verifications, setVerifications] = useState<Verification[]>([]);
@@ -88,6 +102,12 @@ export default function VerificationAdmin() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const editingRef = useRef<Editing | null>(null);
+  const savedSnapshotRef = useRef('');
+  const savingRef = useRef(false);
+
+  useEffect(() => { editingRef.current = editing; }, [editing]);
+  useEffect(() => { savingRef.current = saving; }, [saving]);
 
   useEffect(() => {
     api.getDbTables(normId)
@@ -125,53 +145,82 @@ export default function VerificationAdmin() {
     }
   };
 
-  useEffect(() => { setSelected(null); setEditing(null); reload(); }, [normId]);
+  useEffect(() => { setSelected(null); setEditing(null); savedSnapshotRef.current = ''; reload(); }, [normId]);
 
   const toggleExpand = (id: string) => setExpanded(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
 
   const newInChapter = (chapter_id: string) => {
     setSelected(null);
     setEditing({ id: '', chapter_id, title: 'Neuer Nachweis', graph: emptyGraph() });
+    savedSnapshotRef.current = '';
     setMsg('');
     setExpanded(prev => new Set(prev).add(chapter_id));
   };
-  const newVerification = () => { setSelected(null); setEditing({ id: '', chapter_id: chapters[0]?.id || '', title: 'Neuer Nachweis', graph: emptyGraph() }); setMsg(''); };
-
-  const selectVerification = (v: Verification) => {
-    setSelected(v);
-    setEditing({ id: v.id, chapter_id: v.chapter_id, title: v.title, graph: getGraph(v) });
+  const newVerification = () => {
+    setSelected(null);
+    setEditing({ id: '', chapter_id: chapters[0]?.id || '', title: 'Neuer Nachweis', graph: emptyGraph() });
+    savedSnapshotRef.current = '';
     setMsg('');
   };
 
-  const save = async () => {
-    if (!editing) return;
+  const selectVerification = (v: Verification) => {
+    const nextEditing = { id: v.id, chapter_id: v.chapter_id, title: v.title, graph: getGraph(v) };
+    setSelected(v);
+    setEditing(nextEditing);
+    savedSnapshotRef.current = editingSnapshot(nextEditing);
+    setMsg('');
+  };
+
+  const saveEditing = useCallback(async (editingToSave: Editing | null, auto = false) => {
+    if (!editingToSave || savingRef.current) return;
+    const snapshot = editingSnapshot(editingToSave);
+    if (auto && snapshot === savedSnapshotRef.current) return;
     setSaving(true);
     try {
-      const graph_json = JSON.stringify(editing.graph);
+      const graph_json = JSON.stringify(editingToSave.graph);
       // Anzeige-Formel = erste calc/stdcalc-Formel (Fallback für Listen)
-      const firstCalc = editing.graph.nodes.find(n => n.type === 'calc' || n.type === 'stdcalc');
+      const firstCalc = editingToSave.graph.nodes.find(n => n.type === 'calc' || n.type === 'stdcalc');
       const formula_latex = firstCalc ? (firstCalc.data as any).latex || '' : '';
-      let id = editing.id;
+      let id = editingToSave.id;
       if (!id) {
-        const r = await api.createVerification({ norm_id: normId, chapter_id: editing.chapter_id, title: editing.title, formula_latex, formula_description: '', compute_expr: '', graph_json });
+        const r = await api.createVerification({ norm_id: normId, chapter_id: editingToSave.chapter_id, title: editingToSave.title, formula_latex, formula_description: '', compute_expr: '', graph_json });
         id = r.id;
       } else {
-        await api.updateVerification(id, { title: editing.title, chapter_id: editing.chapter_id, formula_latex, formula_description: '', compute_expr: '', graph_json });
+        await api.updateVerification(id, { title: editingToSave.title, chapter_id: editingToSave.chapter_id, formula_latex, formula_description: '', compute_expr: '', graph_json });
       }
       const fresh = await api.getVerifications(normId);
       setVerifications(fresh);
       const updated = fresh.find((x: Verification) => x.id === id);
-      if (updated) { setSelected(updated); setEditing({ id: updated.id, chapter_id: updated.chapter_id, title: updated.title, graph: getGraph(updated) }); }
-      setMsg('✓ Gespeichert');
-    } catch { setMsg('⚠ Fehler beim Speichern'); }
+      if (updated) {
+        const nextEditing = { id: updated.id, chapter_id: updated.chapter_id, title: updated.title, graph: getGraph(updated) };
+        setSelected(updated);
+        setEditing(nextEditing);
+        savedSnapshotRef.current = editingSnapshot(nextEditing);
+      } else {
+        savedSnapshotRef.current = snapshot;
+      }
+      setMsg(auto ? '✓ Automatisch gespeichert' : '✓ Gespeichert');
+    } catch {
+      setMsg(auto ? '⚠ Auto-Speichern fehlgeschlagen' : '⚠ Fehler beim Speichern');
+    }
     setSaving(false);
-  };
+  }, [normId]);
+
+  const save = () => saveEditing(editingRef.current, false);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      saveEditing(editingRef.current, true);
+    }, 10000);
+    return () => window.clearInterval(timer);
+  }, [saveEditing]);
 
   const deleteV = async (id: string) => {
     if (!confirm('Nachweis löschen?')) return;
     await api.deleteVerification(id);
     const fresh = await api.getVerifications(normId);
     setVerifications(fresh);
+    savedSnapshotRef.current = '';
     setSelected(null); setEditing(null);
   };
 

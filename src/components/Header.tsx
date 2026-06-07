@@ -1,34 +1,49 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useStore, woodTypeToId } from '../store/useStore';
+import { api } from '../api';
 
 interface Props {
   onAdminClick?: () => void;
   onNormChange?: (normId: string) => void;
 }
 
-const NORMS = [
-  { id: 'sia265', label: 'SIA 265', sub: 'Holzbau', year: '2021', flag: '🇨🇭' },
-  { id: 'sia261', label: 'SIA 261', sub: 'Einwirkungen', year: '2020', flag: '🇨🇭' },
-];
+interface Norm { id: string; name: string; label: string; year: number; description: string; }
+
+function normSubLabel(norm: Norm): string {
+  const prefix = `${norm.name} – `;
+  return norm.label.startsWith(prefix) ? norm.label.slice(prefix.length) : '';
+}
 
 export default function Header({ onAdminClick, onNormChange }: Props) {
+  const [norms, setNorms] = useState<Norm[]>([]);
   const {
-    discipline, standard, normId, woodType, woodClassId,
-    setDiscipline, setStandard, setWoodType, setWoodClassId,
+    discipline, normId, woodType, woodClassId,
+    setDiscipline, setWoodType, setWoodClassId,
     apiWoodTypes, apiWoodClasses,
   } = useStore();
+
+  useEffect(() => {
+    let alive = true;
+    api.getNorms()
+      .then((data: Norm[]) => { if (alive && Array.isArray(data)) setNorms(data); })
+      .catch(() => {
+        if (alive) setNorms([
+          { id: 'sia265', name: 'SIA 265', label: 'SIA 265 – Holzbau', year: 2021, description: '' },
+          { id: 'sia261', name: 'SIA 261', label: 'SIA 261 – Einwirkungen', year: 2020, description: '' },
+        ]);
+      });
+    return () => { alive = false; };
+  }, []);
 
   const typeId = woodTypeToId(woodType);
   const filteredClasses = apiWoodClasses.filter(c => c.wood_type_id === typeId);
   const effectiveClassId = filteredClasses.some(c => c.id === woodClassId) ? woodClassId : filteredClasses[0]?.id ?? '';
 
-  const isSIA261 = normId === 'sia261';
-  const activeNorm = NORMS.find(n => n.id === normId);
+  const isSIA265 = normId === 'sia265';
+  const activeNorm = norms.find(n => n.id === normId);
 
   const handleNormClick = (id: string) => {
     onNormChange?.(id);
-    // SIA261 ist immer "SIA"-Standard im Sinne von nicht-Eurocode
-    if (id === 'sia261' || id === 'sia265') setStandard('SIA');
   };
 
   const sel: React.CSSProperties = {
@@ -56,7 +71,7 @@ export default function Header({ onAdminClick, onNormChange }: Props) {
 
       {/* Norm-Pills */}
       <div style={{ display: 'flex', gap: 3, background: 'rgba(0,0,0,0.2)', borderRadius: 7, padding: '2px 4px', flexShrink: 0 }}>
-        {NORMS.map(n => (
+        {norms.map(n => (
           <button key={n.id} onClick={() => handleNormClick(n.id)} style={{
             background: normId === n.id ? 'rgba(255,255,255,0.28)' : 'transparent',
             border: normId === n.id ? '1px solid rgba(255,255,255,0.5)' : '1px solid transparent',
@@ -64,19 +79,9 @@ export default function Header({ onAdminClick, onNormChange }: Props) {
             cursor: 'pointer', fontSize: 12, fontWeight: normId === n.id ? 700 : 400,
             whiteSpace: 'nowrap',
           }}>
-            {n.label} <span style={{ fontSize: 9, opacity: 0.65 }}>{n.sub}</span>
+            {n.name} <span style={{ fontSize: 9, opacity: 0.65 }}>{normSubLabel(n)}</span>
           </button>
         ))}
-        {/* Eurocode */}
-        <button onClick={() => setStandard('Eurocode')} style={{
-          background: standard === 'Eurocode' ? 'rgba(251,191,36,0.3)' : 'transparent',
-          border: standard === 'Eurocode' ? '1px solid rgba(251,191,36,0.6)' : '1px solid transparent',
-          color: '#fff', borderRadius: 5, padding: '3px 9px',
-          cursor: 'pointer', fontSize: 12, fontWeight: standard === 'Eurocode' ? 700 : 400,
-          whiteSpace: 'nowrap',
-        }}>
-          EC5 <span style={{ fontSize: 9, opacity: 0.65 }}>Eurocode</span>
-        </button>
       </div>
 
       {divider}
@@ -91,7 +96,7 @@ export default function Header({ onAdminClick, onNormChange }: Props) {
       </div>
 
       {/* Holzart + Holzklasse — nur bei SIA 265 relevant */}
-      {!isSIA261 && standard === 'SIA' && <>
+      {isSIA265 && <>
         {divider}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
           <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>Holzart</span>
@@ -118,26 +123,19 @@ export default function Header({ onAdminClick, onNormChange }: Props) {
         </>}
       </>}
 
-      {/* SIA 261 Badge */}
-      {isSIA261 && (
+      {/* Norm-Beschreibung */}
+      {!isSIA265 && activeNorm?.description && (
         <div style={{ fontSize: 10, color: '#bfdbfe', background: 'rgba(255,255,255,0.1)', borderRadius: 4, padding: '2px 8px', whiteSpace: 'nowrap', flexShrink: 0 }}>
-          Einwirkungen auf Tragwerke
-        </div>
-      )}
-
-      {/* Eurocode-Hinweis */}
-      {standard === 'Eurocode' && (
-        <div style={{ background: 'rgba(251,191,36,0.2)', border: '1px solid rgba(251,191,36,0.4)', borderRadius: 4, padding: '2px 8px', fontSize: 10, color: '#fde68a', whiteSpace: 'nowrap' }}>
-          ⚠ Eurocode 5 noch nicht implementiert
+          {activeNorm.description}
         </div>
       )}
 
       <div style={{ flex: 1 }} />
 
       {/* Norm-Info */}
-      {activeNorm && standard !== 'Eurocode' && (
+      {activeNorm && (
         <div style={{ background: 'rgba(255,255,255,0.10)', borderRadius: 4, padding: '2px 7px', fontSize: 10, color: '#93c5fd', whiteSpace: 'nowrap', flexShrink: 0 }}>
-          {activeNorm.flag} {activeNorm.label}:{activeNorm.year}
+          {activeNorm.label}:{activeNorm.year}
         </div>
       )}
 

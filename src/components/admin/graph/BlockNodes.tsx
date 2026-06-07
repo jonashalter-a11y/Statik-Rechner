@@ -5,7 +5,7 @@ import { nameToLatex } from '../../../utils/formatName';
 import { latexToJs } from '../../../utils/latexToJs';
 import { useGraphCtx, DbTableFull } from './graphContext';
 import {
-  VariableData, DropdownData, TableValueData, CalcData,
+  VariableData, DropdownData, WoodClassData, TableValueData, CalcData,
   StdCalcData, TableCalcData, ConditionData, OutputData,
 } from '../../../types/graph';
 
@@ -13,6 +13,7 @@ import {
 const THEME: Record<string, { bg: string; border: string; icon: string; label: string }> = {
   variable:   { bg: '#f5f3ff', border: '#7c3aed', icon: '🟪', label: 'Variabel' },
   dropdown:   { bg: '#fff7ed', border: '#ea580c', icon: '🟧', label: 'Dropdown' },
+  woodclass:  { bg: '#fefce8', border: '#ca8a04', icon: '🟨', label: 'Holzklasse' },
   tablevalue: { bg: '#f0fdf4', border: '#16a34a', icon: '🟩', label: 'Tabellenwert' },
   calc:       { bg: '#fef2f2', border: '#dc2626', icon: '🟥', label: 'Rechnung' },
   stdcalc:    { bg: '#f5f0e8', border: '#92400e', icon: '🟫', label: 'Std-Berechnung' },
@@ -156,6 +157,25 @@ export function DropdownNode({ id, data }: NodeProps) {
   );
 }
 
+// ── 🟨 Holzklasse ───────────────────────────────────────────────────────────
+export function WoodClassNode({ id, data }: NodeProps) {
+  const d = data as unknown as WoodClassData;
+  const { updateNodeData } = useGraphCtx();
+  const set = (p: Partial<WoodClassData>) => updateNodeData(id, p);
+  return (
+    <Shell id={id} type="woodclass">
+      <div style={{ fontSize: 10, color: '#92400e', marginBottom: 4 }}>
+        nutzt im Frontend die aktuell gewählte Holzklasse
+      </div>
+      <div style={lbl}>Backend-Info</div>
+      <F value={d.label} placeholder="Aktuelle Holzklasse" onChange={e => set({ label: e.target.value })} />
+      <div style={{ fontSize: 10, color: '#6b7280', marginTop: 5, lineHeight: 1.35 }}>
+        Mit 🟩 Tabellenwert verbinden. Der grüne Name muss dem Kennwert entsprechen, z.B. f_m_k, f_v_k oder E_0_mean.
+      </div>
+    </Shell>
+  );
+}
+
 // ── 🟩 Tabellenwert ──────────────────────────────────────────────────────────
 export function TableValueNode({ id, data }: NodeProps) {
   const d = data as unknown as TableValueData;
@@ -271,11 +291,19 @@ export function TableCalcNode({ id, data }: NodeProps) {
 // ── 🔶 Bedingung ─────────────────────────────────────────────────────────────
 export function ConditionNode({ id, data }: NodeProps) {
   const d = data as unknown as ConditionData;
-  const { updateNodeData } = useGraphCtx();
+  const { updateNodeData, graphNodes } = useGraphCtx();
   const set = (p: Partial<ConditionData>) => updateNodeData(id, p);
   const conds = d.conditions || [];
-  const add = () => set({ conditions: [...conds, { id: 'c' + (conds.length + 1), latex: '', expr: '' }] });
-  const upd = (i: number, k: 'latex' | 'expr', v: string) => { const c = [...conds]; c[i] = { ...c[i], [k]: v }; set({ conditions: c }); };
+  const mode = d.mode || 'expr';
+  const selectableNodes = graphNodes.filter(n =>
+    n.id !== id && (
+      n.type === 'dropdown' ||
+      n.type === 'woodclass' ||
+      (n.type === 'variable')
+    )
+  );
+  const add = () => set({ conditions: [...conds, { id: 'c' + (conds.length + 1), latex: '', expr: '', match: '' }] });
+  const upd = (i: number, k: 'latex' | 'expr' | 'match', v: string) => { const c = [...conds]; c[i] = { ...c[i], [k]: v }; set({ conditions: c }); };
   return (
     <Shell id={id} type="condition" extraHandles={
       <>
@@ -286,15 +314,41 @@ export function ConditionNode({ id, data }: NodeProps) {
     }>
       <div style={lbl}>Bezeichnung</div>
       <F value={d.label} placeholder="Verzweigung" onChange={e => set({ label: e.target.value })} />
+      <div style={lbl}>Art</div>
+      <select className="nodrag" value={mode} onChange={e => set({ mode: e.target.value as any })} style={inp}>
+        <option value="expr">Formel / JS-Bedingung</option>
+        <option value="select">Auswahl / Dropdown</option>
+      </select>
+      {mode === 'select' && (
+        <>
+          <div style={lbl}>Quelle</div>
+          <select className="nodrag" value={d.source || 'woodType'} onChange={e => set({ source: e.target.value })} style={inp}>
+            <option value="woodType">Holzart aus Header</option>
+            <option value="woodClass">Holzklasse aus Header</option>
+            {selectableNodes.map(n => (
+              <option key={n.id} value={n.id}>{n.label || n.name || n.id}</option>
+            ))}
+          </select>
+        </>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={lbl}>Bedingungen</div>
+        <div style={lbl}>{mode === 'select' ? 'Ausgänge' : 'Bedingungen'}</div>
         <button className="nodrag" onClick={add} style={{ fontSize: 10, border: 'none', background: '#fde68a', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>+</button>
       </div>
       {conds.map((c, i) => (
         <div key={c.id} style={{ borderTop: '1px dashed #e5e7eb', paddingTop: 3, marginTop: 3 }}>
           <div style={{ fontSize: 9, color: '#a16207' }}>Zweig {c.id} →</div>
-          <F value={c.latex} placeholder="h/b > 1" onChange={e => upd(i, 'latex', e.target.value)} style={{ marginBottom: 2 }} />
-          <F value={c.expr} placeholder="(h/b) > 1 ? 1 : 0" onChange={e => upd(i, 'expr', e.target.value)} style={{ fontFamily: 'monospace', background: '#fffbeb' }} />
+          {mode === 'select' ? (
+            <>
+              <F value={c.latex} placeholder="Anzeige, z.B. Vollholz" onChange={e => upd(i, 'latex', e.target.value)} style={{ marginBottom: 2 }} />
+              <F value={c.match || ''} placeholder="Wert, z.B. Vollholz" onChange={e => upd(i, 'match', e.target.value)} style={{ fontFamily: 'monospace', background: '#fffbeb' }} />
+            </>
+          ) : (
+            <>
+              <F value={c.latex} placeholder="h/b > 1" onChange={e => upd(i, 'latex', e.target.value)} style={{ marginBottom: 2 }} />
+              <F value={c.expr} placeholder="(h/b) > 1 ? 1 : 0" onChange={e => upd(i, 'expr', e.target.value)} style={{ fontFamily: 'monospace', background: '#fffbeb' }} />
+            </>
+          )}
         </div>
       ))}
     </Shell>
@@ -324,6 +378,7 @@ export function OutputNode({ id, data }: NodeProps) {
 export const nodeTypes = {
   variable: VariableNode,
   dropdown: DropdownNode,
+  woodclass: WoodClassNode,
   tablevalue: TableValueNode,
   calc: CalcNode,
   stdcalc: StdCalcNode,

@@ -1,13 +1,25 @@
 const BASE = '/api';
 
-const get  = (path: string) => fetch(BASE + path).then(r => r.json());
-const post = (path: string, body: object) => fetch(BASE + path, { method: 'POST',   headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json());
-const put  = (path: string, body: object) => fetch(BASE + path, { method: 'PUT',    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(r => r.json());
-const del  = (path: string)               => fetch(BASE + path, { method: 'DELETE' }).then(r => r.json());
+const parse = async (r: Response) => {
+  const text = await r.text();
+  let data: any = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = { error: text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() };
+  }
+  if (!r.ok) throw new Error(data?.error || `HTTP ${r.status}`);
+  return data;
+};
+const get  = (path: string) => fetch(BASE + path).then(parse);
+const post = (path: string, body: object) => fetch(BASE + path, { method: 'POST',   headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(parse);
+const put  = (path: string, body: object) => fetch(BASE + path, { method: 'PUT',    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(parse);
+const del  = (path: string)               => fetch(BASE + path, { method: 'DELETE' }).then(parse);
 
 export const api = {
   // Normen
   getNorms: () => get('/norms'),
+  createNorm: (data: object) => post('/norms', data),
 
   // Kapitel (norm-gefiltert)
   getChapters:   (norm = 'sia265') => get(`/chapters?norm=${norm}`),

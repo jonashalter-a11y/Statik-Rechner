@@ -32,9 +32,16 @@ const sel: React.CSSProperties = { border: '1px solid #d1d5db', borderRadius: 6,
 
 export default function GraphVerificationView({ verification, readOnly = false }: { verification: Verification; readOnly?: boolean }) {
   const normId = useStore(s => s.normId);
+  const woodType = useStore(s => s.woodType);
+  const woodClassId = useStore(s => s.woodClassId);
+  const apiWoodClasses = useStore(s => s.apiWoodClasses);
   const graph = useMemo(() => getGraph(toLegacyShape(verification)), [verification.id, verification.graph_json]);
   const [tables, setTables] = useState<Record<string, DbTableData>>({});
   const [inputs, setInputs] = useState<Record<string, string>>({});
+  const materialProps = useMemo(() => {
+    const woodClass = apiWoodClasses.find(c => c.id === woodClassId);
+    return Object.fromEntries((woodClass?.properties || []).map(p => [p.key, p.value]));
+  }, [apiWoodClasses, woodClassId]);
 
   // Referenzierte DB-Tabellen vorladen
   useEffect(() => {
@@ -76,7 +83,7 @@ export default function GraphVerificationView({ verification, readOnly = false }
   }, [graph, tables]);
 
   const setInput = (id: string, val: string) => setInputs(prev => ({ ...prev, [id]: val }));
-  const ev = useMemo(() => evalGraph(graph, inputs, tables), [graph, inputs, tables]);
+  const ev = useMemo(() => evalGraph(graph, inputs, tables, materialProps, { woodType, woodClassId }), [graph, inputs, tables, materialProps, woodType, woodClassId]);
   const ordered = useMemo(() => topoSort(graph), [graph]);
 
   // Tabellen-Spalten-Optionen (für variable inputKind=table_column)
@@ -97,7 +104,7 @@ export default function GraphVerificationView({ verification, readOnly = false }
   const num = (x?: number) => (x == null || isNaN(x)) ? '—' : formatNumber(x);
 
   // Ergebnis = letzter calc/stdcalc in Reihenfolge
-  const resultNode = [...ordered].reverse().find(n => n.type === 'calc' || n.type === 'stdcalc');
+  const resultNode = [...ordered].reverse().find(n => (n.type === 'calc' || n.type === 'stdcalc') && !ev.results[n.id]?.skipped);
   const resultVal = resultNode ? ev.results[resultNode.id]?.value : undefined;
   const resultUnit = resultNode ? (resultNode.data as any).unit : '';
   const isEta = normId === 'sia265';
@@ -107,7 +114,8 @@ export default function GraphVerificationView({ verification, readOnly = false }
       {ordered.map(n => {
         const d: any = n.data;
         const r = ev.results[n.id] || {};
-        if (n.type === 'output') return null;
+        if (r.skipped) return null;
+        if (n.type === 'output' || n.type === 'woodclass') return null;
 
         if (n.type === 'variable') {
           return (

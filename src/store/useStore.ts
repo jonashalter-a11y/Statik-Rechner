@@ -76,9 +76,9 @@ function buildChapterTree(data: any[], verifications: Verification[], standard: 
     const ownVs = vIdsByChapter.get(ch.id) || [];
     const childResults = (ch.children || []).map(countAndAnnotate);
     const totalCount = ownVs.length + childResults.reduce((s, r) => s + r.count, 0);
-    return { node: { ...ch, verifications: ownVs, children: childResults.map(r => r.node), expanded: totalCount > 0 }, count: totalCount };
+    return { node: { ...ch, verifications: ownVs, children: childResults.filter(r => r.count > 0).map(r => r.node), expanded: totalCount > 0 }, count: totalCount };
   };
-  return { standard, chapters: roots.map(r => countAndAnnotate(r).node) };
+  return { standard, chapters: roots.map(r => countAndAnnotate(r)).filter(r => r.count > 0).map(r => r.node) };
 }
 
 function computeVerification(v: Verification): Verification {
@@ -250,9 +250,9 @@ export const useStore = create<AppState>((set, get) => ({
         const ownVs = vIdsByChapter.get(ch.id) || [];
         const childResults = (ch.children || []).map(countAndAnnotate);
         const totalCount = ownVs.length + childResults.reduce((s, r) => s + r.count, 0);
-        return { node: { ...ch, verifications: ownVs, children: childResults.map(r => r.node), expanded: totalCount > 0 }, count: totalCount };
+        return { node: { ...ch, verifications: ownVs, children: childResults.filter(r => r.count > 0).map(r => r.node), expanded: totalCount > 0 }, count: totalCount };
       };
-      return { rawChapterData: data, rawChapterDataByNorm: newByNorm, chapters: roots.map(r => countAndAnnotate(r).node) };
+      return { rawChapterData: data, rawChapterDataByNorm: newByNorm, chapters: roots.map(r => countAndAnnotate(r)).filter(r => r.count > 0).map(r => r.node) };
     });
   },
 
