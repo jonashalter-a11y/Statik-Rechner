@@ -31,7 +31,6 @@ const card: React.CSSProperties = { border: '1px solid #e2e8f0', borderRadius: 8
 const sel: React.CSSProperties = { border: '1px solid #d1d5db', borderRadius: 6, padding: '5px 8px', fontSize: 13, width: '100%', background: '#fff' };
 
 export default function GraphVerificationView({ verification, readOnly = false }: { verification: Verification; readOnly?: boolean }) {
-  const normId = useStore(s => s.normId);
   const woodType = useStore(s => s.woodType);
   const woodClassId = useStore(s => s.woodClassId);
   const apiWoodClasses = useStore(s => s.apiWoodClasses);
@@ -102,12 +101,36 @@ export default function GraphVerificationView({ verification, readOnly = false }
   };
 
   const num = (x?: number) => (x == null || isNaN(x)) ? '—' : formatNumber(x);
+  const isFiniteNumber = (x?: number) => typeof x === 'number' && isFinite(x);
+  const displayName = (name?: string) => {
+    const trimmed = String(name || '').trim();
+    if (!trimmed) return 'Ergebnis';
+    return /_\{/.test(trimmed) ? trimmed : nameToLatex(trimmed);
+  };
+  const unitLatex = (unit?: string) => {
+    const trimmed = String(unit || '').trim();
+    if (!trimmed) return '';
+    if (trimmed.includes('\\') || trimmed.includes('{')) return trimmed;
+    const part = (value: string) => {
+      const match = value.trim().match(/^([A-Za-z]+)(\^.+)?$/);
+      if (!match) return value.trim();
+      return `\\mathrm{${match[1]}}${match[2] || ''}`;
+    };
+    const pieces = trimmed.split('/');
+    if (pieces.length === 2) return `${part(pieces[0])}/${part(pieces[1])}`;
+    return part(trimmed);
+  };
+  const resultLatex = (value?: number, unit?: string) => {
+    if (!isFiniteNumber(value)) return '';
+    const unitPart = unit ? `\\;${unitLatex(unit)}` : '';
+    return `\\underline{\\underline{${num(value)}${unitPart}}}`;
+  };
 
   // Ergebnis = letzter calc/stdcalc in Reihenfolge
   const resultNode = [...ordered].reverse().find(n => (n.type === 'calc' || n.type === 'stdcalc') && !ev.results[n.id]?.skipped);
   const resultVal = resultNode ? ev.results[resultNode.id]?.value : undefined;
-  const resultUnit = resultNode ? (resultNode.data as any).unit : '';
-  const isEta = normId === 'sia265';
+  const resultName = resultNode ? String((resultNode.data as any).name || '') : '';
+  const isEta = /^\\?eta(?:_|$)/.test(resultName.trim()) || resultName.trim() === '\\eta';
 
   return (
     <div>
@@ -187,10 +210,22 @@ export default function GraphVerificationView({ verification, readOnly = false }
                 );
               })()}
               {d.latex && <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: '6px 10px', marginBottom: 4, overflowX: 'auto' }}><MathDisplay latex={d.latex} display /></div>}
-              {r.substituted && <div style={{ fontFamily: 'monospace', fontSize: 12, color: '#374151', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '6px 10px', marginBottom: 4, overflowX: 'auto' }}>{r.substituted}</div>}
-              <div style={{ fontWeight: 700, fontSize: 14, color: '#1e40af' }}>
-                {d.name || 'Ergebnis'} = {num(r.value)} {d.unit}
-              </div>
+              {r.substitutedLatex && (
+                <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '6px 10px', marginBottom: 4, overflowX: 'auto' }}>
+                  <MathDisplay latex={isFiniteNumber(r.value) ? `${r.substitutedLatex} = ${resultLatex(r.value, d.unit)}` : r.substitutedLatex} display />
+                </div>
+              )}
+              {(r.missingSymbols || []).length > 0 && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', borderRadius: 4, padding: '6px 10px', marginBottom: 4, fontSize: 12 }}>
+                  Fehlende Variable{(r.missingSymbols || []).length > 1 ? 'n' : ''}:{' '}
+                  {(r.missingSymbols || []).map((name: string, i: number) => (
+                    <React.Fragment key={name}>
+                      {i > 0 && ', '}
+                      <MathDisplay latex={displayName(name)} />
+                    </React.Fragment>
+                  ))}
+                </div>
+              )}
             </div>
           );
         }
@@ -227,21 +262,19 @@ export default function GraphVerificationView({ verification, readOnly = false }
       })}
 
       {/* Ergebnis-Box */}
-      {resultNode && (
+      {resultNode && isEta && (
         <div style={{
           padding: 12, borderRadius: 8, marginTop: 4,
-          background: isEta ? (resultVal != null && resultVal <= 1 ? '#d1fae5' : '#fee2e2') : '#dbeafe',
-          border: `1px solid ${isEta ? (resultVal != null && resultVal <= 1 ? '#6ee7b7' : '#fca5a5') : '#93c5fd'}`,
+          background: resultVal != null && resultVal <= 1 ? '#d1fae5' : '#fee2e2',
+          border: `1px solid ${resultVal != null && resultVal <= 1 ? '#6ee7b7' : '#fca5a5'}`,
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
-          <span style={{ fontSize: 24 }}>{isEta ? (resultVal != null && resultVal <= 1 ? '✅' : '❌') : '📊'}</span>
+          <span style={{ fontSize: 24 }}>{resultVal != null && resultVal <= 1 ? '✅' : '❌'}</span>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 14, color: isEta ? (resultVal != null && resultVal <= 1 ? '#065f46' : '#991b1b') : '#1e40af' }}>
-              {isEta
-                ? `η = ${num(resultVal)} ${resultVal != null && resultVal <= 1 ? '≤ 1.0 → erfüllt' : '> 1.0 → nicht erfüllt'}`
-                : `Ergebnis = ${num(resultVal)} ${resultUnit}`}
+            <div style={{ fontWeight: 700, fontSize: 14, color: resultVal != null && resultVal <= 1 ? '#065f46' : '#991b1b' }}>
+              {`η = ${num(resultVal)} ${resultVal != null && resultVal <= 1 ? '≤ 1.0 → erfüllt' : '> 1.0 → nicht erfüllt'}`}
             </div>
-            {isEta && resultVal != null && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Ausnutzung: {(resultVal * 100).toFixed(1)}%</div>}
+            {resultVal != null && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Ausnutzung: {(resultVal * 100).toFixed(1)}%</div>}
           </div>
         </div>
       )}

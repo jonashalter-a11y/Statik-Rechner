@@ -16,6 +16,7 @@ function normSubLabel(norm: Norm): string {
 
 export default function Header({ onAdminClick, onNormChange }: Props) {
   const [norms, setNorms] = useState<Norm[]>([]);
+  const [dbWoodTypes, setDbWoodTypes] = useState<string[]>([]);
   const {
     discipline, normId, woodType, woodClassId,
     setDiscipline, setWoodType, setWoodClassId,
@@ -35,12 +36,41 @@ export default function Header({ onAdminClick, onNormChange }: Props) {
     return () => { alive = false; };
   }, []);
 
+  useEffect(() => {
+    let alive = true;
+    api.getDbTables('sia265')
+      .then((tables: any[]) => {
+        const woodTable = tables.find(t => String(t.title || '').trim().toLowerCase() === 'holzart');
+        if (!woodTable) return null;
+        return api.getDbTableFull(woodTable.id);
+      })
+      .then((table: any) => {
+        if (!alive || !table) return;
+        const values = (table.rows || [])
+          .map((row: string[]) => String(row?.[0] || '').trim())
+          .filter(Boolean);
+        setDbWoodTypes(Array.from(new Set<string>(values)));
+      })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
   const typeId = woodTypeToId(woodType);
   const filteredClasses = apiWoodClasses.filter(c => c.wood_type_id === typeId);
   const effectiveClassId = filteredClasses.some(c => c.id === woodClassId) ? woodClassId : filteredClasses[0]?.id ?? '';
-
   const isSIA265 = normId === 'sia265';
   const activeNorm = norms.find(n => n.id === normId);
+  const woodTypeOptions = dbWoodTypes.length > 0
+    ? dbWoodTypes
+    : apiWoodTypes.length > 0
+      ? apiWoodTypes.map(t => t.name)
+      : ['Vollholz', 'Brettschichtholz', 'Brettsperrholz'];
+
+  useEffect(() => {
+    if (isSIA265 && woodTypeOptions.length > 0 && !woodTypeOptions.includes(woodType)) {
+      setWoodType(woodTypeOptions[0] as any);
+    }
+  }, [isSIA265, woodTypeOptions.join('|'), woodType]);
 
   const handleNormClick = (id: string) => {
     onNormChange?.(id);
@@ -101,14 +131,7 @@ export default function Header({ onAdminClick, onNormChange }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
           <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>Holzart</span>
           <select style={sel} value={woodType} onChange={e => setWoodType(e.target.value as any)}>
-            {apiWoodTypes.length > 0
-              ? apiWoodTypes.map(t => <option key={t.id} value={t.name}>{t.name}</option>)
-              : <>
-                  <option value="Vollholz">Vollholz</option>
-                  <option value="Brettschichtholz">Brettschichtholz</option>
-                  <option value="Brettsperrholz">Brettsperrholz</option>
-                </>
-            }
+            {woodTypeOptions.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
 

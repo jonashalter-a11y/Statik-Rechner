@@ -43,6 +43,54 @@ interface Props {
   dbTables: DbTableMeta[];
 }
 
+interface GraphClipboard {
+  nodes: Node[];
+  edges: Edge[];
+}
+
+type GraphSnapshot = GraphClipboard;
+
+function cloneData<T>(value: T): T {
+  if (value === undefined) return value;
+  return JSON.parse(JSON.stringify(value));
+}
+
+function cloneGraphState(nodes: Node[], edges: Edge[]): GraphSnapshot {
+  return {
+    nodes: nodes.map(n => ({ ...n, data: cloneData(n.data) })),
+    edges: edges.map(e => ({ ...e, data: cloneData(e.data) })),
+  };
+}
+
+function snapshotKey(snapshot: GraphSnapshot) {
+  return JSON.stringify({
+    nodes: snapshot.nodes.map(n => ({
+      id: n.id,
+      type: n.type,
+      position: n.position,
+      data: n.data,
+      selected: Boolean(n.selected),
+    })),
+    edges: snapshot.edges.map(e => ({
+      id: e.id,
+      source: e.source,
+      target: e.target,
+      sourceHandle: e.sourceHandle,
+      targetHandle: e.targetHandle,
+      data: e.data,
+      selected: Boolean(e.selected),
+    })),
+  });
+}
+
+function remapCopiedNodeData(data: any, idMap: Map<string, string>) {
+  const next = cloneData(data);
+  if (next.source_dropdown && idMap.has(next.source_dropdown)) next.source_dropdown = idMap.get(next.source_dropdown);
+  if (next.source_tablecalc && idMap.has(next.source_tablecalc)) next.source_tablecalc = idMap.get(next.source_tablecalc);
+  if (Array.isArray(next.blocks)) next.blocks = next.blocks.map((id: string) => idMap.get(id) || id);
+  return next;
+}
+
 export default function GraphEditor({ graph, onChange, dbTables }: Props) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(
     graph.nodes.map(n => ({ id: n.id, type: n.type, position: n.position, data: n.data as any })),
@@ -57,7 +105,13 @@ export default function GraphEditor({ graph, onChange, dbTables }: Props) {
     })),
   );
   const [pickTargetId, setPickTargetId] = useState<string | null>(null);
+  const [clipboardCount, setClipboardCount] = useState(0);
+  const [, setHistoryVersion] = useState(0);
   const tableCache = useRef<Map<string, DbTableFull>>(new Map());
+  const clipboardRef = useRef<GraphClipboard | null>(null);
+  const historyRef = useRef<GraphSnapshot[]>([]);
+  const historyIndexRef = useRef(-1);
+  const restoringHistoryRef = useRef(false);
   const idCounter = useRef(1);
   const newId = (t: string) => `${t}_${Date.now().toString(36)}_${idCounter.current++}`;
 
@@ -69,6 +123,24 @@ export default function GraphEditor({ graph, onChange, dbTables }: Props) {
       edges: edges.map(e => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle ?? null, targetHandle: e.targetHandle ?? null, data: (e.data as any) || { kind: 'workflow' } })) as GraphEdge[],
     };
     onChange(g);
+  }, [nodes, edges]);
+
+  useEffect(() => {
+    if (restoringHistoryRef.current) {
+      restoringHistoryRef.current = false;
+      return;
+    }
+    const snapshot = cloneGraphState(nodes, edges);
+    const index = historyIndexRef.current;
+    const current = index >= 0 ? historyRef.current[index] : null;
+    if (current && snapshotKey(current) === snapshotKey(snapshot)) return;
+
+    const nextHistory = historyRef.current.slice(0, index + 1);
+    nextHistory.push(snapshot);
+    if (nextHistory.length > 80) nextHistory.shift();
+    historyRef.current = nextHistory;
+    historyIndexRef.current = nextHistory.length - 1;
+    setHistoryVersion(v => v + 1);
   }, [nodes, edges]);
 
   const updateNodeData = useCallback((id: string, patch: Partial<BlockData>) => {
@@ -103,6 +175,12 @@ export default function GraphEditor({ graph, onChange, dbTables }: Props) {
     () => nodes.map(n => ({ id: n.id, name: (n.data as any).name || '', label: (n.data as any).label || '' })),
     [nodes],
   );
+  const unitOptions = useMemo(() => {
+    const units = nodes
+      .map(n => String((n.data as any).unit || '').trim())
+      .filter(Boolean);
+    return Array.from(new Set(units)).sort((a, b) => a.localeCompare(b, 'de'));
+  }, [nodes]);
   const graphNodes = useMemo(
     () => nodes.map(n => ({ id: n.id, type: String(n.type || ''), name: (n.data as any).name || '', label: (n.data as any).label || '' })),
     [nodes],
@@ -132,10 +210,100 @@ export default function GraphEditor({ graph, onChange, dbTables }: Props) {
     }]);
   };
 
+  const copySelected = useCallback(() => {
+    const selectedNodes = nodes.filter(n => n.selected);
+    if (!selectedNodes.length) return;
+    const selectedIds = new Set(selectedNodes.map(n => n.id));
+    clipboardRef.current = {
+      nodes: selectedNodes.map(n => ({ ...n, data: cloneData(n.data) })),
+      edges: edges
+        .filter(e => selectedIds.has(e.source) && selectedIds.has(e.target))
+        .map(e => ({ ...e, data: cloneData(e.data) })),
+    };
+    setClipboardCount(selectedNodes.length);
+  }, [nodes, edges]);
+
+  const pasteCopied = useCallback(() => {
+    const clip = clipboardRef.current;
+    if (!clip?.nodes.length) return;
+    const idMap = new Map<string, string>();
+    clip.nodes.forEach(n => idMap.set(n.id, newId(String(n.type || 'node'))));
+    const pastedNodes = clip.nodes.map(n => {
+      const id = idMap.get(n.id)!;
+      return {
+        ...n,
+        id,
+        selected: true,
+        position: { x: n.position.x + 36, y: n.position.y + 36 },
+        data: remapCopiedNodeData(n.data, idMap),
+      };
+    });
+    const pastedEdges = clip.edges
+      .filter(e => idMap.has(e.source) && idMap.has(e.target))
+      .map(e => ({
+        ...e,
+        id: newId('e'),
+        source: idMap.get(e.source)!,
+        target: idMap.get(e.target)!,
+        selected: false,
+        data: cloneData(e.data),
+      }));
+    setNodes(nds => [...nds.map(n => ({ ...n, selected: false })), ...pastedNodes]);
+    setEdges(eds => [...eds.map(e => ({ ...e, selected: false })), ...pastedEdges]);
+  }, [setNodes, setEdges]);
+
+  const undoGraph = useCallback(() => {
+    const index = historyIndexRef.current;
+    if (index <= 0) return;
+    const snapshot = historyRef.current[index - 1];
+    restoringHistoryRef.current = true;
+    historyIndexRef.current = index - 1;
+    setNodes(cloneData(snapshot.nodes));
+    setEdges(cloneData(snapshot.edges));
+    setHistoryVersion(v => v + 1);
+  }, [setNodes, setEdges]);
+
+  const redoGraph = useCallback(() => {
+    const index = historyIndexRef.current;
+    const snapshot = historyRef.current[index + 1];
+    if (!snapshot) return;
+    restoringHistoryRef.current = true;
+    historyIndexRef.current = index + 1;
+    setNodes(cloneData(snapshot.nodes));
+    setEdges(cloneData(snapshot.edges));
+    setHistoryVersion(v => v + 1);
+  }, [setNodes, setEdges]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      const isFormField = tag === 'input' || tag === 'textarea' || tag === 'select' || target?.isContentEditable;
+      if (isFormField) return;
+      const mod = event.metaKey || event.ctrlKey;
+      if (!mod) return;
+      if (event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        if (event.shiftKey) redoGraph();
+        else undoGraph();
+      }
+      if (event.key.toLowerCase() === 'c') {
+        event.preventDefault();
+        copySelected();
+      }
+      if (event.key.toLowerCase() === 'v') {
+        event.preventDefault();
+        pasteCopied();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [copySelected, pasteCopied, undoGraph, redoGraph]);
+
   const ctxValue = useMemo(() => ({
     updateNodeData, removeNode, dbTables, loadTableFull,
-    allNames, graphNodes, pickTargetId, setPickTargetId, insertName,
-  }), [updateNodeData, removeNode, dbTables, loadTableFull, allNames, graphNodes, pickTargetId, insertName]);
+    allNames, graphNodes, unitOptions, pickTargetId, setPickTargetId, insertName,
+  }), [updateNodeData, removeNode, dbTables, loadTableFull, allNames, graphNodes, unitOptions, pickTargetId, insertName]);
 
   return (
     <GraphCtx.Provider value={ctxValue}>
@@ -143,6 +311,40 @@ export default function GraphEditor({ graph, onChange, dbTables }: Props) {
         {/* Palette */}
         <div style={{ width: 150, borderRight: '1px solid #e5e7eb', background: '#fff', padding: 8, overflowY: 'auto', flexShrink: 0 }}>
           <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', marginBottom: 6 }}>Blöcke</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, marginBottom: 8 }}>
+            <button
+              type="button"
+              onClick={undoGraph}
+              disabled={historyIndexRef.current <= 0}
+              style={{ border: '1px solid #cbd5e1', background: '#fff', borderRadius: 5, padding: '5px 4px', cursor: historyIndexRef.current > 0 ? 'pointer' : 'not-allowed', fontSize: 11, color: historyIndexRef.current > 0 ? '#334155' : '#94a3b8' }}
+            >
+              Zurück
+            </button>
+            <button
+              type="button"
+              onClick={redoGraph}
+              disabled={!historyRef.current[historyIndexRef.current + 1]}
+              style={{ border: '1px solid #cbd5e1', background: '#fff', borderRadius: 5, padding: '5px 4px', cursor: historyRef.current[historyIndexRef.current + 1] ? 'pointer' : 'not-allowed', fontSize: 11, color: historyRef.current[historyIndexRef.current + 1] ? '#334155' : '#94a3b8' }}
+            >
+              Wieder
+            </button>
+            <button
+              type="button"
+              onClick={copySelected}
+              disabled={!nodes.some(n => n.selected)}
+              style={{ border: '1px solid #cbd5e1', background: '#fff', borderRadius: 5, padding: '5px 4px', cursor: nodes.some(n => n.selected) ? 'pointer' : 'not-allowed', fontSize: 11, color: nodes.some(n => n.selected) ? '#334155' : '#94a3b8' }}
+            >
+              Kopieren
+            </button>
+            <button
+              type="button"
+              onClick={pasteCopied}
+              disabled={!clipboardCount}
+              style={{ border: '1px solid #cbd5e1', background: '#fff', borderRadius: 5, padding: '5px 4px', cursor: clipboardCount ? 'pointer' : 'not-allowed', fontSize: 11, color: clipboardCount ? '#334155' : '#94a3b8' }}
+            >
+              Einfügen
+            </button>
+          </div>
           {PALETTE.map(p => (
             <button key={p.type} onClick={() => addNode(p.type)} style={{
               display: 'flex', alignItems: 'center', gap: 6, width: '100%', marginBottom: 4,

@@ -6,12 +6,15 @@
 import { VerificationGraph, GraphNode } from '../types/graph';
 import { evalFormula } from './evalFormula';
 import { latexToJs } from './latexToJs';
-import { substituteValues } from './substituteFormula';
+import { formatNumber, substituteValues } from './substituteFormula';
+import { nameToLatex } from './formatName';
 
 export interface DbTableData { headers: string[]; rows: string[][]; }
 export interface NodeResult {
   value?: number;                 // numerisches Ergebnis (variable, tablevalue, calc, stdcalc)
   substituted?: string;           // "mit Werten" (calc/stdcalc)
+  substitutedLatex?: string;      // Anzeige-Formel mit eingesetzten Werten
+  missingSymbols?: string[];      // Variablen, die in der Formel vorkommen, aber nicht definiert sind
   selected?: { tableId?: string; rowIndex?: number; label?: string }; // dropdown
   table?: Record<string, number>; // tablecalc (Zone → Wert)
   activeConditionId?: string;     // condition
@@ -43,6 +46,89 @@ function normalizeMaterialKey(name: string): string {
     .replace(/[{},\s]+/g, '_')
     .replace(/_+/g, '_')
     .replace(/^_|_$/g, '');
+}
+
+function latexName(name: string): string {
+  const trimmed = String(name || '').trim();
+  if (!trimmed) return '';
+  return /_\{/.test(trimmed) ? trimmed : nameToLatex(trimmed);
+}
+
+function symbolAliases(name: string): string[] {
+  const raw = String(name || '').trim();
+  const normalized = normalizeMaterialKey(raw);
+  const latex = latexName(raw);
+  const latexNormalized = normalizeMaterialKey(latex);
+  const aliases = [
+    raw,
+    normalized,
+    latex,
+    latexNormalized,
+    raw.replace(/\\/g, ''),
+    normalized.replace(/\\/g, ''),
+    latex.replace(/\\/g, ''),
+    latexNormalized.replace(/\\/g, ''),
+  ].filter(Boolean);
+  return Array.from(new Set(aliases));
+}
+
+function setSymbol(symbols: Record<string, number>, name: string, value: number) {
+  for (const alias of symbolAliases(name)) {
+    const jsName = alias
+      .replace(/\\/g, '')
+      .replace(/_\{([^{}]+)\}/g, (_m, sub: string) => '_' + sub.replace(/[,\s.]+/g, '_'))
+      .replace(/[{},\s.]+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '');
+    if (/^[A-Za-z_$][\w$]*$/.test(jsName)) symbols[jsName] = value;
+  }
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function replaceLatexSymbol(formula: string, symbol: string, value: number) {
+  const val = formatNumber(value);
+  if (!symbol) return formula;
+
+  // Single-letter variables such as a, b and h must not be replaced inside
+  // LaTeX commands or longer names (\sigma, \frac, mean, ...).
+  if (/^[A-Za-z]$/.test(symbol)) {
+    return formula.replace(new RegExp(`(?<![\\\\A-Za-z])${escapeRegExp(symbol)}(?![A-Za-z])`, 'g'), val);
+  }
+
+  // Names with subscripts are matched as complete LaTeX symbols.
+  if (symbol.includes('_{')) {
+    return formula.replace(new RegExp(escapeRegExp(symbol), 'g'), val);
+  }
+
+  return formula.replace(new RegExp(`(?<![\\\\A-Za-z0-9_])${escapeRegExp(symbol)}(?![A-Za-z0-9_])`, 'g'), val);
+}
+
+function substituteLatexValues(latex: string, symbols: Record<string, number>): string {
+  if (!latex) return '';
+  const entries = Object.entries(symbols)
+    .filter(([, value]) => typeof value === 'number' && isFinite(value))
+    .flatMap(([name, value]) => symbolAliases(name).map(alias => [latexName(alias), value] as const))
+    .filter(([alias]) => alias)
+    .sort((a, b) => b[0].length - a[0].length);
+  let result = latex;
+  const seen = new Set<string>();
+  for (const [alias, value] of entries) {
+    if (seen.has(alias)) continue;
+    seen.add(alias);
+    result = replaceLatexSymbol(result, alias, value);
+  }
+  return result;
+}
+
+function extractMissingSymbols(expr: string, symbols: Record<string, number>): string[] {
+  if (!expr) return [];
+  const cleaned = expr.replace(/Math\.[A-Za-z_$][\w$]*/g, '');
+  const ids = cleaned.match(/[A-Za-z_$][\w$]*/g) || [];
+  const ignored = new Set(['Math', 'NaN', 'Infinity', 'undefined', 'null', 'true', 'false']);
+  return Array.from(new Set(ids.filter(id => !ignored.has(id) && !(id in symbols))));
 }
 
 // Topologische Sortierung über Workflow-Kanten (Kahn). Bei Zyklen: Rest in Originalreihenfolge.
@@ -112,7 +198,7 @@ export function evalGraph(
           const raw = inputs[node.id] ?? d.default_value ?? '';
           const val = parseNum(raw);
           results[node.id] = { value: val };
-          if (d.name) symbols[d.name] = val;
+          if (d.name) setSymbol(symbols, d.name, val);
           break;
         }
         case 'dropdown': {
@@ -128,7 +214,7 @@ export function evalGraph(
           if (d.mode === 'custom' && d.name) {
             const opt = (d.options || []).find((o: any) => o.label === selLabel || o.value === selLabel);
             const v = parseNum(opt ? opt.value : selLabel);
-            symbols[d.name] = v;
+            setSymbol(symbols, d.name, v);
             results[node.id].value = v;
           }
           break;
@@ -150,15 +236,17 @@ export function evalGraph(
             if (tbl) val = parseNum(tbl.rows[sel.rowIndex]?.[d.table_col]);
           }
           results[node.id] = { value: val };
-          if (d.name) symbols[d.name] = val;
+          if (d.name) setSymbol(symbols, d.name, val);
           break;
         }
         case 'calc': {
           const expr = d.latex ? latexToJs(d.latex) : (d.expr || '');
+          const missingSymbols = extractMissingSymbols(expr, symbols);
           const v = evalFormula(expr, symbols);
           const substituted = substituteValues(expr, symbols);
-          results[node.id] = { value: v ?? NaN, substituted };
-          if (d.name && v != null) symbols[d.name] = v;
+          const substitutedLatex = d.latex ? substituteLatexValues(d.latex, symbols) : '';
+          results[node.id] = { value: v ?? NaN, substituted, substitutedLatex, missingSymbols };
+          if (d.name && v != null) setSymbol(symbols, d.name, v);
           break;
         }
         case 'tablecalc': {
@@ -184,10 +272,12 @@ export function evalGraph(
           const pickerVal = tableRes ? tableRes[selectedZone] : NaN;
           const localSym = { ...symbols, [d.picker_name || 'cell']: pickerVal };
           const expr = d.latex ? latexToJs(d.latex) : (d.expr || '');
+          const missingSymbols = extractMissingSymbols(expr, localSym);
           const v = evalFormula(expr, localSym);
           const substituted = substituteValues(expr, localSym);
-          results[node.id] = { value: v ?? NaN, substituted };
-          if (d.name && v != null) symbols[d.name] = v;
+          const substitutedLatex = d.latex ? substituteLatexValues(d.latex, localSym) : '';
+          results[node.id] = { value: v ?? NaN, substituted, substitutedLatex, missingSymbols };
+          if (d.name && v != null) setSymbol(symbols, d.name, v);
           break;
         }
         case 'condition': {

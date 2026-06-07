@@ -1,6 +1,6 @@
 export type Discipline = 'Statik' | 'Bauphysik';
 export type Standard = 'SIA' | 'Eurocode';
-export type WoodType = 'Vollholz' | 'Brettschichtholz' | 'Brettsperrholz';
+export type WoodType = string;
 
 export interface WoodClass {
   id: string;

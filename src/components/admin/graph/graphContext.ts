@@ -12,6 +12,7 @@ export interface GraphCtxValue {
   // Verfügbare benannte Werte (für klickbare Chips in Rechnungen)
   allNames: { id: string; name: string; label: string }[];
   graphNodes: { id: string; type: string; label: string; name: string }[];
+  unitOptions: string[];
   // Klick-zum-Einfügen: aktiver calc/stdcalc-Node, in den eingefügt wird
   pickTargetId: string | null;
   setPickTargetId: (id: string | null) => void;

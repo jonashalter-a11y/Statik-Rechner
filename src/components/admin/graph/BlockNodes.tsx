@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import MathDisplay from '../../MathDisplay';
 import { nameToLatex } from '../../../utils/formatName';
@@ -46,6 +46,128 @@ function Shell({ id, type, children, extraHandles }: { id: string; type: string;
 
 const F = (props: React.InputHTMLAttributes<HTMLInputElement>) => <input className="nodrag" {...props} style={{ ...inp, ...(props.style || {}) }} />;
 
+function UnitField({ value, onChange, placeholder = 'kN/m^2' }: { value: string; onChange: (value: string) => void; placeholder?: string }) {
+  const { unitOptions } = useGraphCtx();
+  const [open, setOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [draft, setDraft] = useState('');
+  const options = value && !unitOptions.includes(value) ? [value, ...unitOptions] : unitOptions;
+  const saveUnit = () => {
+    const next = draft.trim();
+    if (!next) return;
+    onChange(next);
+    setDraft('');
+    setModalOpen(false);
+  };
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <button
+        type="button"
+        className="nodrag"
+        onClick={() => setOpen(v => !v)}
+        style={{
+          width: '100%', minHeight: 34, boxSizing: 'border-box',
+          border: '1px solid #d1d5db', borderRadius: 6, background: '#fff',
+          padding: '5px 28px 5px 8px', cursor: 'pointer', textAlign: 'left',
+          position: 'relative', fontSize: 13,
+        }}
+      >
+        {value ? <MathDisplay latex={value} /> : <span style={{ color: '#9ca3af' }}>Einheit wählen</span>}
+        <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-52%)', color: '#374151', fontSize: 15 }}>⌄</span>
+      </button>
+      {open && (
+        <div className="nodrag" style={{
+          position: 'absolute', left: 0, right: 0, top: 'calc(100% + 3px)', zIndex: 50,
+          background: '#fff', border: '1px solid #d1d5db', borderRadius: 6,
+          boxShadow: '0 8px 22px rgba(15,23,42,0.14)', overflow: 'hidden',
+        }}>
+          {options.length === 0 && (
+            <div style={{ padding: '7px 8px', color: '#9ca3af', fontSize: 11 }}>Noch keine Einheiten</div>
+          )}
+          {options.map(unit => (
+            <button
+              key={unit}
+              type="button"
+              className="nodrag"
+              onClick={() => { onChange(unit); setOpen(false); }}
+              style={{
+                display: 'block', width: '100%', border: 'none',
+                borderBottom: '1px solid #f1f5f9', background: unit === value ? '#eff6ff' : '#fff',
+                padding: '7px 8px', cursor: 'pointer', textAlign: 'left', fontSize: 13,
+              }}
+            >
+              <MathDisplay latex={unit} />
+            </button>
+          ))}
+          <button
+            type="button"
+            className="nodrag"
+            onClick={() => {
+              setOpen(false);
+              setDraft('');
+              setModalOpen(true);
+            }}
+            style={{
+              display: 'block', width: '100%', border: 'none', background: '#f8fafc',
+              padding: '7px 8px', cursor: 'pointer', textAlign: 'left',
+              color: '#1e40af', fontWeight: 700, fontSize: 11,
+            }}
+          >
+            + Neue Einheit...
+          </button>
+        </div>
+      )}
+      {modalOpen && (
+        <div className="nodrag" style={{
+          position: 'fixed', inset: 0, zIndex: 10000,
+          background: 'rgba(15, 23, 42, 0.35)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div style={{ width: 360, background: '#fff', borderRadius: 8, boxShadow: '0 20px 50px rgba(15,23,42,0.25)', overflow: 'hidden', fontFamily: '-apple-system, sans-serif' }}>
+            <div style={{ background: '#2563eb', color: '#fff', padding: '10px 14px', fontWeight: 700, fontSize: 15 }}>
+              Neue Einheit
+            </div>
+            <div style={{ padding: 14 }}>
+              <div style={lbl}>LaTeX-Code</div>
+              <F
+                autoFocus
+                value={draft}
+                placeholder={placeholder}
+                onChange={e => setDraft(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); saveUnit(); } }}
+                style={{ fontFamily: 'monospace', fontSize: 14, padding: '7px 9px' }}
+              />
+              <div style={lbl}>Vorschau</div>
+              <div style={{ background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 5, padding: 8, minHeight: 34 }}>
+                {draft.trim() ? <MathDisplay latex={draft.trim()} /> : <span style={{ color: '#9ca3af' }}>Noch keine Einheit</span>}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 14 }}>
+                <button
+                  type="button"
+                  className="nodrag"
+                  onClick={() => setModalOpen(false)}
+                  style={{ border: '1px solid #d1d5db', background: '#fff', borderRadius: 5, padding: '6px 12px', cursor: 'pointer' }}
+                >
+                  Abbrechen
+                </button>
+                <button
+                  type="button"
+                  className="nodrag"
+                  onClick={saveUnit}
+                  style={{ border: 'none', background: '#2563eb', color: '#fff', borderRadius: 5, padding: '6px 12px', cursor: 'pointer', fontWeight: 700 }}
+                >
+                  Speichern
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── 🟪 Variabel ──────────────────────────────────────────────────────────────
 export function VariableNode({ id, data }: NodeProps) {
   const d = data as unknown as VariableData;
@@ -65,7 +187,7 @@ export function VariableNode({ id, data }: NodeProps) {
       <div style={{ display: 'flex', gap: 6 }}>
         <div style={{ flex: 1 }}>
           <div style={lbl}>Einheit</div>
-          <F value={d.unit} placeholder="kN/m²" onChange={e => set({ unit: e.target.value })} />
+          <UnitField value={d.unit} onChange={unit => set({ unit })} />
         </div>
         <div style={{ flex: 1 }}>
           <div style={lbl}>Standard</div>
@@ -190,7 +312,7 @@ export function TableValueNode({ id, data }: NodeProps) {
       <div style={{ display: 'flex', gap: 6 }}>
         <div style={{ flex: 1 }}>
           <div style={lbl}>Einheit</div>
-          <F value={d.unit} placeholder="m" onChange={e => set({ unit: e.target.value })} />
+          <UnitField value={d.unit} onChange={unit => set({ unit })} placeholder="m" />
         </div>
         <div style={{ flex: 1 }}>
           <div style={lbl}>Spalten-Index</div>
@@ -202,14 +324,32 @@ export function TableValueNode({ id, data }: NodeProps) {
 }
 
 // ── Klickbare Variablen-Chips (für Rechnungen) ───────────────────────────────
-function NameChips({ targetId }: { targetId: string }) {
+function formulaPrefix(name: string) {
+  const trimmed = name.trim();
+  return trimmed ? `${formulaName(trimmed)} = ` : '';
+}
+
+function formulaName(name: string) {
+  return /_\{/.test(name) ? name : nameToLatex(name);
+}
+
+function updateLatexNamePrefix(currentLatex: string, oldName: string, newName: string) {
+  const nextPrefix = formulaPrefix(newName);
+  const oldPrefix = formulaPrefix(oldName);
+  if (!nextPrefix) return currentLatex;
+  if (!currentLatex.trim()) return nextPrefix;
+  if (oldPrefix && currentLatex.startsWith(oldPrefix)) return nextPrefix + currentLatex.slice(oldPrefix.length);
+  return currentLatex;
+}
+
+function NameChips({ targetId, onInsert }: { targetId: string; onInsert?: (name: string) => void }) {
   const { allNames, insertName } = useGraphCtx();
   const others = allNames.filter(n => n.id !== targetId && n.name);
   if (!others.length) return null;
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 3 }}>
       {others.map(n => (
-        <button key={n.id} className="nodrag" onClick={() => insertName(targetId, n.name)}
+        <button key={n.id} className="nodrag" onClick={() => onInsert ? onInsert(n.name) : insertName(targetId, n.name)}
           title={n.label}
           style={{ fontSize: 10, border: '1px solid #cbd5e1', background: '#fff', borderRadius: 4, padding: '1px 5px', cursor: 'pointer' }}>
           {n.name}
@@ -224,18 +364,37 @@ export function CalcNode({ id, data }: NodeProps) {
   const d = data as unknown as CalcData;
   const { updateNodeData } = useGraphCtx();
   const set = (p: Partial<CalcData>) => updateNodeData(id, p);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const setLatex = (latex: string) => set({ latex, expr: latexToJs(latex) });
+  const setName = (name: string) => {
+    const latex = updateLatexNamePrefix(d.latex || '', d.name || '', name);
+    set({ name, latex, expr: latexToJs(latex) });
+  };
+  const insertFormulaName = (name: string) => {
+    const token = formulaName(name);
+    const base = d.latex || formulaPrefix(d.name);
+    const input = textareaRef.current;
+    const start = input?.selectionStart ?? base.length;
+    const end = input?.selectionEnd ?? start;
+    const next = base.slice(0, start) + token + base.slice(end);
+    setLatex(next);
+    window.setTimeout(() => {
+      textareaRef.current?.focus();
+      const pos = start + token.length;
+      textareaRef.current?.setSelectionRange(pos, pos);
+    }, 0);
+  };
   return (
     <Shell id={id} type="calc">
       <div style={lbl}>Ergebnis-Name (LaTeX)</div>
-      <F value={d.name} placeholder="c_h" onChange={e => set({ name: e.target.value })} />
+      <F value={d.name} placeholder="c_h" onChange={e => setName(e.target.value)} />
       <div style={{ fontSize: 11, marginTop: 2 }}><MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} /></div>
       <div style={lbl}>Anzeige-Formel (LaTeX)</div>
-      <textarea className="nodrag" value={d.latex} placeholder="c_h = 1.6 \cdot (...)" onChange={e => setLatex(e.target.value)} style={{ ...inp, minHeight: 32, fontFamily: 'monospace' }} />
+      <textarea ref={textareaRef} className="nodrag" value={d.latex} placeholder={d.name ? `${formulaName(d.name)} = 1.6 \\cdot (...)` : 'c_h = 1.6 \\cdot (...)'} onChange={e => setLatex(e.target.value)} style={{ ...inp, minHeight: 32, fontFamily: 'monospace' }} />
       {d.latex && <div style={{ background: '#fff', borderRadius: 4, padding: 4, marginTop: 2, overflowX: 'auto' }}><MathDisplay latex={d.latex} display /></div>}
-      <NameChips targetId={id} />
+      <NameChips targetId={id} onInsert={insertFormulaName} />
       <div style={lbl}>Einheit</div>
-      <F value={d.unit} placeholder="–" onChange={e => set({ unit: e.target.value })} />
+      <UnitField value={d.unit} onChange={unit => set({ unit })} placeholder="-" />
     </Shell>
   );
 }
@@ -245,20 +404,39 @@ export function StdCalcNode({ id, data }: NodeProps) {
   const d = data as unknown as StdCalcData;
   const { updateNodeData } = useGraphCtx();
   const set = (p: Partial<StdCalcData>) => updateNodeData(id, p);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const setLatex = (latex: string) => set({ latex, expr: latexToJs(latex) });
+  const setName = (name: string) => {
+    const latex = updateLatexNamePrefix(d.latex || '', d.name || '', name);
+    set({ name, latex, expr: latexToJs(latex) });
+  };
+  const insertFormulaName = (name: string) => {
+    const token = formulaName(name);
+    const base = d.latex || formulaPrefix(d.name);
+    const input = textareaRef.current;
+    const start = input?.selectionStart ?? base.length;
+    const end = input?.selectionEnd ?? start;
+    const next = base.slice(0, start) + token + base.slice(end);
+    setLatex(next);
+    window.setTimeout(() => {
+      textareaRef.current?.focus();
+      const pos = start + token.length;
+      textareaRef.current?.setSelectionRange(pos, pos);
+    }, 0);
+  };
   return (
     <Shell id={id} type="stdcalc">
       <div style={{ fontSize: 10, color: '#92400e', marginBottom: 2 }}>ein Wert wird im Frontend aus Tabellenberechnung gewählt</div>
       <div style={lbl}>Ergebnis-Name</div>
-      <F value={d.name} placeholder="q_k" onChange={e => set({ name: e.target.value })} />
+      <F value={d.name} placeholder="q_k" onChange={e => setName(e.target.value)} />
       <div style={lbl}>Auswahl-Variable (Frontend)</div>
       <F value={d.picker_name} placeholder="c_pe" onChange={e => set({ picker_name: e.target.value })} />
       <div style={lbl}>Anzeige-Formel (LaTeX)</div>
-      <textarea className="nodrag" value={d.latex} placeholder="q_{k} = (c_d \cdot c_{pe} - c_{pi}) \cdot q_p" onChange={e => setLatex(e.target.value)} style={{ ...inp, minHeight: 30, fontFamily: 'monospace' }} />
+      <textarea ref={textareaRef} className="nodrag" value={d.latex} placeholder={d.name ? `${formulaName(d.name)} = (c_d \\cdot c_{pe} - c_{pi}) \\cdot q_p` : 'q_{k} = (c_d \\cdot c_{pe} - c_{pi}) \\cdot q_p'} onChange={e => setLatex(e.target.value)} style={{ ...inp, minHeight: 30, fontFamily: 'monospace' }} />
       {d.latex && <div style={{ background: '#fff', borderRadius: 4, padding: 4, marginTop: 2, overflowX: 'auto' }}><MathDisplay latex={d.latex} display /></div>}
-      <NameChips targetId={id} />
+      <NameChips targetId={id} onInsert={insertFormulaName} />
       <div style={lbl}>Einheit</div>
-      <F value={d.unit} placeholder="kN/m²" onChange={e => set({ unit: e.target.value })} />
+      <UnitField value={d.unit} onChange={unit => set({ unit })} />
     </Shell>
   );
 }
@@ -283,7 +461,7 @@ export function TableCalcNode({ id, data }: NodeProps) {
       <textarea className="nodrag" value={d.expr} placeholder="cell * q_p" onChange={e => set({ expr: e.target.value })} style={{ ...inp, minHeight: 30, fontFamily: 'monospace', background: '#fffbeb' }} />
       <NameChips targetId={id} />
       <div style={lbl}>Einheit</div>
-      <F value={d.unit} placeholder="kN/m²" onChange={e => set({ unit: e.target.value })} />
+      <UnitField value={d.unit} onChange={unit => set({ unit })} />
     </Shell>
   );
 }
@@ -291,7 +469,7 @@ export function TableCalcNode({ id, data }: NodeProps) {
 // ── 🔶 Bedingung ─────────────────────────────────────────────────────────────
 export function ConditionNode({ id, data }: NodeProps) {
   const d = data as unknown as ConditionData;
-  const { updateNodeData, graphNodes } = useGraphCtx();
+  const { updateNodeData, graphNodes, dbTables, loadTableFull } = useGraphCtx();
   const set = (p: Partial<ConditionData>) => updateNodeData(id, p);
   const conds = d.conditions || [];
   const mode = d.mode || 'expr';
@@ -304,6 +482,27 @@ export function ConditionNode({ id, data }: NodeProps) {
   );
   const add = () => set({ conditions: [...conds, { id: 'c' + (conds.length + 1), latex: '', expr: '', match: '' }] });
   const upd = (i: number, k: 'latex' | 'expr' | 'match', v: string) => { const c = [...conds]; c[i] = { ...c[i], [k]: v }; set({ conditions: c }); };
+  const fillFromSource = async () => {
+    if ((d.source || 'woodType') !== 'woodType') return;
+    const woodTable = dbTables.find(t => String(t.title || '').trim().toLowerCase() === 'holzart');
+    if (!woodTable) return;
+    const full = await loadTableFull(woodTable.id);
+    const values = (full?.rows || [])
+      .map(row => String(row?.[0] || '').trim())
+      .filter(Boolean);
+    const unique = Array.from(new Set<string>(values));
+    if (!unique.length) return;
+    set({
+      mode: 'select',
+      source: 'woodType',
+      conditions: unique.map((value, i) => ({
+        id: 'c' + (i + 1),
+        latex: value,
+        expr: '',
+        match: value,
+      })),
+    });
+  };
   return (
     <Shell id={id} type="condition" extraHandles={
       <>
@@ -323,7 +522,7 @@ export function ConditionNode({ id, data }: NodeProps) {
         <>
           <div style={lbl}>Quelle</div>
           <select className="nodrag" value={d.source || 'woodType'} onChange={e => set({ source: e.target.value })} style={inp}>
-            <option value="woodType">Holzart aus Header</option>
+            <option value="woodType">Holzart (Backend-Tabelle/Header)</option>
             <option value="woodClass">Holzklasse aus Header</option>
             {selectableNodes.map(n => (
               <option key={n.id} value={n.id}>{n.label || n.name || n.id}</option>
@@ -333,7 +532,12 @@ export function ConditionNode({ id, data }: NodeProps) {
       )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={lbl}>{mode === 'select' ? 'Ausgänge' : 'Bedingungen'}</div>
-        <button className="nodrag" onClick={add} style={{ fontSize: 10, border: 'none', background: '#fde68a', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>+</button>
+        <div style={{ display: 'flex', gap: 3 }}>
+          {mode === 'select' && (d.source || 'woodType') === 'woodType' && (
+            <button className="nodrag" onClick={fillFromSource} title="Zweige aus Tabelle Holzart erstellen" style={{ fontSize: 10, border: 'none', background: '#dbeafe', color: '#1e40af', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>Auto</button>
+          )}
+          <button className="nodrag" onClick={add} style={{ fontSize: 10, border: 'none', background: '#fde68a', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>+</button>
+        </div>
       </div>
       {conds.map((c, i) => (
         <div key={c.id} style={{ borderTop: '1px dashed #e5e7eb', paddingTop: 3, marginTop: 3 }}>

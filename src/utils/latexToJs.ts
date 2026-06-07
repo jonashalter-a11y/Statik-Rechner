@@ -95,10 +95,13 @@ export function latexToJs(tex: string): string {
   s = replaceFrac(s);
   s = replaceCmdBrace(s, 'sqrt', 'Math.sqrt');
   for (const g of GREEK) {
-    s = s.replace(new RegExp('\\\\' + g + '\\b', 'g'), g);
-    s = s.replace(new RegExp('\\\\' + g[0].toUpperCase() + g.slice(1) + '\\b', 'g'), g);
+    s = s.replace(new RegExp('\\\\' + g + '(?=\\b|_|\\{|$)', 'g'), g);
+    s = s.replace(new RegExp('\\\\' + g[0].toUpperCase() + g.slice(1) + '(?=\\b|_|\\{|$)', 'g'), g);
   }
   s = convertSubscripts(s);
+  // Variable names like E_0.05 can appear when a decimal comma was used in a
+  // subscript. JavaScript would read that as property access, so keep it a name.
+  s = s.replace(/([A-Za-z][A-Za-z0-9_]*)_([A-Za-z0-9]+)\.([A-Za-z0-9_]+)/g, '$1_$2_$3');
   s = convertPowers(s);
   s = s.replace(/\\[a-zA-Z]+/g, '');            // übrige Befehle
   s = s.replace(/[{}]/g, '');
