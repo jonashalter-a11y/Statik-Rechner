@@ -5,6 +5,7 @@
 
 import { VerificationGraph, GraphNode } from '../types/graph';
 import { evalFormula } from './evalFormula';
+import { latexToJs } from './latexToJs';
 import { substituteValues } from './substituteFormula';
 
 export interface DbTableData { headers: string[]; rows: string[][]; }
@@ -113,8 +114,9 @@ export function evalGraph(
           break;
         }
         case 'calc': {
-          const v = evalFormula(d.expr || '', symbols);
-          const substituted = substituteValues(d.expr || '', symbols);
+          const expr = d.latex ? latexToJs(d.latex) : (d.expr || '');
+          const v = evalFormula(expr, symbols);
+          const substituted = substituteValues(expr, symbols);
           results[node.id] = { value: v ?? NaN, substituted };
           if (d.name && v != null) symbols[d.name] = v;
           break;
@@ -141,8 +143,9 @@ export function evalGraph(
           const selectedZone = inputs[node.id] != null ? String(inputs[node.id]) : '';
           const pickerVal = tableRes ? tableRes[selectedZone] : NaN;
           const localSym = { ...symbols, [d.picker_name || 'cell']: pickerVal };
-          const v = evalFormula(d.expr || '', localSym);
-          const substituted = substituteValues(d.expr || '', localSym);
+          const expr = d.latex ? latexToJs(d.latex) : (d.expr || '');
+          const v = evalFormula(expr, localSym);
+          const substituted = substituteValues(expr, localSym);
           results[node.id] = { value: v ?? NaN, substituted };
           if (d.name && v != null) symbols[d.name] = v;
           break;

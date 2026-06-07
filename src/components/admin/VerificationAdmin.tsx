@@ -95,18 +95,34 @@ export default function VerificationAdmin() {
       .catch(() => {});
   }, [normId]);
 
-  const reload = () => {
-    api.getVerifications(normId).then((vs: Verification[]) => {
-      setVerifications(vs);
-      api.getChapters(normId).then((chs: Chapter[]) => {
-        setChapters(chs);
-        const parentOf = new Map<string, string>();
-        chs.forEach(c => { if (c.parent_id) parentOf.set(c.id, c.parent_id); });
-        const toOpen = new Set<string>();
-        vs.forEach((v: Verification) => { let cur: string | undefined = v.chapter_id; while (cur) { toOpen.add(cur); cur = parentOf.get(cur); } });
-        setExpanded(toOpen);
-      });
+  const reload = async () => {
+    const [vsResult, chsResult] = await Promise.allSettled([
+      api.getVerifications(normId),
+      api.getChapters(normId),
+    ]);
+    const verificationsOk = vsResult.status === 'fulfilled' && Array.isArray(vsResult.value);
+    const chaptersOk = chsResult.status === 'fulfilled' && Array.isArray(chsResult.value);
+    const safeVerifications: Verification[] = verificationsOk ? vsResult.value : [];
+    const safeChapters: Chapter[] = chaptersOk ? chsResult.value : [];
+    setVerifications(safeVerifications);
+    setChapters(safeChapters);
+    const parentOf = new Map<string, string>();
+    safeChapters.forEach(c => { if (c.parent_id) parentOf.set(c.id, c.parent_id); });
+    const toOpen = new Set<string>();
+    safeVerifications.forEach((v: Verification) => {
+      let cur: string | undefined = v.chapter_id;
+      while (cur) {
+        toOpen.add(cur);
+        cur = parentOf.get(cur);
+      }
     });
+    setExpanded(toOpen);
+    if (!verificationsOk || !chaptersOk) {
+      console.warn('Backend-Daten konnten nicht vollständig geladen werden', { vsResult, chsResult });
+      setMsg('⚠ Backend-Daten konnten nicht vollständig geladen werden');
+    } else {
+      setMsg('');
+    }
   };
 
   useEffect(() => { setSelected(null); setEditing(null); reload(); }, [normId]);

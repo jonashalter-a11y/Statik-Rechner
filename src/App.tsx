@@ -17,7 +17,7 @@ const DEFAULT_PRINT   = 360;
 
 export default function App() {
   const [showPrint, setShowPrint] = useState(false);
-  const [showAdmin, setShowAdmin] = useState(false);
+  const [pathname, setPathname] = useState(window.location.pathname);
   const { setVerificationsFromApi, setChaptersFromApi, setWoodTypesFromApi, normId, setNormId } = useStore();
 
   const [sidebarW, setSidebarW] = useState(DEFAULT_SIDEBAR);
@@ -33,6 +33,19 @@ export default function App() {
     obs.observe(el);
     setContainerW(el.clientWidth);
     return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => setPathname(window.location.pathname);
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigateTo = useCallback((path: string) => {
+    if (window.location.pathname !== path) {
+      window.history.pushState({}, '', path);
+    }
+    setPathname(path);
   }, []);
 
   const splitterCount = showPrint ? 2 : 1;
@@ -92,7 +105,7 @@ export default function App() {
       } catch {}
       await loadNormData('sia265');
     })();
-  }, [showAdmin]);
+  }, []);
 
   // Bei Norm-Wechsel: normId setzen und Daten direkt laden
   const handleNormChange = useCallback(async (nId: string) => {
@@ -109,15 +122,17 @@ export default function App() {
     background: '#fafafa', flexShrink: 0,
   };
 
+  const showAdmin = pathname === '/admin';
+
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', height: '100vh',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       background: '#f1f5f9', overflow: 'hidden',
     }}>
-      {showAdmin && <AdminPage onClose={() => setShowAdmin(false)} />}
+      {showAdmin && <AdminPage onClose={() => navigateTo('/')} />}
 
-      <Header onAdminClick={() => setShowAdmin(true)} onNormChange={handleNormChange} />
+      <Header onAdminClick={() => navigateTo('/admin')} onNormChange={handleNormChange} />
 
       <div ref={containerRef} style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 

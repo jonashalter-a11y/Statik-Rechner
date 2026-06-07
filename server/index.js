@@ -220,5 +220,5 @@ app.post('/api/sql-import', (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 app.listen(PORT, () => console.log(`Backend läuft auf http://localhost:${PORT}`));

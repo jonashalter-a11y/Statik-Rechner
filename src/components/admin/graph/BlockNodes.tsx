@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Handle, Position, NodeProps } from '@xyflow/react';
 import MathDisplay from '../../MathDisplay';
 import { nameToLatex } from '../../../utils/formatName';
+import { latexToJs } from '../../../utils/latexToJs';
 import { useGraphCtx, DbTableFull } from './graphContext';
 import {
   VariableData, DropdownData, TableValueData, CalcData,
@@ -203,16 +204,15 @@ export function CalcNode({ id, data }: NodeProps) {
   const d = data as unknown as CalcData;
   const { updateNodeData } = useGraphCtx();
   const set = (p: Partial<CalcData>) => updateNodeData(id, p);
+  const setLatex = (latex: string) => set({ latex, expr: latexToJs(latex) });
   return (
     <Shell id={id} type="calc">
       <div style={lbl}>Ergebnis-Name (LaTeX)</div>
       <F value={d.name} placeholder="c_h" onChange={e => set({ name: e.target.value })} />
       <div style={{ fontSize: 11, marginTop: 2 }}><MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} /></div>
       <div style={lbl}>Anzeige-Formel (LaTeX)</div>
-      <textarea className="nodrag" value={d.latex} placeholder="c_h = 1.6 \cdot (...)" onChange={e => set({ latex: e.target.value })} style={{ ...inp, minHeight: 32, fontFamily: 'monospace' }} />
+      <textarea className="nodrag" value={d.latex} placeholder="c_h = 1.6 \cdot (...)" onChange={e => setLatex(e.target.value)} style={{ ...inp, minHeight: 32, fontFamily: 'monospace' }} />
       {d.latex && <div style={{ background: '#fff', borderRadius: 4, padding: 4, marginTop: 2, overflowX: 'auto' }}><MathDisplay latex={d.latex} display /></div>}
-      <div style={lbl}>Berechnung (JS)</div>
-      <textarea className="nodrag" value={d.expr} placeholder="1.6 * Math.pow(z/z_g, 2*alpha_r) + 0.375" onChange={e => set({ expr: e.target.value })} style={{ ...inp, minHeight: 32, fontFamily: 'monospace', background: '#fffbeb' }} />
       <NameChips targetId={id} />
       <div style={lbl}>Einheit</div>
       <F value={d.unit} placeholder="–" onChange={e => set({ unit: e.target.value })} />
@@ -225,6 +225,7 @@ export function StdCalcNode({ id, data }: NodeProps) {
   const d = data as unknown as StdCalcData;
   const { updateNodeData } = useGraphCtx();
   const set = (p: Partial<StdCalcData>) => updateNodeData(id, p);
+  const setLatex = (latex: string) => set({ latex, expr: latexToJs(latex) });
   return (
     <Shell id={id} type="stdcalc">
       <div style={{ fontSize: 10, color: '#92400e', marginBottom: 2 }}>ein Wert wird im Frontend aus Tabellenberechnung gewählt</div>
@@ -233,10 +234,8 @@ export function StdCalcNode({ id, data }: NodeProps) {
       <div style={lbl}>Auswahl-Variable (Frontend)</div>
       <F value={d.picker_name} placeholder="c_pe" onChange={e => set({ picker_name: e.target.value })} />
       <div style={lbl}>Anzeige-Formel (LaTeX)</div>
-      <textarea className="nodrag" value={d.latex} placeholder="q_{k} = (c_d \cdot c_{pe} - c_{pi}) \cdot q_p" onChange={e => set({ latex: e.target.value })} style={{ ...inp, minHeight: 30, fontFamily: 'monospace' }} />
+      <textarea className="nodrag" value={d.latex} placeholder="q_{k} = (c_d \cdot c_{pe} - c_{pi}) \cdot q_p" onChange={e => setLatex(e.target.value)} style={{ ...inp, minHeight: 30, fontFamily: 'monospace' }} />
       {d.latex && <div style={{ background: '#fff', borderRadius: 4, padding: 4, marginTop: 2, overflowX: 'auto' }}><MathDisplay latex={d.latex} display /></div>}
-      <div style={lbl}>Berechnung (JS)</div>
-      <textarea className="nodrag" value={d.expr} placeholder="(c_d * c_pe - c_pi) * q_p" onChange={e => set({ expr: e.target.value })} style={{ ...inp, minHeight: 30, fontFamily: 'monospace', background: '#fffbeb' }} />
       <NameChips targetId={id} />
       <div style={lbl}>Einheit</div>
       <F value={d.unit} placeholder="kN/m²" onChange={e => set({ unit: e.target.value })} />
