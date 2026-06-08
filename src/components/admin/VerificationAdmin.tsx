@@ -334,6 +334,7 @@ export default function VerificationAdmin() {
   const [msg, setMsg] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [chapterForm, setChapterForm] = useState<{ id: string; number: string; title: string; parent_id: string | null } | null | 'new'>(null);
+  const [hideEmpty, setHideEmpty] = useState(false);
   const editingRef = useRef<Editing | null>(null);
   const savedSnapshotRef = useRef('');
   const savingRef = useRef(false);
@@ -483,7 +484,11 @@ export default function VerificationAdmin() {
             <div style={{ fontWeight: 700, fontSize: 13 }}>Kapitel</div>
             <div style={{ fontSize: 10, color: '#6b7280' }}>{normLabel}</div>
           </div>
-          <div style={{ display: 'flex', gap: 5 }}>
+          <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+            <button onClick={() => setHideEmpty(v => !v)} title={hideEmpty ? 'Alle Kapitel anzeigen' : 'Leere Kapitel ausblenden'}
+              style={{ background: hideEmpty ? '#dbeafe' : '#f1f5f9', color: hideEmpty ? '#1e40af' : '#6b7280', border: `1px solid ${hideEmpty ? '#93c5fd' : '#d1d5db'}`, borderRadius: 5, padding: '4px 7px', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}>
+              {hideEmpty ? '👁' : '👁'}
+            </button>
             <button onClick={() => setChapterForm('new')} style={{ background: '#f1f5f9', color: '#374151', border: '1px solid #d1d5db', borderRadius: 5, padding: '4px 8px', cursor: 'pointer', fontSize: 11 }}>+ Kapitel</button>
             <button onClick={newVerification} title="Neuen Nachweis erstellen" style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>+ Nachweis</button>
           </div>

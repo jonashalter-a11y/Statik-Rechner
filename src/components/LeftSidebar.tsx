@@ -34,16 +34,6 @@ export default function LeftSidebar() {
         <TableOfContents />
       </div>
 
-      {/* Status footer */}
-      <div style={{ borderTop: '1px solid #e5e7eb', background: '#fff', padding: '8px 12px', fontSize: 11, color: '#6b7280' }}>
-        {verifications.length} Nachweise insgesamt
-        <span style={{ color: '#10b981', marginLeft: 8 }}>
-          ● {verifications.filter(v => v.passed).length} erfüllt
-        </span>
-        <span style={{ color: '#ef4444', marginLeft: 6 }}>
-          ● {verifications.filter(v => v.passed === false).length} versagt
-        </span>
-      </div>
     </div>
   );
 }

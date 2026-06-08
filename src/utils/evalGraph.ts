@@ -81,9 +81,18 @@ function symbolAliases(name: string): string[] {
   return Array.from(new Set(aliases));
 }
 
+// Ersetzt deutsche Umlaute durch ASCII-Äquivalente damit Variablennamen
+// wie h_Meereshöhe zu gültigen JS-Bezeichnern werden.
+function deUmlaut(s: string): string {
+  return s
+    .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue')
+    .replace(/Ä/g, 'Ae').replace(/Ö/g, 'Oe').replace(/Ü/g, 'Ue')
+    .replace(/ß/g, 'ss');
+}
+
 function setSymbol(symbols: Record<string, number>, name: string, value: number) {
   for (const alias of symbolAliases(name)) {
-    const jsName = alias
+    const jsName = deUmlaut(alias)
       .replace(/\\/g, '')
       .replace(/([A-Za-z0-9_])'+/g, '$1') // q' → q (Prime)
       .replace(/_\{([^{}]+)\}/g, (_m, sub: string) => '_' + sub.replace(/[,\s.]+/g, '_'))
@@ -128,7 +137,16 @@ function substituteLatexValues(latex: string, symbols: Record<string, number>): 
   const normalized = stripLatexText(latex).replace(/\{,\}/g, ',');
   const entries = Object.entries(symbols)
     .filter(([, value]) => typeof value === 'number' && isFinite(value))
-    .flatMap(([name, value]) => symbolAliases(name).map(alias => [latexName(alias), value] as const))
+    .flatMap(([name, value]) => {
+      const latexAliases = symbolAliases(name).map(a => latexName(a)).filter(Boolean);
+      // Auch Kurzform ohne Klammern ergänzen: h_{0} → h_0, f_{m,k} → f_m_k
+      // damit Formeln die _0 statt _{0} schreiben ebenfalls substituiert werden.
+      const shortForms = latexAliases
+        .filter(a => a.includes('_{'))
+        .map(a => a.replace(/_\{([^{}]+)\}/g, '_$1'))
+        .filter(Boolean);
+      return [...new Set([...latexAliases, ...shortForms])].map(a => [a, value] as const);
+    })
     .filter(([alias]) => alias)
     .sort((a, b) => b[0].length - a[0].length);
   let result = normalized;

@@ -90,6 +90,7 @@ function latexExprToJs(tex: string): string {
   s = s.replace(/\\left|\\right/g, '');
   s = s.replace(/\\text\s*\{([^{}]*)\}/g, '$1');
   s = s.replace(/\{,\}/g, '.');
+  s = s.replace(/(\d),(\d)/g, '$1.$2');        // 0,4 → 0.4 (deutsches Dezimalkomma)
   s = s.replace(/\\,|\\;|\\!|\\quad|\\qquad/g, ' ');
   s = s.replace(/\\cdot|\\times|\\ast/g, '*');
   s = replaceFrac(s);
@@ -145,13 +146,25 @@ export function latexHasIneq(tex: string): boolean {
 export function latexToJs(tex: string): string {
   if (!tex || !tex.trim()) return '';
   let s = tex;
+  // rechte Seite der letzten Gleichung zuerst nehmen
+  if (s.includes('=')) { const parts = s.split('='); s = parts[parts.length - 1]; }
+  // \geq minVal am Ende → Math.max(minVal, expr) merken, BEVOR wir den Schwanz entfernen
+  let wrapMin = '';
+  {
+    const geqM = s.match(/\\(?:geq|geqslant|ge)\b\s*([\s\S]+?)(?:\\leq|\\geq|\\approx|\s*$)/);
+    if (geqM) {
+      let minTex = geqM[1].trim();
+      minTex = minTex.replace(/\\,|\\;|\\!/g, '').replace(/\{,\}/g, '.').replace(/,(?=\d)/g, '.');
+      minTex = minTex.replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '').trim();
+      if (/^[\d.]+$/.test(minTex)) wrapMin = minTex;
+    }
+  }
   // Ungleichungs-Schwanz entfernen
   s = s.replace(/\\(leq|geq|le|ge|approx|neq|leqslant|geqslant)\b[\s\S]*$/, '');
-  // rechte Seite der letzten Gleichung
-  if (s.includes('=')) { const parts = s.split('='); s = parts[parts.length - 1]; }
   s = s.replace(/\\left|\\right/g, '');
   s = s.replace(/\\text\s*\{([^{}]*)\}/g, '$1'); // \text{crit} → crit (reiner Anzeige-Befehl)
   s = s.replace(/\{,\}/g, '.');                 // 1{,}6 → 1.6
+  s = s.replace(/(\d),(\d)/g, '$1.$2');        // 0,4 → 0.4 (deutsches Dezimalkomma ohne Klammern)
   s = s.replace(/\\,|\\;|\\!|\\quad|\\qquad/g, ' ');
   s = s.replace(/\\cdot|\\times|\\ast/g, '*');
   s = replaceFrac(s);
@@ -175,6 +188,12 @@ export function latexToJs(tex: string): string {
   s = s.replace(/\\[a-zA-Z]+/g, '');            // übrige Befehle
   s = s.replace(/[{}]/g, '');
   s = s.replace(/([A-Za-z0-9_])'+/g, '$1');    // q' → q (Prime kein gültiger JS-Identifier)
+  // Umlaute transliterieren damit JS-Bezeichner ASCII-clean bleiben (ö→oe, ä→ae, ü→ue)
+  s = s.replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue')
+       .replace(/Ä/g, 'Ae').replace(/Ö/g, 'Oe').replace(/Ü/g, 'Ue')
+       .replace(/ß/g, 'ss');
   s = s.replace(/\s+/g, ' ').trim();
+  // \geq minVal → Math.max(minVal, result)
+  if (wrapMin) s = `Math.max(${wrapMin}, ${s})`;
   return s;
 }

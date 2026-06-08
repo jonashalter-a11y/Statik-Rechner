@@ -26,9 +26,9 @@ function toLegacyShape(v: Verification) {
   };
 }
 
-const lbl: React.CSSProperties = { fontSize: 11, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 };
-const card: React.CSSProperties = { border: '1px solid #e2e8f0', borderRadius: 8, padding: 12, marginBottom: 12, background: '#fff' };
-const sel: React.CSSProperties = { border: '1px solid #d1d5db', borderRadius: 6, padding: '5px 8px', fontSize: 13, width: '100%', background: '#fff' };
+const lbl: React.CSSProperties = { fontSize: 11, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 };
+const card: React.CSSProperties = { border: '1px solid #e2e8f0', borderRadius: 6, padding: '8px 10px', marginBottom: 6, background: '#fff' };
+const sel: React.CSSProperties = { border: '1px solid #d1d5db', borderRadius: 5, padding: '4px 8px', fontSize: 13, width: '100%', background: '#fff' };
 
 export default function GraphVerificationView({ verification, readOnly = false, initialInputs }: { verification: Verification; readOnly?: boolean; initialInputs?: Record<string, string> }) {
   const woodType = useStore(s => s.woodType);
@@ -170,6 +170,21 @@ export default function GraphVerificationView({ verification, readOnly = false, 
 
   const imageBlocks = ordered.filter(n => n.type === 'image' && (n.data as any).image);
 
+  // Aufeinanderfolgende Variablen zu Gruppen zusammenfassen (2-Spalten-Raster)
+  type Sec = { type: 'vars'; nodes: typeof ordered } | { type: 'single'; node: (typeof ordered)[0] };
+  const sections: Sec[] = [];
+  for (const n of ordered) {
+    const r = ev.results[n.id] || {};
+    if (r.skipped || n.type === 'output' || n.type === 'woodclass' || n.type === 'image' || n.type === 'condition') continue;
+    if (n.type === 'variable') {
+      const last = sections[sections.length - 1];
+      if (last?.type === 'vars') last.nodes.push(n);
+      else sections.push({ type: 'vars', nodes: [n] });
+    } else {
+      sections.push({ type: 'single', node: n });
+    }
+  }
+
   return (
     <div>
       {imageBlocks.map(n => {
@@ -186,52 +201,75 @@ export default function GraphVerificationView({ verification, readOnly = false, 
           </div>
         );
       })}
-      {ordered.map(n => {
-        const d: any = n.data;
-        const r = ev.results[n.id] || {};
-        if (r.skipped) return null;
-        if (n.type === 'output' || n.type === 'woodclass' || n.type === 'image') return null;
-        // Bedingungsblöcke werden inline nach ihrem Ziel-Block gerendert
-        if (n.type === 'condition') return null;
-
-        if (n.type === 'variable') {
+      {sections.map((sec, si) => {
+        if (sec.type === 'vars') {
           return (
-            <div key={n.id} style={card}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} />
-                <span style={{ color: '#6b7280', fontSize: 12 }}>{d.label}</span>
-                {d.unit && <span style={{ color: '#9ca3af', fontSize: 12 }}>[{d.unit}]</span>}
-                {d.inputKind === 'number_image' && d.image && (
-                  <button onClick={() => setImageModal({ src: d.image, source: d.imageSource })} title="Bild anzeigen"
-                    style={{ background: '#dbeafe', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer', color: '#1d4ed8', fontWeight: 700, fontSize: 13, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    i
-                  </button>
-                )}
-              </div>
-              {d.inputKind === 'dropdown' ? (
-                <select style={sel} disabled={readOnly} value={inputs[n.id] ?? ''} onChange={e => setInput(n.id, e.target.value)}>
-                  {(d.options || []).map((o: any, i: number) => <option key={i} value={String(o.value)}>{o.label}</option>)}
-                </select>
-              ) : d.inputKind === 'table_column' ? (
-                <select style={sel} disabled={readOnly} value={inputs[n.id] ?? ''} onChange={e => setInput(n.id, e.target.value)}>
-                  {colOptions(d.table_ref, d.table_col).map((c, i) => <option key={i} value={c}>{c}</option>)}
-                </select>
-              ) : (
-                <input type="number" disabled={readOnly} style={{ ...sel, textAlign: 'right', fontFamily: 'monospace' }} value={inputs[n.id] ?? ''} onChange={e => setInput(n.id, e.target.value)} />
-              )}
-              {d.description && <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>{d.description}</div>}
+            <div key={`vars_${si}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
+              {sec.nodes.map(n => {
+                const d: any = n.data;
+                // Volle Breite für Variablen mit Kommentar, Dropdown oder Tabellenspalte
+                const fullWidth = (d.inputKind === 'number_comment' && d.comment) || d.inputKind === 'dropdown' || d.inputKind === 'table_column' || d.inputKind === 'number_link';
+                return (
+                  <div key={n.id} style={{ ...card, marginBottom: 0, ...(fullWidth ? { gridColumn: '1 / -1' } : {}) }}>
+                    {d.inputKind === 'number_comment' && d.comment && (
+                      <div style={{ background: '#fefce8', border: '1px solid #fde047', borderRadius: 4, padding: '5px 8px', marginBottom: 6, fontSize: 11, color: '#713f12', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                        {d.comment}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
+                      <MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} />
+                      {d.label && <span style={{ color: '#6b7280', fontSize: 11 }}>{d.label}</span>}
+                      {d.unit && <span style={{ color: '#9ca3af', fontSize: 11 }}><MathDisplay latex={`[${unitLatex(d.unit)}]`} /></span>}
+                      {d.inputKind === 'number_image' && d.image && (
+                        <button onClick={() => setImageModal({ src: d.image, source: d.imageSource })} title="Bild anzeigen"
+                          style={{ background: '#dbeafe', border: 'none', borderRadius: '50%', width: 20, height: 20, cursor: 'pointer', color: '#1d4ed8', fontWeight: 700, fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          i
+                        </button>
+                      )}
+                      {d.inputKind === 'number_link' && d.url && (
+                        <a href={d.url} target="_blank" rel="noopener noreferrer" title={d.url}
+                          style={{ background: '#e0f2fe', border: '1px solid #7dd3fc', borderRadius: 4, padding: '2px 7px', cursor: 'pointer', color: '#0369a1', fontSize: 11, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                          🔗 Link
+                        </a>
+                      )}
+                    </div>
+                    {d.inputKind === 'dropdown' ? (
+                      <select style={sel} disabled={readOnly} value={inputs[n.id] ?? ''} onChange={e => setInput(n.id, e.target.value)}>
+                        {(d.options || []).map((o: any, i: number) => <option key={i} value={String(o.value)}>{o.label}</option>)}
+                      </select>
+                    ) : d.inputKind === 'table_column' ? (
+                      <select style={sel} disabled={readOnly} value={inputs[n.id] ?? ''} onChange={e => setInput(n.id, e.target.value)}>
+                        {colOptions(d.table_ref, d.table_col).map((c, i) => <option key={i} value={c}>{c}</option>)}
+                      </select>
+                    ) : (
+                      <input type="number" disabled={readOnly} style={{ ...sel, textAlign: 'right', fontFamily: 'monospace' }} value={inputs[n.id] ?? ''} onChange={e => setInput(n.id, e.target.value)} />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           );
         }
 
+        const n = sec.node;
+        const d: any = n.data;
+        const r = ev.results[n.id] || {};
+
         if (n.type === 'dropdown') {
           const opts = d.mode === 'custom' ? (d.options || []).map((o: any) => o.label) : rowLabels(d.table_ref, d.label_col ?? 0);
+          const dropVal = ev.results[n.id]?.value;
+          const hasValue = d.mode === 'custom' && d.name && dropVal != null && isFiniteNumber(dropVal);
           return (
             <div key={n.id} style={card}>
               <div style={lbl}>🟧 {d.label || 'Auswahl'}</div>
               <select style={sel} disabled={readOnly} value={inputs[n.id] ?? ''} onChange={e => setInput(n.id, e.target.value)}>
                 {opts.map((o: string, i: number) => <option key={i} value={o}>{o}</option>)}
               </select>
+              {hasValue && (
+                <div style={{ marginTop: 5, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 4, padding: '3px 8px', overflowX: 'auto' }}>
+                  <MathDisplay latex={`${displayName(d.name)} = ${num(dropVal)}${d.unit ? `\\;${unitLatex(d.unit)}` : ''}`} />
+                </div>
+              )}
             </div>
           );
         }
@@ -254,7 +292,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
           return (
             <React.Fragment key={n.id}>
               <div style={{ ...card, background: '#fafafa' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                   <MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} />
                   <span style={{ color: '#6b7280', fontSize: 12 }}>{d.label}</span>
                 </div>
@@ -263,7 +301,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                   const tc = graph.nodes.find(x => x.type === 'tablecalc' && srcEdge && x.id === srcEdge.source) || graph.nodes.find(x => x.type === 'tablecalc');
                   const zones = (tc?.data as any)?.zones || [];
                   return (
-                    <div style={{ marginBottom: 6 }}>
+                    <div style={{ marginBottom: 4 }}>
                       <span style={{ fontSize: 11, color: '#92400e' }}>Auswahl {d.picker_name}: </span>
                       <select style={{ ...sel, width: 'auto', display: 'inline-block' }} disabled={readOnly} value={inputs[n.id] ?? ''} onChange={e => setInput(n.id, e.target.value)}>
                         {zones.map((z: string, i: number) => <option key={i} value={z}>{z}</option>)}
@@ -271,20 +309,16 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                     </div>
                   );
                 })()}
-                {d.latex && <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: '6px 10px', marginBottom: 4, overflowX: 'auto' }}><MathDisplay latex={d.latex} display /></div>}
+                {d.latex && <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: '5px 8px', marginBottom: 4, overflowX: 'auto' }}><MathDisplay latex={d.latex} display /></div>}
                 {r.substitutedLatex && (
-                  <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '6px 10px', marginBottom: 4, overflowX: 'auto' }}>
+                  <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '5px 8px', marginBottom: 4, overflowX: 'auto' }}>
                     <MathDisplay latex={isFiniteNumber(r.value) ? `${r.substitutedLatex} = ${resultLatex(r.value, d.unit)}` : r.substitutedLatex} display />
                   </div>
                 )}
                 {(r.missingSymbols || []).length > 0 && (
-                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', borderRadius: 4, padding: '6px 10px', marginBottom: 4, fontSize: 12 }}>
-                    Fehlende Variable{(r.missingSymbols || []).length > 1 ? 'n' : ''}:{' '}
-                    {(r.missingSymbols || []).map((name: string, i: number) => (
-                      <React.Fragment key={name}>
-                        {i > 0 && ', '}
-                        <MathDisplay latex={displayName(name)} />
-                      </React.Fragment>
+                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', borderRadius: 4, padding: '5px 8px', marginBottom: 4, fontSize: 12 }}>
+                    Fehlende: {(r.missingSymbols || []).map((name: string, i: number) => (
+                      <React.Fragment key={name}>{i > 0 && ', '}<MathDisplay latex={displayName(name)} /></React.Fragment>
                     ))}
                   </div>
                 )}
@@ -301,41 +335,34 @@ export default function GraphVerificationView({ verification, readOnly = false, 
           const modeMatch = (d.latex || '').match(/\\(min|max)\b/);
           const modeStr = modeMatch ? `\\${modeMatch[1]}` : '\\min';
           const caseMatch = (d.latex || '').match(/\\begin\{cases\}([\s\S]*?)\\end\{cases\}/);
-          const rawCases: string[] = caseMatch
-            ? caseMatch[1].split(/\\\\/).map((c: string) => c.trim()).filter(Boolean)
-            : [];
+          const rawCases: string[] = caseMatch ? caseMatch[1].split(/\\\\/).map((c: string) => c.trim()).filter(Boolean) : [];
           const nameLatex = d.name ? nameToLatex(d.name) : '?';
-          const casesLatex = rawCases.join(' \\\\ ');
           const subLatex: string = (r as any).substitutedLatex || '';
           return (
             <React.Fragment key={n.id}>
               <div style={{ ...card, background: '#fafafa' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                   <MathDisplay latex={nameLatex} />
                   {d.label && <span style={{ color: '#6b7280', fontSize: 12 }}>{d.label}</span>}
                 </div>
-                {/* 1. Symbolische Formel (wie calc) */}
-                {casesLatex && (
-                  <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: '6px 10px', marginBottom: 4, overflowX: 'auto' }}>
-                    <MathDisplay latex={`${nameLatex} = ${modeStr} \\begin{cases} ${casesLatex} \\end{cases}`} display />
+                {rawCases.length > 0 && (
+                  <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: '5px 8px', marginBottom: 4, overflowX: 'auto' }}>
+                    <MathDisplay latex={`${nameLatex} = ${modeStr} \\begin{cases} ${rawCases.join(' \\\\ ')} \\end{cases}`} display />
                   </div>
                 )}
-                {/* 2. Eingesetzte Formel + Ergebnis in gelber Box (wie calc) */}
                 {subLatex && (
-                  <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '6px 10px', marginBottom: 4, overflowX: 'auto' }}>
+                  <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '5px 8px', marginBottom: 4, overflowX: 'auto' }}>
                     <MathDisplay latex={isFiniteNumber(r.value) ? `${subLatex} = ${resultLatex(r.value, d.unit)}` : subLatex} display />
                   </div>
                 )}
-                {/* 3. Einzelne Fälle mit aktivem Fall hervorgehoben */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                   {rawCases.map((caseLatex: string, i: number) => {
                     const isActive = i === activeIdx;
-                    const caseLatexSub = ((r as any).substitutedCases || [])[i] || caseLatex;
                     return (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderRadius: 4, background: isActive ? '#f3f4f6' : '#f9fafb', border: `1px solid ${isActive ? '#9ca3af' : '#e5e7eb'}` }}>
-                        <span style={{ fontSize: 12, color: isActive ? '#374151' : '#d1d5db', flexShrink: 0 }}>{isActive ? '✓' : '○'}</span>
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 7px', borderRadius: 4, background: isActive ? '#f3f4f6' : '#f9fafb', border: `1px solid ${isActive ? '#9ca3af' : '#e5e7eb'}` }}>
+                        <span style={{ fontSize: 11, color: isActive ? '#374151' : '#d1d5db', flexShrink: 0 }}>{isActive ? '✓' : '○'}</span>
                         <div style={{ flex: 1, overflowX: 'auto' }}>
-                          <MathDisplay latex={caseLatexSub} />
+                          <MathDisplay latex={((r as any).substitutedCases || [])[i] || caseLatex} />
                         </div>
                         <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: isActive ? 700 : 400, color: isActive ? '#111827' : '#6b7280', flexShrink: 0 }}>
                           {isFinite(caseVals[i]) ? num(caseVals[i]) : '—'}
@@ -374,20 +401,20 @@ export default function GraphVerificationView({ verification, readOnly = false, 
           return (
             <div key={n.id} style={{ ...card, background: bg, borderColor, borderWidth: 2 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 22 }}>{unknown ? '⬜' : passed ? '✅' : '❌'}</span>
+                <span style={{ fontSize: 20 }}>{unknown ? '⬜' : passed ? '✅' : '❌'}</span>
                 <div style={{ flex: 1 }}>
                   {d.label && <div style={{ fontWeight: 700, fontSize: 13, color: textColor, marginBottom: 4 }}>{d.label}</div>}
                   {d.latex && (
-                    <div style={{ background: '#fff', border: `1px solid ${borderColor}`, borderRadius: 6, padding: '6px 10px', overflowX: 'auto', marginBottom: 4 }}>
+                    <div style={{ background: '#fff', border: `1px solid ${borderColor}`, borderRadius: 5, padding: '5px 8px', overflowX: 'auto', marginBottom: 4 }}>
                       <MathDisplay latex={d.latex} display />
                     </div>
                   )}
                   {r.substitutedLatex && r.substitutedLatex !== d.latex && (
-                    <div style={{ background: unknown ? '#f1f5f9' : passed ? '#ecfdf5' : '#fef2f2', border: `1px solid ${borderColor}`, borderRadius: 6, padding: '6px 10px', overflowX: 'auto', marginBottom: 4 }}>
+                    <div style={{ background: unknown ? '#f1f5f9' : passed ? '#ecfdf5' : '#fef2f2', border: `1px solid ${borderColor}`, borderRadius: 5, padding: '5px 8px', overflowX: 'auto', marginBottom: 4 }}>
                       <MathDisplay latex={d.unit ? `${r.substitutedLatex} \\; [${unitLatex(d.unit)}]` : r.substitutedLatex} display />
                     </div>
                   )}
-                  <div style={{ fontWeight: 700, fontSize: 14, color: textColor }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: textColor }}>
                     {unknown ? 'Berechnung läuft…' : passed ? 'Nachweis erfüllt' : 'Nachweis nicht erfüllt'}
                   </div>
                 </div>

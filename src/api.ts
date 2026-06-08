@@ -64,6 +64,4 @@ export const api = {
   updateUnit:  (id: number, data: object) => put(`/units/${id}`, data),
   deleteUnit:  (id: number) => del(`/units/${id}`),
 
-  // SQL-Import
-  sqlImport: (sql: string) => post('/sql-import', { sql }),
 };

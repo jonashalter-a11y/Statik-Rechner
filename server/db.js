@@ -87,6 +87,8 @@ try { db.exec(`ALTER TABLE variables ADD COLUMN table_col INTEGER DEFAULT NULL`)
 try { db.exec(`ALTER TABLE verifications ADD COLUMN graph_json TEXT DEFAULT NULL`); } catch (_) {}
 // notes: interner Kommentar / Kontroll-Notizen zum Nachweis
 try { db.exec(`ALTER TABLE verifications ADD COLUMN notes TEXT DEFAULT ''`); } catch (_) {}
+try { db.exec(`ALTER TABLE db_tables ADD COLUMN type TEXT NOT NULL DEFAULT 'table'`); } catch (_) {}
+try { db.exec(`ALTER TABLE db_tables ADD COLUMN chart_json TEXT DEFAULT NULL`); } catch (_) {}
 
 // ─── Einheiten-Seed (einmalig wenn Tabelle leer) ──────────────────────────────
 const unitCount = db.prepare('SELECT COUNT(*) as n FROM units').get().n;

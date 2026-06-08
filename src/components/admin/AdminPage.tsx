@@ -2,18 +2,17 @@ import React, { useState, useEffect } from 'react';
 import VerificationAdmin from './VerificationAdmin';
 import WoodAdmin from './WoodAdmin';
 import DbTableAdmin from './DbTableAdmin';
-import SqlImportAdmin from './SqlImportAdmin';
 import { api } from '../../api';
 
-type Tab = 'verifications' | 'wood' | 'database' | 'sql';
+type Tab = 'verifications' | 'wood' | 'database' | 'charts';
 
 interface Norm { id: string; name: string; label: string; year: number; description: string; }
 
 const tabs: { id: Tab; label: string; icon: string }[] = [
   { id: 'verifications', label: 'Nachweise & Formeln', icon: '📐' },
   { id: 'wood',          label: 'Holzarten & Klassen', icon: '🌲' },
-  { id: 'database',      label: 'Datenbank / Tabellen',  icon: '📊' },
-  { id: 'sql',           label: 'SQL-Import',           icon: '🗄' },
+  { id: 'database',      label: 'Datenbank / Tabellen', icon: '📊' },
+  { id: 'charts',        label: 'Diagramme',            icon: '📈' },
 ];
 
 // Context: aktive Norm fürs Backend
@@ -146,8 +145,8 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
           {activeTab === 'verifications' && <VerificationAdmin />}
           {activeTab === 'wood'          && <WoodAdmin />}
-          {activeTab === 'database'      && <DbTableAdmin />}
-          {activeTab === 'sql'           && <SqlImportAdmin />}
+          {activeTab === 'database'      && <DbTableAdmin mode="table" />}
+          {activeTab === 'charts'        && <DbTableAdmin mode="chart" />}
         </div>
 
         {showNewNorm && (

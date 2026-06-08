@@ -31,11 +31,13 @@ export interface VariableData {
   withImage?: boolean;    // 🟪 "mit Bild"-Variante
   image?: string;         // Daten-URL oder Pfad (Info-Button)
   imageSource?: string;   // Quelle / Kommentar zum Info-Bild
-  // Eingabe-Variante: 'number' (Default) | 'dropdown' (feste Optionen) | 'table_column' | 'number_image' (Zahl + Info-Bild)
-  inputKind?: 'number' | 'dropdown' | 'table_column' | 'number_image';
+  // Eingabe-Variante: 'number' (Default) | 'dropdown' (feste Optionen) | 'table_column' | 'number_image' (Zahl + Info-Bild) | 'number_link' (Zahl + Link-Button)
+  inputKind?: 'number' | 'dropdown' | 'table_column' | 'number_image' | 'number_comment' | 'number_link';
   options?: { label: string; value: string }[]; // inputKind=dropdown
   table_ref?: string;     // inputKind=table_column → db_tables.id
   table_col?: number;     // inputKind=table_column → Spaltenindex
+  comment?: string;       // inputKind=number_comment → erscheint hervorgehoben über dem Input
+  url?: string;           // inputKind=number_link → URL die im Frontend als Button geöffnet wird
 }
 
 export type DropdownMode = 'custom' | 'table' | 'table_column';
@@ -43,6 +45,7 @@ export interface DropdownData {
   kind: 'dropdown';
   name: string;           // interner Name des Dropdowns
   label: string;          // Anzeige (z.B. "Geländekategorie")
+  unit?: string;          // Einheit des gewählten Werts (optional)
   mode: DropdownMode;
   options?: { label: string; value: string }[]; // mode=custom
   table_ref?: string;     // mode=table | table_column → db_tables.id

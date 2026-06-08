@@ -186,7 +186,7 @@ app.delete('/api/wood-classes/:id', (req, res) => {
 app.get('/api/db-tables', (req, res) => {
   const norm       = req.query.norm;
   const chapter_id = req.query.chapter_id;
-  let sql = 'SELECT id, norm_id, chapter_id, title, description FROM db_tables WHERE 1=1';
+  let sql = 'SELECT id, norm_id, chapter_id, title, description, type FROM db_tables WHERE 1=1';
   const params = [];
   if (norm)       { sql += ' AND norm_id=?';    params.push(norm); }
   if (chapter_id) { sql += ' AND chapter_id=?'; params.push(chapter_id); }
@@ -196,17 +196,17 @@ app.get('/api/db-tables', (req, res) => {
 app.get('/api/db-tables/:id', (req, res) => {
   const t = db.prepare('SELECT * FROM db_tables WHERE id=?').get(req.params.id);
   if (!t) return res.status(404).json({ error: 'Not found' });
-  res.json({ ...t, headers: JSON.parse(t.headers), rows: JSON.parse(t.rows) });
+  res.json({ ...t, headers: JSON.parse(t.headers), rows: JSON.parse(t.rows), chart_json: t.chart_json ? JSON.parse(t.chart_json) : null });
 });
 app.post('/api/db-tables', (req, res) => {
-  const { norm_id='sia265', chapter_id=null, title, description='', headers, rows } = req.body;
+  const { norm_id='sia265', chapter_id=null, title, description='', type='table', headers=[], rows=[], chart_json=null } = req.body;
   const id = title.toLowerCase().replace(/[^a-z0-9]/g,'_') + '_' + Date.now().toString(36);
-  db.prepare('INSERT INTO db_tables (id, norm_id, chapter_id, title, description, headers, rows) VALUES (?,?,?,?,?,?,?)').run(id, norm_id, chapter_id, title, description, JSON.stringify(headers), JSON.stringify(rows));
+  db.prepare('INSERT INTO db_tables (id, norm_id, chapter_id, title, description, type, headers, rows, chart_json) VALUES (?,?,?,?,?,?,?,?,?)').run(id, norm_id, chapter_id, title, description, type, JSON.stringify(headers), JSON.stringify(rows), chart_json ? JSON.stringify(chart_json) : null);
   res.json({ id });
 });
 app.put('/api/db-tables/:id', (req, res) => {
-  const { norm_id, chapter_id=null, title, description, headers, rows } = req.body;
-  db.prepare('UPDATE db_tables SET norm_id=?, chapter_id=?, title=?, description=?, headers=?, rows=? WHERE id=?').run(norm_id, chapter_id, title, description||'', JSON.stringify(headers), JSON.stringify(rows), req.params.id);
+  const { norm_id, chapter_id=null, title, description, type='table', headers=[], rows=[], chart_json=null } = req.body;
+  db.prepare('UPDATE db_tables SET norm_id=?, chapter_id=?, title=?, description=?, type=?, headers=?, rows=?, chart_json=? WHERE id=?').run(norm_id, chapter_id, title, description||'', type, JSON.stringify(headers), JSON.stringify(rows), chart_json ? JSON.stringify(chart_json) : null, req.params.id);
   res.json({ ok: true });
 });
 app.delete('/api/db-tables/:id', (req, res) => {
@@ -214,7 +214,6 @@ app.delete('/api/db-tables/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-// ─── SQL-IMPORT ───────────────────────────────────────────────────────────────
 // ─── EINHEITEN ────────────────────────────────────────────────────────────────
 app.get('/api/units', (_, res) => res.json(db.prepare('SELECT * FROM units ORDER BY sort_order, id').all()));
 app.post('/api/units', (req, res) => {
@@ -233,17 +232,6 @@ app.put('/api/units/:id', (req, res) => {
 app.delete('/api/units/:id', (req, res) => {
   db.prepare('DELETE FROM units WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
-});
-
-app.post('/api/sql-import', (req, res) => {
-  const { sql } = req.body;
-  if (!sql || typeof sql !== 'string') return res.status(400).json({ error: 'Kein SQL übergeben' });
-  try {
-    db.exec(sql);
-    res.json({ ok: true, message: 'SQL erfolgreich ausgeführt' });
-  } catch (err) {
-    res.status(500).json({ error: String(err.message || err) });
-  }
 });
 
 const PORT = process.env.PORT || 3002;

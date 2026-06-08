@@ -332,7 +332,8 @@ export function VariableNode({ id, data, selected }: NodeProps) {
       <select className="nodrag" value={d.inputKind || 'number'} onChange={e => set({ inputKind: e.target.value as any })} style={inp}>
         <option value="number">Zahl</option>
         <option value="number_image">Zahl + Bild (Info-Button)</option>
-        <option value="dropdown">Feste Optionen</option>
+        <option value="number_comment">Wert + Kommentar</option>
+        <option value="number_link">Variabel + Link</option>
         <option value="table_column">Tabellen-Spalte</option>
       </select>
       {d.inputKind === 'number_image' && (
@@ -383,6 +384,25 @@ export function VariableNode({ id, data, selected }: NodeProps) {
           <F value={d.imageSource || ''} onChange={e => set({ imageSource: e.target.value })} placeholder="z.B. SIA 265:2021, Fig. 7" />
         </>
       )}
+      {d.inputKind === 'number_comment' && (
+        <>
+          <div style={lbl}>Kommentar (erscheint hervorgehoben über dem Eingabefeld)</div>
+          <textarea
+            className="nodrag"
+            value={d.comment || ''}
+            onChange={e => set({ comment: e.target.value })}
+            placeholder="z.B. Für Wände immer 1.0, bei Decken 0.66"
+            rows={3}
+            style={{ ...inp, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.4 }}
+          />
+        </>
+      )}
+      {d.inputKind === 'number_link' && (
+        <>
+          <div style={lbl}>URL (wird im Frontend als Button geöffnet)</div>
+          <F value={d.url || ''} placeholder="https://..." onChange={e => set({ url: e.target.value })} />
+        </>
+      )}
       {d.inputKind === 'table_column' && (
         <>
           <div style={lbl}>Tabelle</div>
@@ -420,6 +440,8 @@ export function DropdownNode({ id, data, selected }: NodeProps) {
     <Shell id={id} type="dropdown" selected={selected}>
       <div style={lbl}>Bezeichnung</div>
       <F value={d.label} placeholder="Geländekategorie" onChange={e => set({ label: e.target.value })} />
+      <div style={lbl}>Einheit</div>
+      <UnitField value={d.unit || ''} onChange={unit => set({ unit })} placeholder="-" />
       <div style={lbl}>Art</div>
       <select className="nodrag" value={d.mode} onChange={e => set({ mode: e.target.value as any })} style={inp}>
         <option value="custom">Selbst erstellen</option>
@@ -602,6 +624,8 @@ export function CalcNode({ id, data, selected }: NodeProps) {
       <div style={lbl}>Ergebnis-Name (LaTeX)</div>
       <F value={d.name} placeholder="c_h" onChange={e => setName(e.target.value)} />
       <div style={{ fontSize: 10, marginTop: 1 }}><MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} /></div>
+      <div style={lbl}>Bezeichnung</div>
+      <F value={d.label} placeholder="Böengeschwindigkeitsdruck" onChange={e => set({ label: e.target.value })} />
       <div style={lbl}>Anzeige-Formel (LaTeX)</div>
       <LatexArea elRef={textareaRef} value={d.latex} placeholder={d.name ? `${formulaName(d.name)} = 1.6 \\cdot (...)` : 'c_h = 1.6 \\cdot (...)'} onChange={setLatex} style={{ ...inp, minHeight: 48, fontFamily: 'monospace', resize: 'vertical' }} />
       {d.latex && <div style={{ background: '#fff', borderRadius: 3, padding: 3, marginTop: 2, overflowX: 'auto', fontSize: 10 }}><MathDisplay latex={d.latex} display /></div>}
