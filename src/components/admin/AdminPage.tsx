@@ -12,7 +12,7 @@ const tabs: { id: Tab; label: string; icon: string }[] = [
   { id: 'verifications', label: 'Nachweise & Formeln', icon: '📐' },
   { id: 'wood',          label: 'Holzarten & Klassen', icon: '🌲' },
   { id: 'database',      label: 'Datenbank / Tabellen', icon: '📊' },
-  { id: 'charts',        label: 'Diagramme',            icon: '📈' },
+  { id: 'charts',        label: 'Datenbank / Diagramme',            icon: '📈' },
 ];
 
 // Context: aktive Norm fürs Backend

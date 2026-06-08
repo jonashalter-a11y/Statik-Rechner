@@ -147,14 +147,15 @@ function serializeNotes(d: NotesData): string {
 
 const labelStyle: React.CSSProperties = { fontSize: 10, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 };
 
-function ChapterTreeNode({ node, depth, selectedId, expanded, onToggle, onSelect, onNewIn, onEditChapter, onNewSubChapter }: {
+function ChapterTreeNode({ node, depth, selectedId, expanded, hideEmpty, onToggle, onSelect, onNewIn, onEditChapter, onNewSubChapter }: {
   node: ChapterNode; depth: number; selectedId: string | null;
-  expanded: Set<string>; onToggle: (id: string) => void;
+  expanded: Set<string>; hideEmpty: boolean; onToggle: (id: string) => void;
   onSelect: (v: Verification) => void;
   onNewIn: (chapterId: string) => void;
   onEditChapter: (c: Chapter) => void;
   onNewSubChapter: (parentId: string) => void;
 }) {
+  if (hideEmpty && node.totalCount === 0) return null;
   const isOpen = expanded.has(node.id);
   const btnStyle: React.CSSProperties = { background: 'transparent', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 12, padding: '0 2px', lineHeight: 1 };
   return (
@@ -171,7 +172,7 @@ function ChapterTreeNode({ node, depth, selectedId, expanded, onToggle, onSelect
         <button onClick={e => { e.stopPropagation(); onNewIn(node.id); }} title="Neuen Nachweis in diesem Kapitel" style={{ ...btnStyle, fontSize: 14 }}>+</button>
       </div>
       {isOpen && node.children.map(child => (
-        <ChapterTreeNode key={child.id} node={child} depth={depth + 1} selectedId={selectedId} expanded={expanded} onToggle={onToggle} onSelect={onSelect} onNewIn={onNewIn} onEditChapter={onEditChapter} onNewSubChapter={onNewSubChapter} />
+        <ChapterTreeNode key={child.id} node={child} depth={depth + 1} selectedId={selectedId} expanded={expanded} hideEmpty={hideEmpty} onToggle={onToggle} onSelect={onSelect} onNewIn={onNewIn} onEditChapter={onEditChapter} onNewSubChapter={onNewSubChapter} />
       ))}
       {isOpen && node.verifications.map(v => (
         <div key={v.id} onClick={e => { e.stopPropagation(); onSelect(v); }}
@@ -502,7 +503,7 @@ export default function VerificationAdmin() {
             </div>
           )}
           {tree.map(node => (
-            <ChapterTreeNode key={node.id} node={node} depth={0} selectedId={selected?.id || null} expanded={expanded} onToggle={toggleExpand} onSelect={selectVerification} onNewIn={newInChapter}
+            <ChapterTreeNode key={node.id} node={node} depth={0} selectedId={selected?.id || null} expanded={expanded} hideEmpty={hideEmpty} onToggle={toggleExpand} onSelect={selectVerification} onNewIn={newInChapter}
               onEditChapter={c => setChapterForm({ id: c.id, number: c.number, title: c.title, parent_id: c.parent_id })}
               onNewSubChapter={parentId => setChapterForm({ id: '', number: '', title: '', parent_id: parentId })}
             />
