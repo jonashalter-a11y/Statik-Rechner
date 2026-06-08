@@ -8,6 +8,7 @@ import '@xyflow/react/dist/style.css';
 import { nodeTypes } from './BlockNodes';
 import { GraphCtx, DbTableMeta, DbTableFull } from './graphContext';
 import { api } from '../../../api';
+import { useStore } from '../../../store/useStore';
 import {
   VerificationGraph, BlockType, BlockData, GraphNode, GraphEdge,
 } from '../../../types/graph';
@@ -22,6 +23,8 @@ const PALETTE: { type: BlockType; icon: string; label: string; color: string }[]
   { type: 'tablecalc',  icon: '🟦', label: 'Tabellenberechnung', color: '#2563eb' },
   { type: 'condition',  icon: '🔶', label: 'Bedingung',         color: '#ca8a04' },
   { type: 'check',      icon: '✅', label: 'Nachweis',          color: '#059669' },
+  { type: 'minmax',     icon: '↕',  label: 'Min / Max',         color: '#be123c' },
+  { type: 'image',      icon: '🖼', label: 'Bild',              color: '#a855f7' },
   { type: 'output',     icon: '⬜', label: 'PDF / Ausgabe',     color: '#6b7280' },
 ];
 
@@ -36,6 +39,8 @@ function defaultData(type: BlockType): BlockData {
     case 'tablecalc':  return { kind: 'tablecalc', name: '', label: '', unit: '', zones: [], expr: 'cell' };
     case 'condition':  return { kind: 'condition', label: '', conditions: [] };
     case 'check':      return { kind: 'check', label: '', latex: '', expr: '' };
+    case 'minmax':     return { kind: 'minmax', name: '', label: '', unit: '', latex: '', expr: '' };
+    case 'image':      return { kind: 'image', label: '' };
     case 'output':     return { kind: 'output', label: 'PDF', blocks: [] };
   }
 }
@@ -95,6 +100,7 @@ function remapCopiedNodeData(data: any, idMap: Map<string, string>) {
 }
 
 function GraphEditorInner({ graph, onChange, dbTables }: Props) {
+  const globalUnits = useStore(s => s.globalUnits);
   const { screenToFlowPosition } = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(
     graph.nodes.map(n => ({ id: n.id, type: n.type, position: n.position, data: n.data as any })),
@@ -180,15 +186,25 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
     [nodes],
   );
   const unitOptions = useMemo(() => {
-    const units = nodes
+    const fromNodes = nodes
       .map(n => String((n.data as any).unit || '').trim())
       .filter(Boolean);
-    return Array.from(new Set(units)).sort((a, b) => a.localeCompare(b, 'de'));
-  }, [nodes]);
+    const merged = Array.from(new Set([...globalUnits, ...fromNodes]));
+    return merged.sort((a, b) => a.localeCompare(b, 'de'));
+  }, [nodes, globalUnits]);
   const graphNodes = useMemo(
     () => nodes.map(n => ({ id: n.id, type: String(n.type || ''), name: (n.data as any).name || '', label: (n.data as any).label || '' })),
     [nodes],
   );
+  const sourceNodesMap = useMemo(() => {
+    const map: Record<string, Array<{ id: string; type: string; data: any }>> = {};
+    edges.forEach(e => {
+      if (!map[e.target]) map[e.target] = [];
+      const src = nodes.find(n => n.id === e.source);
+      if (src) map[e.target].push({ id: src.id, type: String(src.type || ''), data: src.data });
+    });
+    return map;
+  }, [nodes, edges]);
 
   const onConnect = useCallback((c: Connection) => {
     const srcNode = nodes.find(n => n.id === c.source);
@@ -320,8 +336,8 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
 
   const ctxValue = useMemo(() => ({
     updateNodeData, removeNode, dbTables, loadTableFull,
-    allNames, graphNodes, unitOptions, pickTargetId, setPickTargetId, insertName,
-  }), [updateNodeData, removeNode, dbTables, loadTableFull, allNames, graphNodes, unitOptions, pickTargetId, insertName]);
+    allNames, graphNodes, sourceNodesMap, unitOptions, pickTargetId, setPickTargetId, insertName,
+  }), [updateNodeData, removeNode, dbTables, loadTableFull, allNames, graphNodes, sourceNodesMap, unitOptions, pickTargetId, insertName]);
 
   return (
     <GraphCtx.Provider value={ctxValue}>

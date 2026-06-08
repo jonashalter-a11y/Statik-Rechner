@@ -45,6 +45,8 @@ interface AppState {
   removeVerificationFromPrint: (key: string) => void; // entfernt genau diese Instanz
   setGraphInputs: (verifId: string, inputs: Record<string, string>) => void;
   addVerification: (v: Verification) => void;
+  globalUnits: string[];             // LaTeX-Einheiten aus der DB
+  setGlobalUnits: (units: string[]) => void;
   computeResult:   (verificationId: string) => void;
   setVerificationsFromApi: (data: any[], normId?: string) => void;
   setChaptersFromApi:      (data: any[], normId?: string) => void;
@@ -137,6 +139,8 @@ export const useStore = create<AppState>((set, get) => ({
   rawChapterData: [],
   rawChapterDataByNorm: {},
   _verifsByNorm: {},
+  globalUnits: [],
+  setGlobalUnits: (units) => set({ globalUnits: units }),
 
   setDiscipline: (d) => set({ discipline: d }),
 

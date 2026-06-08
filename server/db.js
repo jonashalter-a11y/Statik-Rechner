@@ -65,6 +65,12 @@ db.exec(`
     title TEXT NOT NULL, description TEXT DEFAULT '',
     headers TEXT NOT NULL DEFAULT '[]', rows TEXT NOT NULL DEFAULT '[]'
   );
+
+  CREATE TABLE IF NOT EXISTS units (
+    id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    latex TEXT NOT NULL UNIQUE,
+    sort_order INTEGER DEFAULT 0
+  );
 `);
 
 // Migrations
@@ -73,11 +79,30 @@ try { db.exec(`ALTER TABLE verifications ADD COLUMN norm_id TEXT NOT NULL DEFAUL
 try { db.exec(`ALTER TABLE verifications ADD COLUMN compute_expr TEXT DEFAULT ''`); } catch (_) {}
 try { db.exec(`ALTER TABLE db_tables ADD COLUMN norm_id TEXT NOT NULL DEFAULT 'sia265'`); } catch (_) {}
 try { db.exec(`ALTER TABLE db_tables ADD COLUMN category TEXT DEFAULT ''`); } catch (_) {}
+try { db.exec(`ALTER TABLE db_tables ADD COLUMN chapter_id TEXT DEFAULT NULL`); } catch (_) {}
 // table_column: Dropdown-Optionen aus einer db_tables-Spalte laden
 try { db.exec(`ALTER TABLE variables ADD COLUMN table_ref TEXT DEFAULT NULL`); } catch (_) {}
 try { db.exec(`ALTER TABLE variables ADD COLUMN table_col INTEGER DEFAULT NULL`); } catch (_) {}
 // graph_json: Node-Editor-Graph (React Flow) pro Nachweis
 try { db.exec(`ALTER TABLE verifications ADD COLUMN graph_json TEXT DEFAULT NULL`); } catch (_) {}
+// notes: interner Kommentar / Kontroll-Notizen zum Nachweis
+try { db.exec(`ALTER TABLE verifications ADD COLUMN notes TEXT DEFAULT ''`); } catch (_) {}
+
+// ─── Einheiten-Seed (einmalig wenn Tabelle leer) ──────────────────────────────
+const unitCount = db.prepare('SELECT COUNT(*) as n FROM units').get().n;
+if (unitCount === 0) {
+  const iU = db.prepare('INSERT OR IGNORE INTO units (latex, sort_order) VALUES (?, ?)');
+  const defaults = [
+    ['\\mathrm{N/mm^2}',1], ['\\mathrm{kN/m^2}',2], ['\\mathrm{kN/m}',3],
+    ['\\mathrm{kN}',4], ['\\mathrm{N}',5], ['\\mathrm{MN}',6],
+    ['\\mathrm{m}',7], ['\\mathrm{cm}',8], ['\\mathrm{mm}',9],
+    ['\\mathrm{m^2}',10], ['\\mathrm{cm^2}',11], ['\\mathrm{mm^2}',12],
+    ['\\mathrm{m^3}',13], ['\\mathrm{cm^3}',14], ['\\mathrm{mm^3}',15],
+    ['\\mathrm{kg/m^3}',16], ['\\mathrm{kN/m^3}',17],
+    ['\\mathrm{°C}',18], ['-',19], ['\\%',20],
+  ];
+  defaults.forEach(([l,s]) => iU.run(l, s));
+}
 
 // ─── Seed ────────────────────────────────────────────────────────────────────
 const normCount = db.prepare('SELECT COUNT(*) as n FROM norms').get().n;

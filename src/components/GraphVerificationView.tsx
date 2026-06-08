@@ -39,6 +39,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
   const [tables, setTables] = useState<Record<string, DbTableData>>({});
   // Im Print-Modus: initialInputs als Startzustand; sonst leer (Defaults kommen via useEffect)
   const [inputs, setInputs] = useState<Record<string, string>>(initialInputs || {});
+  const [imageModal, setImageModal] = useState<{ src: string; label?: string; source?: string } | null>(null);
   const materialProps = useMemo(() => {
     const woodClass = apiWoodClasses.find(c => c.id === woodClassId);
     return Object.fromEntries((woodClass?.properties || []).map(p => [p.key, p.value]));
@@ -69,7 +70,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
           else if (d.inputKind === 'table_column') {
             const t = d.table_ref ? tables[d.table_ref] : null;
             next[n.id] = t ? String(t.rows?.[0]?.[d.table_col] ?? d.default_value ?? '') : String(d.default_value ?? '');
-          } else next[n.id] = String(d.default_value ?? '');
+          } else next[n.id] = d.hasDefault === false ? '' : String(d.default_value ?? '');
         } else if (n.type === 'dropdown') {
           if (d.mode === 'custom') next[n.id] = String(d.options?.[0]?.label ?? '');
           else { const t = d.table_ref ? tables[d.table_ref] : null; next[n.id] = t ? String(t.rows?.[0]?.[d.label_col ?? 0] ?? '') : ''; }
@@ -144,7 +145,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
   };
 
   // Ergebnis = letzter calc/stdcalc in Reihenfolge
-  const resultNode = [...ordered].reverse().find(n => (n.type === 'calc' || n.type === 'stdcalc') && !ev.results[n.id]?.skipped);
+  const resultNode = [...ordered].reverse().find(n => (n.type === 'calc' || n.type === 'stdcalc' || n.type === 'minmax') && !ev.results[n.id]?.skipped);
   const resultVal = resultNode ? ev.results[resultNode.id]?.value : undefined;
   const resultName = resultNode ? String((resultNode.data as any).name || '') : '';
   const isEta = /^\\?eta(?:_|$)/.test(resultName.trim()) || resultName.trim() === '\\eta';
@@ -167,13 +168,29 @@ export default function GraphVerificationView({ verification, readOnly = false, 
     );
   };
 
+  const imageBlocks = ordered.filter(n => n.type === 'image' && (n.data as any).image);
+
   return (
     <div>
+      {imageBlocks.map(n => {
+        const d: any = n.data;
+        return (
+          <div key={n.id} style={{ ...card, padding: 0, overflow: 'hidden', cursor: 'pointer' }} onClick={() => setImageModal({ src: d.image, label: d.label, source: d.source })}>
+            <img src={d.image} style={{ width: '100%', maxHeight: 320, objectFit: 'contain', display: 'block' }} />
+            {(d.label || d.source) && (
+              <div style={{ padding: '6px 12px', borderTop: '1px solid #f0f0f0' }}>
+                {d.label && <div style={{ fontSize: 11, color: '#374151' }}>{d.label}</div>}
+                {d.source && <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>Quelle: {d.source}</div>}
+              </div>
+            )}
+          </div>
+        );
+      })}
       {ordered.map(n => {
         const d: any = n.data;
         const r = ev.results[n.id] || {};
         if (r.skipped) return null;
-        if (n.type === 'output' || n.type === 'woodclass') return null;
+        if (n.type === 'output' || n.type === 'woodclass' || n.type === 'image') return null;
         // Bedingungsblöcke werden inline nach ihrem Ziel-Block gerendert
         if (n.type === 'condition') return null;
 
@@ -184,6 +201,12 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                 <MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} />
                 <span style={{ color: '#6b7280', fontSize: 12 }}>{d.label}</span>
                 {d.unit && <span style={{ color: '#9ca3af', fontSize: 12 }}>[{d.unit}]</span>}
+                {d.inputKind === 'number_image' && d.image && (
+                  <button onClick={() => setImageModal({ src: d.image, source: d.imageSource })} title="Bild anzeigen"
+                    style={{ background: '#dbeafe', border: 'none', borderRadius: '50%', width: 22, height: 22, cursor: 'pointer', color: '#1d4ed8', fontWeight: 700, fontSize: 13, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    i
+                  </button>
+                )}
               </div>
               {d.inputKind === 'dropdown' ? (
                 <select style={sel} disabled={readOnly} value={inputs[n.id] ?? ''} onChange={e => setInput(n.id, e.target.value)}>
@@ -271,6 +294,62 @@ export default function GraphVerificationView({ verification, readOnly = false, 
           );
         }
 
+        if (n.type === 'minmax') {
+          const parentCondId = conditionAfterNode.get(n.id);
+          const caseVals: number[] = (r as any).caseValues || [];
+          const activeIdx: number = (r as any).activeCaseIndex ?? -1;
+          const modeMatch = (d.latex || '').match(/\\(min|max)\b/);
+          const modeStr = modeMatch ? `\\${modeMatch[1]}` : '\\min';
+          const caseMatch = (d.latex || '').match(/\\begin\{cases\}([\s\S]*?)\\end\{cases\}/);
+          const rawCases: string[] = caseMatch
+            ? caseMatch[1].split(/\\\\/).map((c: string) => c.trim()).filter(Boolean)
+            : [];
+          const nameLatex = d.name ? nameToLatex(d.name) : '?';
+          const casesLatex = rawCases.join(' \\\\ ');
+          const subLatex: string = (r as any).substitutedLatex || '';
+          return (
+            <React.Fragment key={n.id}>
+              <div style={{ ...card, background: '#fafafa' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <MathDisplay latex={nameLatex} />
+                  {d.label && <span style={{ color: '#6b7280', fontSize: 12 }}>{d.label}</span>}
+                </div>
+                {/* 1. Symbolische Formel (wie calc) */}
+                {casesLatex && (
+                  <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: '6px 10px', marginBottom: 4, overflowX: 'auto' }}>
+                    <MathDisplay latex={`${nameLatex} = ${modeStr} \\begin{cases} ${casesLatex} \\end{cases}`} display />
+                  </div>
+                )}
+                {/* 2. Eingesetzte Formel + Ergebnis in gelber Box (wie calc) */}
+                {subLatex && (
+                  <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '6px 10px', marginBottom: 4, overflowX: 'auto' }}>
+                    <MathDisplay latex={isFiniteNumber(r.value) ? `${subLatex} = ${resultLatex(r.value, d.unit)}` : subLatex} display />
+                  </div>
+                )}
+                {/* 3. Einzelne Fälle mit aktivem Fall hervorgehoben */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {rawCases.map((caseLatex: string, i: number) => {
+                    const isActive = i === activeIdx;
+                    const caseLatexSub = ((r as any).substitutedCases || [])[i] || caseLatex;
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderRadius: 4, background: isActive ? '#f3f4f6' : '#f9fafb', border: `1px solid ${isActive ? '#9ca3af' : '#e5e7eb'}` }}>
+                        <span style={{ fontSize: 12, color: isActive ? '#374151' : '#d1d5db', flexShrink: 0 }}>{isActive ? '✓' : '○'}</span>
+                        <div style={{ flex: 1, overflowX: 'auto' }}>
+                          <MathDisplay latex={caseLatexSub} />
+                        </div>
+                        <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: isActive ? 700 : 400, color: isActive ? '#111827' : '#6b7280', flexShrink: 0 }}>
+                          {isFinite(caseVals[i]) ? num(caseVals[i]) : '—'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              {parentCondId && renderCondition(parentCondId)}
+            </React.Fragment>
+          );
+        }
+
         if (n.type === 'tablecalc') {
           const tableRes = r.table || {};
           return (
@@ -318,6 +397,22 @@ export default function GraphVerificationView({ verification, readOnly = false, 
         }
         return null;
       })}
+
+      {/* Bild-Modal (Info-Button) */}
+      {imageModal && (
+        <div onClick={() => setImageModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out' }}>
+          <div onClick={e => e.stopPropagation()} style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh', background: '#fff', borderRadius: 10, overflow: 'hidden', boxShadow: '0 8px 40px rgba(0,0,0,0.4)' }}>
+            <button onClick={() => setImageModal(null)} style={{ position: 'absolute', top: 6, right: 8, background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#374151', lineHeight: 1, zIndex: 1 }}>×</button>
+            <img src={imageModal.src} style={{ maxWidth: '85vw', maxHeight: '80vh', objectFit: 'contain', display: 'block' }} />
+            {(imageModal.label || imageModal.source) && (
+              <div style={{ padding: '8px 14px', borderTop: '1px solid #e5e7eb', background: '#f8fafc' }}>
+                {imageModal.label && <div style={{ fontSize: 13, fontWeight: 500, color: '#374151', marginBottom: 2 }}>{imageModal.label}</div>}
+                {imageModal.source && <div style={{ fontSize: 11, color: '#6b7280' }}>Quelle: {imageModal.source}</div>}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Ergebnis-Box */}
       {resultNode && isEta && (

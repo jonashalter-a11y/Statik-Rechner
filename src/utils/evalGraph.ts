@@ -18,6 +18,8 @@ export interface NodeResult {
   selected?: { tableId?: string; rowIndex?: number; label?: string }; // dropdown
   table?: Record<string, number>; // tablecalc (Zone → Wert)
   activeConditionId?: string;     // condition
+  caseValues?: number[];          // minmax: Wert je Ausdruck
+  activeCaseIndex?: number;       // minmax: Index des gewählten Ausdrucks
   passed?: boolean;               // check: Nachweis erfüllt (true) oder nicht (false)
   skipped?: boolean;              // inaktiver Bedingungszweig
   error?: string;
@@ -88,7 +90,12 @@ function setSymbol(symbols: Record<string, number>, name: string, value: number)
       .replace(/[{},\s.]+/g, '_')
       .replace(/_+/g, '_')
       .replace(/^_|_$/g, '');
-    if (/^[A-Za-z_$][\w$]*$/.test(jsName)) symbols[jsName] = value;
+    if (/^[A-Za-z_$][\w$]*$/.test(jsName)) {
+      symbols[jsName] = value;
+      // k_v_1 → k_v1: merge letter-subscript + digit-subscript so both spellings work
+      const compact = jsName.replace(/_([A-Za-z]+)_(\d+)(?=_|$)/g, '_$1$2');
+      if (compact !== jsName && /^[A-Za-z_$][\w$]*$/.test(compact)) symbols[compact] = value;
+    }
   }
 }
 
@@ -318,6 +325,29 @@ export function evalGraph(
           results[node.id] = { value: passed ? 1 : 0, passed, substitutedLatex };
           break;
         }
+        case 'minmax': {
+          const expr = d.expr || latexToJs(d.latex || '');
+          const v = evalFormula(expr, symbols);
+          // Extrahiere Fälle aus \begin{cases}...\end{cases} für die Einzelanzeige
+          const caseMatch = (d.latex || '').match(/\\begin\{cases\}([\s\S]*?)\\end\{cases\}/);
+          const modeMatch = (d.latex || '').match(/\\(min|max)\b/);
+          const rawCases = caseMatch ? caseMatch[1].split(/\\\\/).map((c: string) => c.trim()).filter(Boolean) : [];
+          const caseValues = rawCases.map((c: string) => {
+            const cv = evalFormula(latexToJs(c), symbols);
+            return cv != null && isFinite(cv) ? cv : NaN;
+          });
+          const finiteVals = caseValues.filter(isFinite);
+          let activeCaseIndex = -1;
+          if (finiteVals.length > 0 && v != null && isFinite(v)) {
+            activeCaseIndex = caseValues.findIndex((cv: number) => Math.abs(cv - v) < 1e-9);
+          }
+          const caseSubstituted = rawCases.map((c: string) => substituteLatexValues(c, symbols));
+          const substitutedLatex = substituteLatexValues(d.latex || '', symbols);
+          results[node.id] = { value: v ?? NaN, caseValues, activeCaseIndex, substitutedCases: caseSubstituted, modeStr: modeMatch ? modeMatch[1] : 'min', substitutedLatex } as any;
+          if (d.name && v != null && isFinite(v)) setSymbol(symbols, d.name, v);
+          break;
+        }
+        case 'image':
         case 'output': {
           results[node.id] = {};
           break;

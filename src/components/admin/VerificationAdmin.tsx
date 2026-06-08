@@ -17,6 +17,7 @@ interface Verification {
   formula_latex: string; formula_description: string;
   compute_expr: string;
   graph_json?: string | null;
+  notes?: string;
   variables: Variable[];
 }
 interface Chapter { id: string; number: string; title: string; parent_id: string | null; }
@@ -38,35 +39,139 @@ function buildTree(chapters: Chapter[], verifications: Verification[]): ChapterN
     return n.totalCount;
   };
   roots.forEach(computeCount);
-  const pruneEmpty = (nodes: ChapterNode[]): ChapterNode[] =>
-    nodes
-      .filter(n => n.totalCount > 0)
-      .map(n => ({ ...n, children: pruneEmpty(n.children) }));
-  return pruneEmpty(roots);
+  return roots;
+}
+
+// ── Kapitel-Formular-Modal ────────────────────────────────────────────────────
+function ChapterFormModal({ normId, chapters, editing, onClose, onSaved }: {
+  normId: string;
+  chapters: Chapter[];
+  editing: { id: string; number: string; title: string; parent_id: string | null } | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const isNew = !editing?.id;
+  const [num, setNum]       = useState(editing?.number || '');
+  const [title, setTitle]   = useState(editing?.title || '');
+  const [parentId, setParentId] = useState<string>(editing?.parent_id || '');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr]       = useState('');
+
+  const save = async () => {
+    if (!num.trim() || !title.trim()) { setErr('Nummer und Titel erforderlich'); return; }
+    setSaving(true);
+    try {
+      if (isNew) {
+        const id = `${normId}_${num.replace(/\./g, '_')}_${Date.now().toString(36)}`;
+        await api.createChapter({ id, norm_id: normId, parent_id: parentId || null, number: num.trim(), title: title.trim() });
+      } else {
+        await api.updateChapter(editing!.id, { number: num.trim(), title: title.trim() });
+      }
+      onSaved();
+      onClose();
+    } catch { setErr('Fehler beim Speichern'); }
+    setSaving(false);
+  };
+
+  const del = async () => {
+    if (!editing?.id) return;
+    if (!confirm(`Kapitel "${editing.number} ${editing.title}" löschen?\nAlle Nachweise darin werden ebenfalls gelöscht.`)) return;
+    await api.deleteChapter(editing.id);
+    onSaved();
+    onClose();
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ background: '#fff', borderRadius: 10, padding: 24, width: 420, display: 'flex', flexDirection: 'column', gap: 14, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>{isNew ? 'Neues Kapitel' : 'Kapitel bearbeiten'}</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#9ca3af' }}>×</button>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: 10 }}>
+          <div>
+            <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', marginBottom: 3 }}>Nummer *</div>
+            <input value={num} onChange={e => setNum(e.target.value)} placeholder="z.B. 4.1" style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '6px 8px', fontSize: 13, width: '100%' }} />
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', marginBottom: 3 }}>Titel *</div>
+            <input value={title} onChange={e => setTitle(e.target.value)} placeholder="Kapitelname" style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '6px 8px', fontSize: 13, width: '100%' }} />
+          </div>
+        </div>
+
+        {isNew && (
+          <div>
+            <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', marginBottom: 3 }}>Übergeordnetes Kapitel (optional)</div>
+            <select value={parentId} onChange={e => setParentId(e.target.value)} style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '6px 8px', fontSize: 13, width: '100%' }}>
+              <option value="">– Kein (Top-Level) –</option>
+              {chapters.map(c => <option key={c.id} value={c.id}>{c.number} {c.title}</option>)}
+            </select>
+          </div>
+        )}
+
+        {err && <div style={{ fontSize: 12, color: '#b91c1c' }}>{err}</div>}
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
+          {!isNew
+            ? <button onClick={del} style={{ background: '#fee2e2', border: 'none', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', color: '#b91c1c', fontSize: 12 }}>🗑 Löschen</button>
+            : <span />}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={onClose} style={{ background: '#f1f5f9', border: '1px solid #d1d5db', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: 12 }}>Abbrechen</button>
+            <button onClick={save} disabled={saving} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+              {saving ? '…' : isNew ? '+ Erstellen' : '💾 Speichern'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface NotesData { text: string; table: { headers: string[]; rows: string[][] }; }
+
+function parseNotes(raw: string): NotesData {
+  if (raw && raw.startsWith('{')) {
+    try {
+      const p = JSON.parse(raw);
+      if (typeof p.text === 'string') return { text: p.text, table: p.table || { headers: [], rows: [] } };
+    } catch {}
+  }
+  return { text: raw || '', table: { headers: [], rows: [] } };
+}
+
+function serializeNotes(d: NotesData): string {
+  const hasTable = d.table.headers.length > 0 || d.table.rows.length > 0;
+  return hasTable ? JSON.stringify(d) : d.text;
 }
 
 const labelStyle: React.CSSProperties = { fontSize: 10, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 };
 
-function ChapterTreeNode({ node, depth, selectedId, expanded, onToggle, onSelect, onNewIn }: {
+function ChapterTreeNode({ node, depth, selectedId, expanded, onToggle, onSelect, onNewIn, onEditChapter, onNewSubChapter }: {
   node: ChapterNode; depth: number; selectedId: string | null;
   expanded: Set<string>; onToggle: (id: string) => void;
-  onSelect: (v: Verification) => void; onNewIn: (chapterId: string) => void;
+  onSelect: (v: Verification) => void;
+  onNewIn: (chapterId: string) => void;
+  onEditChapter: (c: Chapter) => void;
+  onNewSubChapter: (parentId: string) => void;
 }) {
   const isOpen = expanded.has(node.id);
-  const expandable = node.children.length > 0 || node.verifications.length > 0;
+  const btnStyle: React.CSSProperties = { background: 'transparent', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 12, padding: '0 2px', lineHeight: 1 };
   return (
     <div style={{ marginLeft: depth * 10 }}>
-      <div onClick={() => expandable && onToggle(node.id)}
-        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 6px', cursor: expandable ? 'pointer' : 'default', borderRadius: 4, userSelect: 'none' }}>
-        {expandable ? <span style={{ fontSize: 9, color: '#6b7280', width: 10 }}>{isOpen ? '▼' : '▶'}</span> : <span style={{ width: 10 }} />}
+      <div onClick={() => onToggle(node.id)}
+        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 6px', cursor: 'pointer', borderRadius: 4, userSelect: 'none' }}>
+        <span style={{ fontSize: 9, color: '#6b7280', width: 10 }}>{isOpen ? '▼' : '▶'}</span>
         <span style={{ fontSize: 12, color: '#374151', fontWeight: depth === 0 ? 600 : 400, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {node.number} {node.title}
         </span>
         {node.totalCount > 0 && <span style={{ fontSize: 9, background: '#dbeafe', color: '#1e40af', padding: '1px 5px', borderRadius: 8, fontWeight: 600 }}>{node.totalCount}</span>}
-        <button onClick={e => { e.stopPropagation(); onNewIn(node.id); }} title="Neuen Nachweis in diesem Kapitel" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 14, padding: 0, lineHeight: 1 }}>+</button>
+        <button onClick={e => { e.stopPropagation(); onEditChapter(node); }} title="Kapitel umbenennen" style={btnStyle}>✎</button>
+        <button onClick={e => { e.stopPropagation(); onNewSubChapter(node.id); }} title="Unterkapitel hinzufügen" style={btnStyle}>⊕</button>
+        <button onClick={e => { e.stopPropagation(); onNewIn(node.id); }} title="Neuen Nachweis in diesem Kapitel" style={{ ...btnStyle, fontSize: 14 }}>+</button>
       </div>
       {isOpen && node.children.map(child => (
-        <ChapterTreeNode key={child.id} node={child} depth={depth + 1} selectedId={selectedId} expanded={expanded} onToggle={onToggle} onSelect={onSelect} onNewIn={onNewIn} />
+        <ChapterTreeNode key={child.id} node={child} depth={depth + 1} selectedId={selectedId} expanded={expanded} onToggle={onToggle} onSelect={onSelect} onNewIn={onNewIn} onEditChapter={onEditChapter} onNewSubChapter={onNewSubChapter} />
       ))}
       {isOpen && node.verifications.map(v => (
         <div key={v.id} onClick={e => { e.stopPropagation(); onSelect(v); }}
@@ -80,7 +185,7 @@ function ChapterTreeNode({ node, depth, selectedId, expanded, onToggle, onSelect
   );
 }
 
-interface Editing { id: string; chapter_id: string; title: string; graph: VerificationGraph; }
+interface Editing { id: string; chapter_id: string; title: string; graph: VerificationGraph; notes: NotesData; }
 
 function editingSnapshot(editing: Editing | null): string {
   if (!editing) return '';
@@ -89,7 +194,105 @@ function editingSnapshot(editing: Editing | null): string {
     chapter_id: editing.chapter_id,
     title: editing.title,
     graph: editing.graph,
+    notes: editing.notes,
   });
+}
+
+function NotesTableEditor({ table, onChange }: {
+  table: { headers: string[]; rows: string[][] };
+  onChange: (t: { headers: string[]; rows: string[][] }) => void;
+}) {
+  const [local, setLocal] = useState(table);
+  const lastEmitted = useRef(JSON.stringify(table));
+
+  // Only sync from parent when the change came from outside (e.g. selecting a different verification)
+  const incomingJson = JSON.stringify(table);
+  useEffect(() => {
+    if (incomingJson !== lastEmitted.current) {
+      setLocal(table);
+      lastEmitted.current = incomingJson;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [incomingJson]);
+
+  const update = (t: { headers: string[]; rows: string[][] }) => {
+    setLocal(t);
+    lastEmitted.current = JSON.stringify(t);
+    onChange(t);
+  };
+
+  const addCol = () => update({
+    headers: [...local.headers, `Sp. ${local.headers.length + 1}`],
+    rows: local.rows.map(r => [...r, '']),
+  });
+  const addRow = () => update({
+    headers: local.headers,
+    rows: [...local.rows, local.headers.map(() => '')],
+  });
+  const delCol = (ci: number) => update({
+    headers: local.headers.filter((_, i) => i !== ci),
+    rows: local.rows.map(r => r.filter((_, i) => i !== ci)),
+  });
+  const delRow = (ri: number) => update({
+    headers: local.headers,
+    rows: local.rows.filter((_, i) => i !== ri),
+  });
+  const setHeader = (ci: number, val: string) => {
+    const h = [...local.headers]; h[ci] = val;
+    update({ ...local, headers: h });
+  };
+  const setCell = (ri: number, ci: number, val: string) => {
+    const rows = local.rows.map(r => [...r]);
+    rows[ri][ci] = val;
+    update({ ...local, rows });
+  };
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+        <button onClick={addCol} style={{ background: '#dbeafe', color: '#1e40af', border: 'none', borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>+ Spalte</button>
+        <button onClick={addRow} style={{ background: '#dcfce7', color: '#166534', border: 'none', borderRadius: 4, padding: '3px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 600 }}>+ Zeile</button>
+        {(local.rows.length > 0 || local.headers.length > 0) && (
+          <span style={{ fontSize: 10, color: '#9ca3af' }}>{local.rows.length} Zeilen × {local.headers.length} Sp.</span>
+        )}
+      </div>
+      {local.headers.length > 0 && (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ borderCollapse: 'collapse', fontSize: 11, width: '100%' }}>
+            <thead>
+              <tr>
+                {local.headers.map((h, ci) => (
+                  <th key={ci} style={{ border: '1px solid #d1d5db', padding: '2px 4px', background: '#f1f5f9' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <input value={h} onChange={e => setHeader(ci, e.target.value)}
+                        style={{ border: 'none', background: 'transparent', fontSize: 11, fontWeight: 600, minWidth: 40, width: '100%', outline: 'none' }} />
+                      <button onClick={() => delCol(ci)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 10, padding: 0, lineHeight: 1, flexShrink: 0 }}>✕</button>
+                    </div>
+                  </th>
+                ))}
+                <th style={{ width: 16, background: 'transparent', border: 'none' }} />
+              </tr>
+            </thead>
+            <tbody>
+              {local.rows.map((row, ri) => (
+                <tr key={ri}>
+                  {row.map((cell, ci) => (
+                    <td key={ci} style={{ border: '1px solid #e5e7eb', padding: '2px 4px' }}>
+                      <input value={cell} onChange={e => setCell(ri, ci, e.target.value)}
+                        style={{ border: 'none', background: 'transparent', fontSize: 11, minWidth: 40, width: '100%', outline: 'none' }} />
+                    </td>
+                  ))}
+                  <td style={{ border: 'none', padding: '0 2px', verticalAlign: 'middle' }}>
+                    <button onClick={() => delRow(ri)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 10, padding: 0, lineHeight: 1 }}>✕</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function VerificationAdmin() {
@@ -102,6 +305,7 @@ export default function VerificationAdmin() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [chapterForm, setChapterForm] = useState<{ id: string; number: string; title: string; parent_id: string | null } | null | 'new'>(null);
   const editingRef = useRef<Editing | null>(null);
   const savedSnapshotRef = useRef('');
   const savingRef = useRef(false);
@@ -145,26 +349,30 @@ export default function VerificationAdmin() {
     }
   };
 
-  useEffect(() => { setSelected(null); setEditing(null); savedSnapshotRef.current = ''; reload(); }, [normId]);
+  useEffect(() => {
+    setSelected(null); setEditing(null); setChapters([]); setVerifications([]);
+    savedSnapshotRef.current = '';
+    reload();
+  }, [normId]);
 
   const toggleExpand = (id: string) => setExpanded(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
 
   const newInChapter = (chapter_id: string) => {
     setSelected(null);
-    setEditing({ id: '', chapter_id, title: 'Neuer Nachweis', graph: emptyGraph() });
+    setEditing({ id: '', chapter_id, title: 'Neuer Nachweis', graph: emptyGraph(), notes: { text: '', table: { headers: [], rows: [] } } });
     savedSnapshotRef.current = '';
     setMsg('');
     setExpanded(prev => new Set(prev).add(chapter_id));
   };
   const newVerification = () => {
     setSelected(null);
-    setEditing({ id: '', chapter_id: chapters[0]?.id || '', title: 'Neuer Nachweis', graph: emptyGraph() });
+    setEditing({ id: '', chapter_id: chapters[0]?.id || '', title: 'Neuer Nachweis', graph: emptyGraph(), notes: { text: '', table: { headers: [], rows: [] } } });
     savedSnapshotRef.current = '';
     setMsg('');
   };
 
   const selectVerification = (v: Verification) => {
-    const nextEditing = { id: v.id, chapter_id: v.chapter_id, title: v.title, graph: getGraph(v) };
+    const nextEditing = { id: v.id, chapter_id: v.chapter_id, title: v.title, graph: getGraph(v), notes: parseNotes(v.notes || '') };
     setSelected(v);
     setEditing(nextEditing);
     savedSnapshotRef.current = editingSnapshot(nextEditing);
@@ -186,13 +394,13 @@ export default function VerificationAdmin() {
         const r = await api.createVerification({ norm_id: normId, chapter_id: editingToSave.chapter_id, title: editingToSave.title, formula_latex, formula_description: '', compute_expr: '', graph_json });
         id = r.id;
       } else {
-        await api.updateVerification(id, { title: editingToSave.title, chapter_id: editingToSave.chapter_id, formula_latex, formula_description: '', compute_expr: '', graph_json });
+        await api.updateVerification(id, { title: editingToSave.title, chapter_id: editingToSave.chapter_id, formula_latex, formula_description: '', compute_expr: '', graph_json, notes: serializeNotes(editingToSave.notes) });
       }
       const fresh = await api.getVerifications(normId);
       setVerifications(fresh);
       const updated = fresh.find((x: Verification) => x.id === id);
       if (updated) {
-        const nextEditing = { id: updated.id, chapter_id: updated.chapter_id, title: updated.title, graph: getGraph(updated) };
+        const nextEditing = { id: updated.id, chapter_id: updated.chapter_id, title: updated.title, graph: getGraph(updated), notes: parseNotes(updated.notes || '') };
         setSelected(updated);
         setEditing(nextEditing);
         savedSnapshotRef.current = editingSnapshot(nextEditing);
@@ -236,11 +444,24 @@ export default function VerificationAdmin() {
             <div style={{ fontWeight: 700, fontSize: 13 }}>Kapitel</div>
             <div style={{ fontSize: 10, color: '#6b7280' }}>{normLabel}</div>
           </div>
-          <button onClick={newVerification} title="Neuen Nachweis erstellen" style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>+ Neu</button>
+          <div style={{ display: 'flex', gap: 5 }}>
+            <button onClick={() => setChapterForm('new')} style={{ background: '#f1f5f9', color: '#374151', border: '1px solid #d1d5db', borderRadius: 5, padding: '4px 8px', cursor: 'pointer', fontSize: 11 }}>+ Kapitel</button>
+            <button onClick={newVerification} title="Neuen Nachweis erstellen" style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>+ Nachweis</button>
+          </div>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '6px 0' }}>
+          {tree.length === 0 && (
+            <div style={{ padding: '24px 16px', textAlign: 'center', color: '#9ca3af' }}>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>📂</div>
+              <div style={{ fontSize: 12, marginBottom: 10 }}>Noch keine Kapitel</div>
+              <button onClick={() => setChapterForm('new')} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontSize: 12 }}>+ Erstes Kapitel erstellen</button>
+            </div>
+          )}
           {tree.map(node => (
-            <ChapterTreeNode key={node.id} node={node} depth={0} selectedId={selected?.id || null} expanded={expanded} onToggle={toggleExpand} onSelect={selectVerification} onNewIn={newInChapter} />
+            <ChapterTreeNode key={node.id} node={node} depth={0} selectedId={selected?.id || null} expanded={expanded} onToggle={toggleExpand} onSelect={selectVerification} onNewIn={newInChapter}
+              onEditChapter={c => setChapterForm({ id: c.id, number: c.number, title: c.title, parent_id: c.parent_id })}
+              onNewSubChapter={parentId => setChapterForm({ id: '', number: '', title: '', parent_id: parentId })}
+            />
           ))}
         </div>
         <div style={{ borderTop: '1px solid #e5e7eb', padding: '6px 12px', fontSize: 11, color: '#6b7280', background: '#f8fafc' }}>
@@ -275,6 +496,22 @@ export default function VerificationAdmin() {
           <div style={{ flex: 1, minHeight: 0 }}>
             <GraphEditor key={editing.id || 'new'} graph={editing.graph} dbTables={dbTables} onChange={g => setEditing(prev => prev ? { ...prev, graph: g } : prev)} />
           </div>
+          {/* Notizen-Panel */}
+          <div style={{ borderTop: '1px solid #e5e7eb', background: '#fafafa', flexShrink: 0 }}>
+            <details>
+              <summary style={{ padding: '6px 14px', fontSize: 12, fontWeight: 600, color: '#6b7280', cursor: 'pointer', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>📝</span>
+                <span>Notizen & Kontroll-Kommentar</span>
+                {editing.notes.table.headers.length > 0 && <span style={{ fontSize: 10, background: '#dbeafe', color: '#1d4ed8', borderRadius: 10, padding: '1px 6px', marginLeft: 4 }}>●</span>}
+              </summary>
+              <div style={{ padding: '6px 14px 12px' }}>
+                <NotesTableEditor
+                  table={editing.notes.table}
+                  onChange={t => setEditing(prev => prev ? { ...prev, notes: { ...prev.notes, table: t } } : prev)}
+                />
+              </div>
+            </details>
+          </div>
         </div>
       ) : (
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
@@ -284,6 +521,17 @@ export default function VerificationAdmin() {
             <div style={{ fontSize: 12, marginTop: 6 }}>Neu: Nachweise werden als Block-Diagramm gebaut</div>
           </div>
         </div>
+      )}
+
+      {/* Kapitel-Formular-Modal */}
+      {chapterForm !== null && (
+        <ChapterFormModal
+          normId={normId}
+          chapters={chapters}
+          editing={chapterForm === 'new' ? { id: '', number: '', title: '', parent_id: null } : chapterForm}
+          onClose={() => setChapterForm(null)}
+          onSaved={() => { reload(); setChapterForm(null); }}
+        />
       )}
     </div>
   );

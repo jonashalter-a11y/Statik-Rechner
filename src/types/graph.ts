@@ -13,6 +13,8 @@ export type BlockType =
   | 'tablecalc'   // 🟦 Tabellenberechnung (Formel über Tabellenspalten)
   | 'condition'   // 🔶 Bedingung (verzweigt Workflow)
   | 'check'       // ✅ Nachweis-Prüfung (Ungleichung → grün/rot)
+  | 'minmax'      // ↕ Min / Max aus mehreren Ausdrücken
+  | 'image'       // 🖼 Bild-Block (nur Anzeige)
   | 'output';     // ⬜ PDF/Ausgabe
 
 export type EdgeKind = 'workflow' | 'condition';
@@ -24,11 +26,13 @@ export interface VariableData {
   label: string;          // Klartext-Bezeichnung
   unit: string;           // Einheit (z.B. "kN/m²")
   default_value: string;  // Standardwert
+  hasDefault?: boolean;   // false → kein Vorausfüllen im Frontend (Feld leer)
   description?: string;
   withImage?: boolean;    // 🟪 "mit Bild"-Variante
   image?: string;         // Daten-URL oder Pfad (Info-Button)
-  // Eingabe-Variante: 'number' (Default) | 'dropdown' (feste Optionen) | 'table_column'
-  inputKind?: 'number' | 'dropdown' | 'table_column';
+  imageSource?: string;   // Quelle / Kommentar zum Info-Bild
+  // Eingabe-Variante: 'number' (Default) | 'dropdown' (feste Optionen) | 'table_column' | 'number_image' (Zahl + Info-Bild)
+  inputKind?: 'number' | 'dropdown' | 'table_column' | 'number_image';
   options?: { label: string; value: string }[]; // inputKind=dropdown
   table_ref?: string;     // inputKind=table_column → db_tables.id
   table_col?: number;     // inputKind=table_column → Spaltenindex
@@ -113,9 +117,25 @@ export interface OutputData {
   blocks: string[];       // Node-IDs, die ins PDF/Protokoll sollen (Reihenfolge)
 }
 
+export interface MinMaxData {
+  kind: 'minmax';
+  name: string;    // Ergebnis-Variable (LaTeX, z.B. f_{v,0,d})
+  label: string;
+  unit: string;
+  latex: string;   // vollständige Formel, z.B. f = \min\begin{cases}a \\ b\end{cases}
+  expr: string;    // auto-abgeleiteter JS-Ausdruck
+}
+
+export interface ImageBlockData {
+  kind: 'image';
+  label: string;          // optionale Bildunterschrift
+  source?: string;        // Quelle / Kommentar
+  image?: string;         // base64 Daten-URL
+}
+
 export type BlockData =
   | VariableData | DropdownData | WoodClassData | TableValueData | CalcData
-  | StdCalcData | TableCalcData | ConditionData | CheckData | OutputData;
+  | StdCalcData | TableCalcData | ConditionData | CheckData | MinMaxData | ImageBlockData | OutputData;
 
 // ── React-Flow-kompatible Node/Edge-Strukturen ──────────────────────────────
 export interface GraphNode {

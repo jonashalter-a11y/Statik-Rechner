@@ -22,7 +22,10 @@ export const api = {
   createNorm: (data: object) => post('/norms', data),
 
   // Kapitel (norm-gefiltert)
-  getChapters:   (norm = 'sia265') => get(`/chapters?norm=${norm}`),
+  getChapters:    (norm = 'sia265') => get(`/chapters?norm=${norm}`),
+  createChapter:  (data: object) => post('/chapters', data),
+  updateChapter:  (id: string, data: object) => put(`/chapters/${id}`, data),
+  deleteChapter:  (id: string) => del(`/chapters/${id}`),
 
   // Nachweise (norm-gefiltert)
   getVerifications:    (norm = 'sia265') => get(`/verifications?norm=${norm}`),
@@ -54,6 +57,12 @@ export const api = {
   createDbTable:   (data: object) => post('/db-tables', data),
   updateDbTable:   (id: string, data: object) => put(`/db-tables/${id}`, data),
   deleteDbTable:   (id: string) => del(`/db-tables/${id}`),
+
+  // Einheiten (global)
+  getUnits:    () => get('/units'),
+  createUnit:  (data: object) => post('/units', data),
+  updateUnit:  (id: number, data: object) => put(`/units/${id}`, data),
+  deleteUnit:  (id: number) => del(`/units/${id}`),
 
   // SQL-Import
   sqlImport: (sql: string) => post('/sql-import', { sql }),

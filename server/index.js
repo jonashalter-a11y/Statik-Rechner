@@ -4,7 +4,7 @@ const db = require('./db');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '20mb' }));
 
 // ─── NORMEN ──────────────────────────────────────────────────────────────────
 app.get('/api/norms', (_, res) => res.json(db.prepare('SELECT * FROM norms').all()));
@@ -98,8 +98,8 @@ app.post('/api/verifications', (req, res) => {
   res.json({ id });
 });
 app.put('/api/verifications/:id', (req, res) => {
-  const { title, chapter_id, formula_latex, formula_description, compute_expr, graph_json } = req.body;
-  db.prepare('UPDATE verifications SET title=?, chapter_id=?, formula_latex=?, formula_description=?, compute_expr=? WHERE id=?').run(title, chapter_id, formula_latex, formula_description, compute_expr||'', req.params.id);
+  const { title, chapter_id, formula_latex, formula_description, compute_expr, graph_json, notes } = req.body;
+  db.prepare('UPDATE verifications SET title=?, chapter_id=?, formula_latex=?, formula_description=?, compute_expr=?, notes=? WHERE id=?').run(title, chapter_id, formula_latex, formula_description, compute_expr||'', notes||'', req.params.id);
   if (graph_json !== undefined) {
     const gj = graph_json == null ? null : (typeof graph_json === 'string' ? graph_json : JSON.stringify(graph_json));
     db.prepare('UPDATE verifications SET graph_json=? WHERE id=?').run(gj, req.params.id);
@@ -182,15 +182,15 @@ app.delete('/api/wood-classes/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-// ─── DATENBANK-TABELLEN (gefiltert nach Norm + Kategorie) ─────────────────────
+// ─── DATENBANK-TABELLEN (gefiltert nach Norm + Kapitel) ──────────────────────
 app.get('/api/db-tables', (req, res) => {
-  const norm = req.query.norm;
-  const cat  = req.query.category;
-  let sql = 'SELECT id, norm_id, category, title, description FROM db_tables WHERE 1=1';
+  const norm       = req.query.norm;
+  const chapter_id = req.query.chapter_id;
+  let sql = 'SELECT id, norm_id, chapter_id, title, description FROM db_tables WHERE 1=1';
   const params = [];
-  if (norm) { sql += ' AND norm_id=?'; params.push(norm); }
-  if (cat)  { sql += ' AND category=?'; params.push(cat); }
-  sql += ' ORDER BY norm_id, category, title';
+  if (norm)       { sql += ' AND norm_id=?';    params.push(norm); }
+  if (chapter_id) { sql += ' AND chapter_id=?'; params.push(chapter_id); }
+  sql += ' ORDER BY title';
   res.json(db.prepare(sql).all(...params));
 });
 app.get('/api/db-tables/:id', (req, res) => {
@@ -198,22 +198,15 @@ app.get('/api/db-tables/:id', (req, res) => {
   if (!t) return res.status(404).json({ error: 'Not found' });
   res.json({ ...t, headers: JSON.parse(t.headers), rows: JSON.parse(t.rows) });
 });
-app.get('/api/db-tables/categories', (req, res) => {
-  const norm = req.query.norm;
-  let sql = 'SELECT DISTINCT category FROM db_tables';
-  const params = [];
-  if (norm) { sql += ' WHERE norm_id=?'; params.push(norm); }
-  res.json(db.prepare(sql).all(...params).map(r => r.category));
-});
 app.post('/api/db-tables', (req, res) => {
-  const { norm_id='sia265', category='', title, description='', headers, rows } = req.body;
+  const { norm_id='sia265', chapter_id=null, title, description='', headers, rows } = req.body;
   const id = title.toLowerCase().replace(/[^a-z0-9]/g,'_') + '_' + Date.now().toString(36);
-  db.prepare('INSERT INTO db_tables (id, norm_id, category, title, description, headers, rows) VALUES (?,?,?,?,?,?,?)').run(id, norm_id, category, title, description, JSON.stringify(headers), JSON.stringify(rows));
+  db.prepare('INSERT INTO db_tables (id, norm_id, chapter_id, title, description, headers, rows) VALUES (?,?,?,?,?,?,?)').run(id, norm_id, chapter_id, title, description, JSON.stringify(headers), JSON.stringify(rows));
   res.json({ id });
 });
 app.put('/api/db-tables/:id', (req, res) => {
-  const { norm_id, category, title, description, headers, rows } = req.body;
-  db.prepare('UPDATE db_tables SET norm_id=?, category=?, title=?, description=?, headers=?, rows=? WHERE id=?').run(norm_id, category||'', title, description||'', JSON.stringify(headers), JSON.stringify(rows), req.params.id);
+  const { norm_id, chapter_id=null, title, description, headers, rows } = req.body;
+  db.prepare('UPDATE db_tables SET norm_id=?, chapter_id=?, title=?, description=?, headers=?, rows=? WHERE id=?').run(norm_id, chapter_id, title, description||'', JSON.stringify(headers), JSON.stringify(rows), req.params.id);
   res.json({ ok: true });
 });
 app.delete('/api/db-tables/:id', (req, res) => {
@@ -222,6 +215,26 @@ app.delete('/api/db-tables/:id', (req, res) => {
 });
 
 // ─── SQL-IMPORT ───────────────────────────────────────────────────────────────
+// ─── EINHEITEN ────────────────────────────────────────────────────────────────
+app.get('/api/units', (_, res) => res.json(db.prepare('SELECT * FROM units ORDER BY sort_order, id').all()));
+app.post('/api/units', (req, res) => {
+  const { latex, sort_order = 0 } = req.body;
+  if (!latex) return res.status(400).json({ error: 'latex fehlt' });
+  try {
+    const r = db.prepare('INSERT INTO units (latex, sort_order) VALUES (?, ?)').run(String(latex).trim(), Number(sort_order));
+    res.json({ id: r.lastInsertRowid, latex: String(latex).trim(), sort_order: Number(sort_order) });
+  } catch (e) { res.status(409).json({ error: 'Einheit existiert bereits' }); }
+});
+app.put('/api/units/:id', (req, res) => {
+  const { latex, sort_order = 0 } = req.body;
+  db.prepare('UPDATE units SET latex = ?, sort_order = ? WHERE id = ?').run(String(latex).trim(), Number(sort_order), req.params.id);
+  res.json({ ok: true });
+});
+app.delete('/api/units/:id', (req, res) => {
+  db.prepare('DELETE FROM units WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
 app.post('/api/sql-import', (req, res) => {
   const { sql } = req.body;
   if (!sql || typeof sql !== 'string') return res.status(400).json({ error: 'Kein SQL übergeben' });

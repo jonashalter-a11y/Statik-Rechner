@@ -18,7 +18,7 @@ const DEFAULT_PRINT   = 360;
 export default function App() {
   const [showPrint, setShowPrint] = useState(false);
   const [pathname, setPathname] = useState(window.location.pathname);
-  const { setVerificationsFromApi, setChaptersFromApi, setWoodTypesFromApi, normId, setNormId } = useStore();
+  const { setVerificationsFromApi, setChaptersFromApi, setWoodTypesFromApi, normId, setNormId, setGlobalUnits } = useStore();
 
   const [sidebarW, setSidebarW] = useState(DEFAULT_SIDEBAR);
   const [printW,   setPrintW]   = useState(DEFAULT_PRINT);
@@ -97,11 +97,13 @@ export default function App() {
   useEffect(() => {
     (async () => {
       try {
-        const [woodTypes, woodClasses] = await Promise.all([
-          api.getWoodTypes(), api.getWoodClasses(),
+        const [woodTypes, woodClasses, units] = await Promise.all([
+          api.getWoodTypes(), api.getWoodClasses(), api.getUnits(),
         ]);
         if (Array.isArray(woodTypes) && Array.isArray(woodClasses))
           setWoodTypesFromApi(woodTypes, woodClasses);
+        if (Array.isArray(units))
+          setGlobalUnits(units.map((u: any) => u.latex));
       } catch {}
       await loadNormData('sia265');
     })();

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../api';
+import MathDisplay from '../MathDisplay';
+import { useStore } from '../../store/useStore';
 
 interface Property { key: string; label: string; value: number; unit: string; }
 interface WoodClass { id: string; wood_type_id: string; name: string; label: string; properties: Property[]; }
@@ -16,6 +18,8 @@ const defaultProps: Property[] = [
   { key: 'rho_k', label: 'Rohdichte', value: 350, unit: 'kg/m³' },
 ];
 
+interface UnitEntry { id: number; latex: string; sort_order: number; }
+
 export default function WoodAdmin() {
   const [types, setTypes] = useState<WoodType[]>([]);
   const [classes, setClasses] = useState<WoodClass[]>([]);
@@ -23,13 +27,41 @@ export default function WoodAdmin() {
   const [editClass, setEditClass] = useState<WoodClass | null>(null);
   const [newTypeName, setNewTypeName] = useState('');
   const [msg, setMsg] = useState('');
+  const [activeSection, setActiveSection] = useState<'wood' | 'units'>('wood');
+  const [units, setUnits] = useState<UnitEntry[]>([]);
+  const [newUnitLatex, setNewUnitLatex] = useState('');
+  const [unitMsg, setUnitMsg] = useState('');
+  const setGlobalUnits = useStore(s => s.setGlobalUnits);
+
+  const loadUnits = async () => {
+    const data = await (api as any).getUnits();
+    setUnits(data);
+    setGlobalUnits(data.map((u: UnitEntry) => u.latex));
+  };
+
+  const addUnit = async () => {
+    const latex = newUnitLatex.trim();
+    if (!latex) return;
+    try {
+      await (api as any).createUnit({ latex, sort_order: units.length });
+      setNewUnitLatex('');
+      setUnitMsg('✓');
+      await loadUnits();
+    } catch { setUnitMsg('⚠ Einheit existiert bereits'); }
+    setTimeout(() => setUnitMsg(''), 2000);
+  };
+
+  const deleteUnit = async (id: number) => {
+    await (api as any).deleteUnit(id);
+    await loadUnits();
+  };
 
   const load = async () => {
     setTypes(await api.getWoodTypes());
     setClasses(await api.getWoodClasses());
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadUnits(); }, []);
 
   const addType = async () => {
     if (!newTypeName.trim()) return;
@@ -94,12 +126,58 @@ export default function WoodAdmin() {
   return (
     <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
       {/* Left: Types + Classes list */}
-      <div style={{ width: 260, borderRight: '1px solid #e5e7eb', background: '#fff', overflowY: 'auto' }}>
-        <div style={{ padding: '10px 12px', borderBottom: '1px solid #e5e7eb' }}>
-          <span style={{ fontWeight: 600, fontSize: 13 }}>Holzarten</span>
+      <div style={{ width: 260, borderRight: '1px solid #e5e7eb', background: '#fff', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+        {/* Section toggle */}
+        <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', flexShrink: 0 }}>
+          {(['wood', 'units'] as const).map(s => (
+            <button key={s} onClick={() => setActiveSection(s)} style={{
+              flex: 1, padding: '8px 4px', border: 'none', background: activeSection === s ? '#eff6ff' : '#fff',
+              borderBottom: activeSection === s ? '2px solid #2563eb' : '2px solid transparent',
+              color: activeSection === s ? '#1d4ed8' : '#6b7280', cursor: 'pointer', fontSize: 12, fontWeight: activeSection === s ? 700 : 400,
+            }}>
+              {s === 'wood' ? '🌲 Holzarten' : '📐 Einheiten'}
+            </button>
+          ))}
         </div>
+        {activeSection === 'wood' && <div style={{ fontWeight: 600, fontSize: 13, padding: '8px 12px', borderBottom: '1px solid #e5e7eb' }}>Holzarten</div>}
 
-        {types.map(t => (
+        {/* ── Einheiten-Liste ── */}
+        {activeSection === 'units' && (
+          <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+            {units.map(u => (
+              <div key={u.id} style={{ display: 'flex', alignItems: 'center', padding: '5px 12px', borderBottom: '1px solid #f3f4f6', gap: 8 }}>
+                <div style={{ flex: 1, fontSize: 14 }}><MathDisplay latex={u.latex} /></div>
+                <div style={{ fontSize: 10, color: '#9ca3af', fontFamily: 'monospace', maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={u.latex}>{u.latex}</div>
+                <button onClick={() => deleteUnit(u.id)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: '2px 4px' }}>✕</button>
+              </div>
+            ))}
+            {units.length === 0 && <div style={{ padding: 16, color: '#9ca3af', fontSize: 12, textAlign: 'center' }}>Noch keine Einheiten definiert</div>}
+          </div>
+        )}
+
+        {activeSection === 'units' && (
+          <div style={{ padding: 12, borderTop: '1px solid #e5e7eb', flexShrink: 0 }}>
+            <div style={labelStyle}>Neue Einheit (LaTeX)</div>
+            <input
+              value={newUnitLatex}
+              onChange={e => setNewUnitLatex(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') addUnit(); }}
+              placeholder="z.B. \mathrm{kN/m^2}"
+              style={{ border: '1px solid #d1d5db', borderRadius: 4, padding: '5px 8px', fontSize: 12, width: '100%', fontFamily: 'monospace', marginBottom: 4, boxSizing: 'border-box' }}
+            />
+            {newUnitLatex && (
+              <div style={{ background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 4, padding: '4px 8px', marginBottom: 6, fontSize: 13 }}>
+                <MathDisplay latex={newUnitLatex} />
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <button onClick={addUnit} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, padding: '5px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>+ Hinzufügen</button>
+              {unitMsg && <span style={{ fontSize: 11, color: unitMsg.startsWith('✓') ? '#15803d' : '#b91c1c' }}>{unitMsg}</span>}
+            </div>
+          </div>
+        )}
+
+        {activeSection === 'wood' && types.map(t => (
           <div key={t.id}>
             <div style={{ padding: '8px 12px', background: '#f8fafc', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ fontWeight: 600, fontSize: 13 }}>🌲 {t.label}</span>
@@ -122,14 +200,16 @@ export default function WoodAdmin() {
         ))}
 
         {/* Add type */}
-        <div style={{ padding: '10px 12px', borderTop: '1px solid #e5e7eb', marginTop: 8 }}>
-          <div style={labelStyle}>Neue Holzart</div>
-          <div style={{ display: 'flex', gap: 6 }}>
-            <input value={newTypeName} onChange={e => setNewTypeName(e.target.value)} placeholder="z.B. Laubholz"
-              style={{ flex: 1, border: '1px solid #d1d5db', borderRadius: 4, padding: '4px 8px', fontSize: 12 }} />
-            <button onClick={addType} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>+</button>
+        {activeSection === 'wood' && (
+          <div style={{ padding: '10px 12px', borderTop: '1px solid #e5e7eb', marginTop: 8, flexShrink: 0 }}>
+            <div style={labelStyle}>Neue Holzart</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input value={newTypeName} onChange={e => setNewTypeName(e.target.value)} placeholder="z.B. Laubholz"
+                style={{ flex: 1, border: '1px solid #d1d5db', borderRadius: 4, padding: '4px 8px', fontSize: 12 }} />
+              <button onClick={addType} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>+</button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Right: Class Editor */}
