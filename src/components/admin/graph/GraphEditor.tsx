@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ReactFlow, Background, Controls, MiniMap, addEdge,
   useNodesState, useEdgesState, useReactFlow, ReactFlowProvider,
-  Connection, Edge, Node, MarkerType,
+  Connection, Edge, Node, MarkerType, NodeChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { nodeTypes } from './BlockNodes';
@@ -103,7 +103,7 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
   const globalUnits = useStore(s => s.globalUnits);
   const { screenToFlowPosition } = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(
-    graph.nodes.map(n => ({ id: n.id, type: n.type, position: n.position, data: n.data as any })),
+    graph.nodes.map(n => ({ id: n.id, type: n.type, position: n.position, data: n.data as any, ...(n.style ? { style: n.style } : {}) })),
   );
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(
     graph.edges.map(e => ({
@@ -116,6 +116,7 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
   );
   const [pickTargetId, setPickTargetId] = useState<string | null>(null);
   const [clipboardCount, setClipboardCount] = useState(0);
+  const [lassoMode, setLassoMode] = useState(false);
   const [, setHistoryVersion] = useState(0);
   const tableCache = useRef<Map<string, DbTableFull>>(new Map());
   const clipboardRef = useRef<GraphClipboard | null>(null);
@@ -129,7 +130,14 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
   useEffect(() => {
     const g: VerificationGraph = {
       version: 1,
-      nodes: nodes.map(n => ({ id: n.id, type: n.type as BlockType, position: n.position, data: n.data as any })) as GraphNode[],
+      nodes: nodes.map(n => {
+        const gn: GraphNode = { id: n.id, type: n.type as BlockType, position: n.position, data: n.data as any };
+        // Grösse (vom NodeResizer) speichern
+        const w = (n.style as any)?.width ?? n.width;
+        const h = (n.style as any)?.height ?? n.height;
+        if (w || h) gn.style = { ...(w ? { width: w } : {}), ...(h ? { height: h } : {}) };
+        return gn;
+      }) as GraphNode[],
       edges: edges.map(e => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle ?? null, targetHandle: e.targetHandle ?? null, data: (e.data as any) || { kind: 'workflow' } })) as GraphEdge[],
     };
     onChange(g);
@@ -154,8 +162,36 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
   }, [nodes, edges]);
 
   const updateNodeData = useCallback((id: string, patch: Partial<BlockData>) => {
-    setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...(n.data as any), ...patch } } : n));
+    setNodes(nds => {
+      const target = nds.find(n => n.id === id);
+      if (!target) return nds;
+      return nds.map(n => {
+        if (n.id === id) return { ...n, data: { ...(n.data as any), ...patch } };
+        // Patch auch alle anderen selektierten Blöcke gleichen Typs
+        if (target.selected && n.selected && n.type === target.type) {
+          return { ...n, data: { ...(n.data as any), ...patch } };
+        }
+        return n;
+      });
+    });
   }, [setNodes]);
+
+  // Wrapper: bei Resize eines selektierten Blocks → gleiche Grösse an alle selektierten Blöcke
+  const handleNodesChange = useCallback((changes: NodeChange[]) => {
+    onNodesChange(changes);
+    const dimChange = changes.find((c: any) => c.type === 'dimensions' && c.dimensions) as any;
+    if (!dimChange) return;
+    setNodes(nds => {
+      const selectedIds = new Set(nds.filter(n => n.selected).map(n => n.id));
+      if (!selectedIds.has(dimChange.id) || selectedIds.size <= 1) return nds;
+      const { width, height } = dimChange.dimensions;
+      return nds.map(n =>
+        n.selected && n.id !== dimChange.id
+          ? { ...n, style: { ...(n.style || {}), width, height } }
+          : n,
+      );
+    });
+  }, [onNodesChange, setNodes]);
 
   const removeNode = useCallback((id: string) => {
     setNodes(nds => nds.filter(n => n.id !== id));
@@ -378,6 +414,14 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
             >
               Einfügen
             </button>
+            <button
+              type="button"
+              onClick={() => setLassoMode(m => !m)}
+              title="Lasso-Modus: Ziehen = Auswahl-Box"
+              style={{ gridColumn: '1 / -1', border: `1px solid ${lassoMode ? '#2563eb' : '#cbd5e1'}`, background: lassoMode ? '#eff6ff' : '#fff', borderRadius: 5, padding: '5px 4px', cursor: 'pointer', fontSize: 11, color: lassoMode ? '#2563eb' : '#334155', fontWeight: lassoMode ? 700 : 400 }}
+            >
+              {lassoMode ? '⬚ Lasso AN' : '⬚ Lasso'}
+            </button>
           </div>
           {PALETTE.map(p => (
             <button
@@ -406,12 +450,15 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
         <div style={{ flex: 1, minWidth: 0, background: 'rgba(219, 234, 254, 0.25)' }} onDragOver={onDragOver} onDrop={onDrop}>
           <ReactFlow
             nodes={nodes} edges={edges}
-            onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
+            onNodesChange={handleNodesChange} onEdgesChange={onEdgesChange}
             onConnect={onConnect} onEdgeClick={onEdgeClick}
             nodeTypes={nodeTypes as any}
             fitView proOptions={{ hideAttribution: true }}
             defaultEdgeOptions={{ markerEnd: { type: MarkerType.ArrowClosed } }}
             style={{ background: 'transparent' }}
+            selectionOnDrag={lassoMode}
+            panOnDrag={lassoMode ? [1, 2] : true}
+            selectionMode={'partial' as any}
           >
             <Background color="#bfdbfe" gap={18} />
             <Controls />

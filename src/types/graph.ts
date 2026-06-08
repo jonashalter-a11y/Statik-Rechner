@@ -143,6 +143,7 @@ export interface GraphNode {
   type: BlockType;
   position: { x: number; y: number };
   data: BlockData;
+  style?: { width?: number; height?: number; [key: string]: unknown };
 }
 
 export interface GraphEdge {

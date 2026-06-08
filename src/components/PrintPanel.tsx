@@ -208,11 +208,37 @@ export default function PrintPanel() {
       // KaTeX-Fonts brauchen einen Tick zum Rendern
       await new Promise(r => setTimeout(r, 300));
 
+      // html2canvas kann moderne CSS-Farben (color(), oklch() etc.) nicht parsen.
+      // Workaround: alle betroffenen Elemente auf sichere rgba()-Werte patchen.
+      const patchUnsupportedColors = (root: HTMLElement) => {
+        const toRgb = (css: string): string => {
+          try {
+            const c = document.createElement('canvas');
+            c.width = c.height = 1;
+            const ctx = c.getContext('2d')!;
+            ctx.fillStyle = css;
+            ctx.fillRect(0, 0, 1, 1);
+            const [r, g, b, a] = ctx.getImageData(0, 0, 1, 1).data;
+            return a === 0 ? 'transparent' : `rgba(${r},${g},${b},${+(a / 255).toFixed(3)})`;
+          } catch { return css; }
+        };
+        const props = ['color', 'background-color', 'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'outline-color', 'fill', 'stroke'];
+        const isUnsafe = (v: string) => /^(color|oklch|lab|lch|display-p3)\s*\(/.test(v);
+        root.querySelectorAll<HTMLElement>('*').forEach(el => {
+          const s = window.getComputedStyle(el);
+          props.forEach(p => {
+            const v = s.getPropertyValue(p);
+            if (v && isUnsafe(v)) (el.style as any)[p.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = toRgb(v);
+          });
+        });
+      };
+
       const canvas = await html2canvas(clone, {
         scale: 2,
         backgroundColor: '#ffffff',
         useCORS: true,
         logging: false,
+        onclone: (_doc, el) => patchUnsupportedColors(el),
       });
 
       document.body.removeChild(container);

@@ -198,6 +198,34 @@ function editingSnapshot(editing: Editing | null): string {
   });
 }
 
+function NotesTextarea({ text, onChange }: { text: string; onChange: (t: string) => void }) {
+  const [local, setLocal] = useState(text);
+  const lastEmitted = useRef(text);
+
+  useEffect(() => {
+    if (text !== lastEmitted.current) {
+      setLocal(text);
+      lastEmitted.current = text;
+    }
+  }, [text]);
+
+  const update = (val: string) => {
+    setLocal(val);
+    lastEmitted.current = val;
+    onChange(val);
+  };
+
+  return (
+    <textarea
+      value={local}
+      onChange={e => update(e.target.value)}
+      placeholder="Kontroll-Beispiele aus dem Unterricht, Anmerkungen zur Formel, TODO-Liste für diesen Nachweis…"
+      rows={6}
+      style={{ width: '100%', border: '1px solid #d1d5db', borderRadius: 6, padding: '8px 10px', fontSize: 12, fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box', background: '#fff', color: '#374151', lineHeight: 1.5 }}
+    />
+  );
+}
+
 function NotesTableEditor({ table, onChange }: {
   table: { headers: string[]; rows: string[][] };
   onChange: (t: { headers: string[]; rows: string[][] }) => void;
@@ -400,10 +428,21 @@ export default function VerificationAdmin() {
       setVerifications(fresh);
       const updated = fresh.find((x: Verification) => x.id === id);
       if (updated) {
-        const nextEditing = { id: updated.id, chapter_id: updated.chapter_id, title: updated.title, graph: getGraph(updated), notes: parseNotes(updated.notes || '') };
         setSelected(updated);
-        setEditing(nextEditing);
-        savedSnapshotRef.current = editingSnapshot(nextEditing);
+        if (!editingToSave.id) {
+          // Neue Verifikation: ID vom Server übernehmen, Rest aus aktuellem State
+          const nextEditing = { ...editingRef.current!, id: updated.id };
+          setEditing(nextEditing);
+          savedSnapshotRef.current = editingSnapshot(nextEditing);
+        } else if (auto) {
+          // Auto-Save: Editor-State NICHT überschreiben (User tippt gerade)
+          savedSnapshotRef.current = editingSnapshot(editingRef.current);
+        } else {
+          // Manuelles Speichern: vollständig vom Server neu laden
+          const nextEditing = { id: updated.id, chapter_id: updated.chapter_id, title: updated.title, graph: getGraph(updated), notes: parseNotes(updated.notes || '') };
+          setEditing(nextEditing);
+          savedSnapshotRef.current = editingSnapshot(nextEditing);
+        }
       } else {
         savedSnapshotRef.current = snapshot;
       }
@@ -502,12 +541,12 @@ export default function VerificationAdmin() {
               <summary style={{ padding: '6px 14px', fontSize: 12, fontWeight: 600, color: '#6b7280', cursor: 'pointer', userSelect: 'none', listStyle: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span>📝</span>
                 <span>Notizen & Kontroll-Kommentar</span>
-                {editing.notes.table.headers.length > 0 && <span style={{ fontSize: 10, background: '#dbeafe', color: '#1d4ed8', borderRadius: 10, padding: '1px 6px', marginLeft: 4 }}>●</span>}
+                {editing.notes.text && <span style={{ fontSize: 10, background: '#dbeafe', color: '#1d4ed8', borderRadius: 10, padding: '1px 6px', marginLeft: 4 }}>●</span>}
               </summary>
-              <div style={{ padding: '6px 14px 12px' }}>
-                <NotesTableEditor
-                  table={editing.notes.table}
-                  onChange={t => setEditing(prev => prev ? { ...prev, notes: { ...prev.notes, table: t } } : prev)}
+              <div style={{ padding: '0 14px 12px' }}>
+                <NotesTextarea
+                  text={editing.notes.text}
+                  onChange={t => setEditing(prev => prev ? { ...prev, notes: { ...prev.notes, text: t } } : prev)}
                 />
               </div>
             </details>
