@@ -5,9 +5,11 @@ import MathDisplay from '../../MathDisplay';
 import { nameToLatex } from '../../../utils/formatName';
 import { latexToJs, latexCondToJs, latexHasIneq } from '../../../utils/latexToJs';
 import { useGraphCtx, DbTableFull } from './graphContext';
+import { api } from '../../../api';
+import { useStore } from '../../../store/useStore';
 import {
   VariableData, DropdownData, WoodClassData, TableValueData, CalcData,
-  StdCalcData, TableCalcData, ConditionData, CheckData, MinMaxData, ImageBlockData, OutputData,
+  StdCalcData, TableCalcData, ChartLookupData, ConditionData, CheckData, MinMaxData, ImageBlockData, OutputData,
 } from '../../../types/graph';
 
 // ── Block-Stil je Typ ────────────────────────────────────────────────────────
@@ -19,6 +21,7 @@ const THEME: Record<string, { bg: string; border: string; icon: string; label: s
   calc:       { bg: '#fef2f2', border: '#dc2626', icon: '🟥', label: 'Rechnung' },
   stdcalc:    { bg: '#f5f0e8', border: '#92400e', icon: '🟫', label: 'Std-Berechnung' },
   tablecalc:  { bg: '#eff6ff', border: '#2563eb', icon: '🟦', label: 'Tabellenberechnung' },
+  chartlookup: { bg: '#ecfdf5', border: '#059669', icon: '📉', label: 'Diagramm-Wert' },
   condition:  { bg: '#fefce8', border: '#ca8a04', icon: '🔶', label: 'Bedingung' },
   check:      { bg: '#f0fdf4', border: '#059669', icon: '✅', label: 'Nachweis' },
   minmax:     { bg: '#fff1f2', border: '#be123c', icon: '↕', label: 'Min / Max' },
@@ -125,19 +128,28 @@ async function pasteImageFromClipboard(onImage: (dataUrl: string) => void) {
 
 function UnitField({ value, onChange, placeholder = 'kN/m^2' }: { value: string; onChange: (value: string) => void; placeholder?: string }) {
   const { unitOptions } = useGraphCtx();
+  const setGlobalUnits = useStore(s => s.setGlobalUnits);
   const [open, setOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [menuRect, setMenuRect] = useState<React.CSSProperties | null>(null);
   const options = value && !unitOptions.includes(value) ? [value, ...unitOptions] : unitOptions;
-  const saveUnit = () => {
+  const saveUnit = async () => {
     const next = draft.trim();
     if (!next) return;
+    setSaving(true);
+    try {
+      await api.createUnit({ latex: next, sort_order: 0 });
+      const updated = await api.getUnits();
+      setGlobalUnits((updated as any[]).map((u: any) => u.latex));
+    } catch { /* Einheit existiert schon – ignorieren */ }
     onChange(next);
     setDraft('');
     setModalOpen(false);
+    setSaving(false);
   };
   const placeMenu = () => {
     const rect = buttonRef.current?.getBoundingClientRect();
@@ -276,9 +288,10 @@ function UnitField({ value, onChange, placeholder = 'kN/m^2' }: { value: string;
                   type="button"
                   className="nodrag"
                   onClick={saveUnit}
-                  style={{ border: 'none', background: '#2563eb', color: '#fff', borderRadius: 5, padding: '6px 12px', cursor: 'pointer', fontWeight: 700 }}
+                  disabled={saving || !draft.trim()}
+                  style={{ border: 'none', background: '#2563eb', color: '#fff', borderRadius: 5, padding: '6px 12px', cursor: 'pointer', fontWeight: 700, opacity: saving || !draft.trim() ? 0.6 : 1 }}
                 >
-                  Speichern
+                  {saving ? '…' : 'Speichern'}
                 </button>
               </div>
             </div>
@@ -703,6 +716,86 @@ export function TableCalcNode({ id, data, selected }: NodeProps) {
   );
 }
 
+// ── 📉 Diagramm-Wert ─────────────────────────────────────────────────────────
+export function ChartLookupNode({ id, data, selected }: NodeProps) {
+  const d = data as unknown as ChartLookupData;
+  const { updateNodeData, dbTables, loadTableFull } = useGraphCtx();
+  const set = (p: Partial<ChartLookupData>) => updateNodeData(id, p);
+  const [seriesNames, setSeriesNames] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!d.chart_ref) { setSeriesNames([]); return; }
+    loadTableFull(d.chart_ref).then(t => {
+      const names = (t?.chart_json?.series ?? []).map((s: any) => s.name);
+      setSeriesNames(names);
+      // automatisch "Alle Kurven" aktivieren wenn Diagramm mehrere Serien hat
+      if (names.length > 1 && d.all_series === undefined) {
+        set({ all_series: true });
+      }
+    });
+  }, [d.chart_ref, loadTableFull]);
+
+  return (
+    <Shell id={id} type="chartlookup" selected={selected}>
+      <div style={{ display: 'flex', gap: 0, marginBottom: 4, border: '1px solid #a7f3d0', borderRadius: 4, overflow: 'hidden', width: 'fit-content' }}>
+        {(['x_to_y', 'y_to_x'] as const).map(dir => (
+          <button key={dir} className="nodrag" onClick={() => set({ direction: dir })}
+            style={{ padding: '2px 8px', border: 'none', cursor: 'pointer', fontSize: 9, fontWeight: 600,
+              background: (d.direction ?? 'x_to_y') === dir ? '#059669' : '#f0fdf4',
+              color: (d.direction ?? 'x_to_y') === dir ? '#fff' : '#6b7280' }}>
+            {dir === 'x_to_y' ? 'X → Y' : 'Y → X'}
+          </button>
+        ))}
+      </div>
+      <div style={lbl}>Diagramm</div>
+      <select className="nodrag" value={d.chart_ref || ''} onChange={e => set({ chart_ref: e.target.value, series_index: 0 })} style={inp}>
+        <option value="">– wählen –</option>
+        {dbTables.filter(t => t.type === 'chart').map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+      </select>
+      {seriesNames.length > 1 && (
+        <div style={{ display: 'flex', gap: 0, marginBottom: 2, border: '1px solid #a7f3d0', borderRadius: 4, overflow: 'hidden', width: 'fit-content' }}>
+          {[false, true].map(all => (
+            <button key={String(all)} className="nodrag" onClick={() => set({ all_series: all })}
+              style={{ padding: '2px 8px', border: 'none', cursor: 'pointer', fontSize: 9, fontWeight: 600,
+                background: !!(d.all_series) === all ? '#059669' : '#f0fdf4',
+                color: !!(d.all_series) === all ? '#fff' : '#6b7280' }}>
+              {all ? 'Alle Kurven' : 'Einzelne Kurve'}
+            </button>
+          ))}
+        </div>
+      )}
+      {seriesNames.length > 1 && !d.all_series && (
+        <>
+          <div style={lbl}>Kurve</div>
+          <select className="nodrag" value={d.series_index ?? 0} onChange={e => set({ series_index: Number(e.target.value) })} style={inp}>
+            {seriesNames.map((n, i) => <option key={i} value={i}>{n}</option>)}
+          </select>
+        </>
+      )}
+      {d.all_series && seriesNames.length > 0 && (
+        <div style={{ fontSize: 9, color: '#047857', background: '#d1fae5', borderRadius: 3, padding: '2px 5px', marginBottom: 2 }}>
+          → {seriesNames.join(', ')}
+        </div>
+      )}
+      <div style={lbl}>{(d.direction ?? 'x_to_y') === 'x_to_y' ? 'X-Variablenname' : 'Y-Variablenname'} (LaTeX)</div>
+      <F value={d.x_name || ''} placeholder="z.B. alpha" onChange={e => set({ x_name: e.target.value })} />
+      {d.x_name && <div style={{ fontSize: 10, marginTop: 1 }}><MathDisplay latex={nameToLatex(d.x_name)} /></div>}
+      <div style={lbl}>Bezeichnung</div>
+      <F value={d.label || ''} placeholder="z.B. Dachformbeiwert" onChange={e => set({ label: e.target.value })} />
+      <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ flex: 1 }}>
+          <div style={lbl}>Ergebnis-Name (LaTeX)</div>
+          <F value={d.name || ''} placeholder="z.B. mu_1" onChange={e => set({ name: e.target.value })} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={lbl}>Einheit</div>
+          <UnitField value={d.unit || ''} onChange={unit => set({ unit })} placeholder="–" />
+        </div>
+      </div>
+    </Shell>
+  );
+}
+
 // ── 🔶 Bedingung ─────────────────────────────────────────────────────────────
 export function ConditionNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as ConditionData;
@@ -1019,6 +1112,7 @@ export const nodeTypes = {
   calc: CalcNode,
   stdcalc: StdCalcNode,
   tablecalc: TableCalcNode,
+  chartlookup: ChartLookupNode,
   condition: ConditionNode,
   check: CheckNode,
   minmax: MinMaxNode,

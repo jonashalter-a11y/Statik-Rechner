@@ -4,18 +4,19 @@
 // im Workflow (Standard) oder als Bedingungs-Verzweigung.
 
 export type BlockType =
-  | 'variable'    // 🟪 Eingabe-Variable
-  | 'dropdown'    // 🟧 Auswahl (Liste / Tabelle / Tabellenspalte)
-  | 'woodclass'   // 🟨 aktuelle Holzklasse aus dem Frontend-Header
-  | 'tablevalue'  // 🟩 Wert aus der vom Dropdown gewählten Zeile
-  | 'calc'        // 🟥 Rechnung (LaTeX + JS-Ausdruck)
-  | 'stdcalc'     // 🟫 Standard-Berechnung (ein Operand aus Tabellenberechnung)
-  | 'tablecalc'   // 🟦 Tabellenberechnung (Formel über Tabellenspalten)
-  | 'condition'   // 🔶 Bedingung (verzweigt Workflow)
-  | 'check'       // ✅ Nachweis-Prüfung (Ungleichung → grün/rot)
-  | 'minmax'      // ↕ Min / Max aus mehreren Ausdrücken
-  | 'image'       // 🖼 Bild-Block (nur Anzeige)
-  | 'output';     // ⬜ PDF/Ausgabe
+  | 'variable'     // 🟪 Eingabe-Variable
+  | 'dropdown'     // 🟧 Auswahl (Liste / Tabelle / Tabellenspalte)
+  | 'woodclass'    // 🟨 aktuelle Holzklasse aus dem Frontend-Header
+  | 'tablevalue'   // 🟩 Wert aus der vom Dropdown gewählten Zeile
+  | 'calc'         // 🟥 Rechnung (LaTeX + JS-Ausdruck)
+  | 'stdcalc'      // 🟫 Standard-Berechnung (ein Operand aus Tabellenberechnung)
+  | 'tablecalc'    // 🟦 Tabellenberechnung (Formel über Tabellenspalten)
+  | 'chartlookup'  // 📉 Diagramm-Ablesewert (X-Variable → interpolierter Y-Wert)
+  | 'condition'    // 🔶 Bedingung (verzweigt Workflow)
+  | 'check'        // ✅ Nachweis-Prüfung (Ungleichung → grün/rot)
+  | 'minmax'       // ↕ Min / Max aus mehreren Ausdrücken
+  | 'image'        // 🖼 Bild-Block (nur Anzeige)
+  | 'output';      // ⬜ PDF/Ausgabe
 
 export type EdgeKind = 'workflow' | 'condition';
 
@@ -129,6 +130,18 @@ export interface MinMaxData {
   expr: string;    // auto-abgeleiteter JS-Ausdruck
 }
 
+export interface ChartLookupData {
+  kind: 'chartlookup';
+  chart_ref: string;     // db_tables.id (type='chart')
+  series_index: number;  // Kurven-Index (0-basiert), ignoriert wenn all_series=true
+  all_series?: boolean;  // alle Kurven → name_1, name_2, name_3 …
+  direction?: 'x_to_y' | 'y_to_x'; // Standard: x_to_y
+  x_name: string;        // Variablenname für Eingabe (X bei x_to_y, Y bei y_to_x)
+  name: string;          // LaTeX-Basisname des Ergebnisses
+  label: string;
+  unit: string;
+}
+
 export interface ImageBlockData {
   kind: 'image';
   label: string;          // optionale Bildunterschrift
@@ -138,7 +151,7 @@ export interface ImageBlockData {
 
 export type BlockData =
   | VariableData | DropdownData | WoodClassData | TableValueData | CalcData
-  | StdCalcData | TableCalcData | ConditionData | CheckData | MinMaxData | ImageBlockData | OutputData;
+  | StdCalcData | TableCalcData | ChartLookupData | ConditionData | CheckData | MinMaxData | ImageBlockData | OutputData;
 
 // ── React-Flow-kompatible Node/Edge-Strukturen ──────────────────────────────
 export interface GraphNode {

@@ -21,6 +21,7 @@ const PALETTE: { type: BlockType; icon: string; label: string; color: string }[]
   { type: 'calc',       icon: '🟥', label: 'Rechnung',          color: '#dc2626' },
   { type: 'stdcalc',    icon: '🟫', label: 'Std-Berechnung',    color: '#92400e' },
   { type: 'tablecalc',  icon: '🟦', label: 'Tabellenberechnung', color: '#2563eb' },
+  { type: 'chartlookup', icon: '📉', label: 'Diagramm-Wert',    color: '#059669' },
   { type: 'condition',  icon: '🔶', label: 'Bedingung',         color: '#ca8a04' },
   { type: 'check',      icon: '✅', label: 'Nachweis',          color: '#059669' },
   { type: 'minmax',     icon: '↕',  label: 'Min / Max',         color: '#be123c' },
@@ -36,8 +37,9 @@ function defaultData(type: BlockType): BlockData {
     case 'tablevalue': return { kind: 'tablevalue', name: '', label: '', unit: '', table_col: 1 };
     case 'calc':       return { kind: 'calc', name: '', label: '', unit: '', latex: '', expr: '' };
     case 'stdcalc':    return { kind: 'stdcalc', name: '', label: '', unit: '', latex: '', expr: '', picker_name: '' };
-    case 'tablecalc':  return { kind: 'tablecalc', name: '', label: '', unit: '', zones: [], expr: 'cell' };
-    case 'condition':  return { kind: 'condition', label: '', conditions: [] };
+    case 'tablecalc':    return { kind: 'tablecalc', name: '', label: '', unit: '', zones: [], expr: 'cell' };
+    case 'chartlookup':  return { kind: 'chartlookup', chart_ref: '', series_index: 0, x_name: '', name: '', label: '', unit: '' };
+    case 'condition':    return { kind: 'condition', label: '', conditions: [] };
     case 'check':      return { kind: 'check', label: '', latex: '', expr: '' };
     case 'minmax':     return { kind: 'minmax', name: '', label: '', unit: '', latex: '', expr: '' };
     case 'image':      return { kind: 'image', label: '' };
@@ -202,7 +204,7 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
     if (tableCache.current.has(id)) return tableCache.current.get(id)!;
     try {
       const full = await api.getDbTableFull(id);
-      const t: DbTableFull = { id: full.id, title: full.title, headers: full.headers || [], rows: full.rows || [] };
+      const t: DbTableFull = { id: full.id, title: full.title, headers: full.headers || [], rows: full.rows || [], chart_json: full.chart_json ?? null };
       tableCache.current.set(id, t);
       return t;
     } catch { return null; }

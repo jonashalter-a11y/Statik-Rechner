@@ -74,17 +74,18 @@ function parseCsv(text: string): string[][] {
 }
 
 // ── Kapitelbaum-Knoten ─────────────────────────────────────────────────────────
-function ChapterTreeNode({ node, depth, selectedTableId, selectedChapterId, expanded, dragOverId, showCsv, showJson, onToggle, onSelectTable, onSelectChapter, onNewIn, onCsvIn, onJsonIn, onDragOverChapter, onDragLeave, onDropOnChapter }: {
+function ChapterTreeNode({ node, depth, selectedTableId, selectedChapterId, expanded, dragOverId, showCsv, showJson, hideEmpty, onToggle, onSelectTable, onSelectChapter, onNewIn, onCsvIn, onJsonIn, onDragOverChapter, onDragLeave, onDropOnChapter }: {
   node: ChapterNode; depth: number; selectedTableId: string | null; selectedChapterId: string | null;
-  expanded: Set<string>; dragOverId: string | null; showCsv: boolean; showJson: boolean;
+  expanded: Set<string>; dragOverId: string | null; showCsv: boolean; showJson: boolean; hideEmpty: boolean;
   onToggle: (id: string) => void; onSelectTable: (t: TableMeta) => void; onSelectChapter: (id: string) => void;
   onNewIn: (chapterId: string) => void; onCsvIn: (chapterId: string) => void; onJsonIn: (chapterId: string) => void;
   onDragOverChapter: (id: string) => void; onDragLeave: () => void; onDropOnChapter: (chapterId: string, tableId: string) => void;
 }) {
+  if (hideEmpty && node.totalCount === 0) return null;
   const isOpen = expanded.has(node.id);
   const isOver = dragOverId === node.id;
   const isChapterSelected = selectedChapterId === node.id;
-  const sharedProps = { selectedTableId, selectedChapterId, dragOverId, showCsv, showJson, onToggle, onSelectTable, onSelectChapter, onNewIn, onCsvIn, onJsonIn, onDragOverChapter, onDragLeave, onDropOnChapter };
+  const sharedProps = { selectedTableId, selectedChapterId, dragOverId, showCsv, showJson, hideEmpty, onToggle, onSelectTable, onSelectChapter, onNewIn, onCsvIn, onJsonIn, onDragOverChapter, onDragLeave, onDropOnChapter };
   return (
     <div style={{ marginLeft: depth * 10 }}>
       <div
@@ -228,10 +229,21 @@ function JsonImportModal({ normId, chapterId, chapters, onClose, onImported }: {
     if (!preview || !title.trim()) { setErr('Titel und JSON erforderlich'); return; }
     setSaving(true); setErr('');
     try {
-      await (api as any).createDbTable({ norm_id: normId, chapter_id: chapterId, title: title.trim(), description, type: 'chart', headers: [], rows: [], chart_json: preview });
+      const res = await fetch('/api/db-tables', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ norm_id: normId, chapter_id: chapterId, title: title.trim(), description, type: 'chart', headers: [], rows: [], chart_json: preview }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
       onImported(); onClose();
-    } catch { setErr('Fehler beim Importieren'); }
-    setSaving(false);
+    } catch (e: any) {
+      setErr(String(e.message || e));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -287,17 +299,66 @@ function JsonImportModal({ normId, chapterId, chapters, onClose, onImported }: {
 function ChartPreview({ chart }: { chart: ChartJson }) {
   const { chartType, xAxis, yAxis, series } = chart;
 
-  // Alle Datenpunkte in ein flaches Array für Recharts umwandeln
-  const allX = Array.from(new Set(series.flatMap(s => s.data.map(d => d[0])))).sort((a, b) => a - b);
+  const xLabel = xAxis.unit ? `${xAxis.label} [${xAxis.unit}]` : xAxis.label;
+  const yLabel = yAxis.unit ? `${yAxis.label} [${yAxis.unit}]` : yAxis.label;
+  const margin = { top: 10, right: 24, bottom: 50, left: 16 };
+  const axisStyle = { fontSize: 11 };
+  const xAxisProps = {
+    dataKey: 'x', tick: axisStyle,
+    label: { value: xLabel, position: 'insideBottom' as const, offset: -30, fontSize: 11 },
+  };
+  const yAxisProps = {
+    tick: axisStyle,
+    label: { value: yLabel, angle: -90, position: 'insideLeft' as const, offset: 12, fontSize: 11 },
+    width: 48,
+  };
+  const tooltipStyle = { fontSize: 11, borderRadius: 6, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' };
+
+  // Lineare Interpolation: Y-Wert einer Kurve an beliebigem X (nur innerhalb der Kurve)
+  const interpolateY = (data: [number, number][], x: number): number | undefined => {
+    if (data.length === 0) return undefined;
+    for (let i = 0; i < data.length - 1; i++) {
+      const [x0, y0] = data[i], [x1, y1] = data[i + 1];
+      if (x >= x0 && x <= x1) return x0 === x1 ? y0 : y0 + (y1 - y0) * (x - x0) / (x1 - x0);
+    }
+    if (x === data[data.length - 1][0]) return data[data.length - 1][1];
+    return undefined;
+  };
+
+  // Für Line/Bar: dichte X-Punkte erzeugen (jeder ganzzahlige Schritt im Bereich)
+  // → Tooltip fährt flüssig durch, nicht nur an Originalstützpunkten
+  const origX = Array.from(new Set(series.flatMap(s => s.data.map(d => d[0])))).sort((a, b) => a - b);
+  const xMin = origX[0] ?? 0;
+  const xMax = origX[origX.length - 1] ?? 1;
+  const range = xMax - xMin;
+  // Schrittweite: 1 wenn Range ≤ 200, sonst so dass max 200 Punkte entstehen
+  const step = range <= 200 ? 1 : Math.ceil(range / 200);
+  const denseX: number[] = [];
+  for (let x = xMin; x <= xMax + 1e-9; x = Math.round((x + step) * 1e9) / 1e9) denseX.push(x);
+  // Originalpunkte immer dabei (für Exaktheit an Knicken)
+  const allX = Array.from(new Set([...denseX, ...origX])).sort((a, b) => a - b);
+  const chartData = allX.map(x => {
+    const point: Record<string, number> = { x };
+    series.forEach((s, i) => {
+      const y = interpolateY(s.data, x);
+      if (y !== undefined) point[`s${i}`] = Math.round(y * 10000) / 10000;
+    });
+    return point;
+  });
+
+  const tooltipFormatter = (value: any, name: any) => [`${value}`, name];
+  const labelFormatter = (x: any) => `${xAxis.label}: ${x}${xAxis.unit ? ` ${xAxis.unit}` : ''}`;
 
   if (chartType === 'scatter') {
     return (
-      <ResponsiveContainer width="100%" height={300}>
-        <ScatterChart margin={{ top: 10, right: 20, bottom: 30, left: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis type="number" dataKey="x" name={xAxis.label} label={{ value: xAxis.unit ? `${xAxis.label} [${xAxis.unit}]` : xAxis.label, position: 'insideBottom', offset: -15, fontSize: 11 }} tick={{ fontSize: 10 }} />
-          <YAxis type="number" dataKey="y" name={yAxis.label} label={{ value: yAxis.unit ? `${yAxis.label} [${yAxis.unit}]` : yAxis.label, angle: -90, position: 'insideLeft', offset: 10, fontSize: 11 }} tick={{ fontSize: 10 }} />
-          <Tooltip cursor={{ strokeDasharray: '3 3' }} />
+      <ResponsiveContainer width="100%" height={320}>
+        <ScatterChart margin={margin}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <XAxis type="number" dataKey="x" name={xAxis.label} tick={axisStyle} label={{ value: xLabel, position: 'insideBottom', offset: -18, fontSize: 11 }} />
+          <YAxis type="number" dataKey="y" name={yAxis.label} tick={axisStyle} label={{ value: yLabel, angle: -90, position: 'insideLeft', offset: 12, fontSize: 11 }} width={48} />
+          <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={tooltipStyle}
+            formatter={(v: any, n: any) => [`${v}${yAxis.unit ? ` ${yAxis.unit}` : ''}`, n]}
+            labelFormatter={() => ''} />
           <Legend wrapperStyle={{ fontSize: 11 }} />
           {series.map((s, i) => (
             <Scatter key={i} name={s.name} data={s.data.map(([x, y]) => ({ x, y }))} fill={s.color || CHART_COLORS[i % CHART_COLORS.length]} />
@@ -307,24 +368,14 @@ function ChartPreview({ chart }: { chart: ChartJson }) {
     );
   }
 
-  // Für Line/Bar: gemeinsame X-Achse
-  const chartData = allX.map(x => {
-    const point: Record<string, number> = { x };
-    series.forEach((s, i) => {
-      const pt = s.data.find(d => d[0] === x);
-      if (pt) point[`s${i}`] = pt[1];
-    });
-    return point;
-  });
-
   if (chartType === 'bar') {
     return (
-      <ResponsiveContainer width="100%" height={300}>
-        <BarChart data={chartData} margin={{ top: 10, right: 20, bottom: 30, left: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="x" label={{ value: xAxis.unit ? `${xAxis.label} [${xAxis.unit}]` : xAxis.label, position: 'insideBottom', offset: -15, fontSize: 11 }} tick={{ fontSize: 10 }} />
-          <YAxis label={{ value: yAxis.unit ? `${yAxis.label} [${yAxis.unit}]` : yAxis.label, angle: -90, position: 'insideLeft', offset: 10, fontSize: 11 }} tick={{ fontSize: 10 }} />
-          <Tooltip />
+      <ResponsiveContainer width="100%" height={320}>
+        <BarChart data={chartData} margin={margin}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <XAxis {...xAxisProps} />
+          <YAxis {...yAxisProps} />
+          <Tooltip contentStyle={tooltipStyle} formatter={tooltipFormatter} labelFormatter={labelFormatter} />
           <Legend wrapperStyle={{ fontSize: 11 }} />
           {series.map((s, i) => <Bar key={i} dataKey={`s${i}`} name={s.name} fill={s.color || CHART_COLORS[i % CHART_COLORS.length]} />)}
         </BarChart>
@@ -332,50 +383,76 @@ function ChartPreview({ chart }: { chart: ChartJson }) {
     );
   }
 
+  // Line (default)
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 30, left: 10 }}>
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="x" label={{ value: xAxis.unit ? `${xAxis.label} [${xAxis.unit}]` : xAxis.label, position: 'insideBottom', offset: -15, fontSize: 11 }} tick={{ fontSize: 10 }} />
-        <YAxis label={{ value: yAxis.unit ? `${yAxis.label} [${yAxis.unit}]` : yAxis.label, angle: -90, position: 'insideLeft', offset: 10, fontSize: 11 }} tick={{ fontSize: 10 }} />
-        <Tooltip />
+    <ResponsiveContainer width="100%" height={320}>
+      <LineChart data={chartData} margin={margin}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+        <XAxis {...xAxisProps} />
+        <YAxis {...yAxisProps} />
+        <Tooltip contentStyle={tooltipStyle} formatter={tooltipFormatter} labelFormatter={labelFormatter} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
-        {series.map((s, i) => <Line key={i} type="monotone" dataKey={`s${i}`} name={s.name} stroke={s.color || CHART_COLORS[i % CHART_COLORS.length]} dot={false} strokeWidth={2} />)}
+        {series.map((s, i) => (
+          <Line key={i} type="linear" dataKey={`s${i}`} name={s.name}
+            stroke={s.color || CHART_COLORS[i % CHART_COLORS.length]}
+            strokeWidth={2} dot={false}
+            activeDot={{ r: 5, strokeWidth: 2, stroke: '#fff' }} />
+        ))}
       </LineChart>
     </ResponsiveContainer>
   );
 }
 
-// Konvertiert verschiedene JSON-Formate (z.B. Claude.ai-Output) in unser ChartJson
+// Konvertiert verschiedene JSON-Formate in unser ChartJson
 function normalizeChartJson(raw: any): ChartJson {
   // Bereits unser Format
   if (raw.chartType && raw.xAxis && raw.yAxis && Array.isArray(raw.series)) {
     return raw as ChartJson;
   }
 
-  // Claude.ai-Format: { chart: { title, x_axis, y_axis, curves } }
   if (raw.chart || raw.curves || raw.x_axis) {
     const c = raw.chart ?? raw;
-    const xLabel = c.x_axis?.label ?? 'x';
-    const yLabel = c.y_axis?.label ?? 'y';
+    const xVar   = c.x_axis?.variable ?? c.x_axis?.label ?? 'x';
+    const xUnit  = c.x_axis?.unit ?? '';
+    const yVar   = c.y_axis?.variable ?? c.y_axis?.label ?? 'y';
+    const yUnit  = c.y_axis?.unit ?? '';
     const series: ChartSeries[] = [];
-
     const curves = c.curves ?? {};
-    Object.entries(curves).forEach(([name, curve]: [string, any], i) => {
-      const pts: Array<{ [k: string]: number }> = curve.points ?? [];
-      if (pts.length === 0) return;
-      const keys = Object.keys(pts[0]);
-      const xKey = keys[0] ?? 'x';
-      const yKey = keys[1] ?? 'y';
-      series.push({
-        name,
-        color: CHART_COLORS[i % CHART_COLORS.length],
-        data: pts.map(p => [Number(p[xKey]) || 0, Number(p[yKey]) || 0] as [number, number]),
-      });
-    });
 
-    if (series.length === 0) throw new Error('Keine Kurven gefunden (curves-Objekt erwartet)');
-    return { chartType: 'line', xAxis: { label: xLabel, unit: '' }, yAxis: { label: yLabel, unit: '' }, series };
+    if (Array.isArray(curves)) {
+      // Neues Format: curves als Array mit { label, points: [{x,y}] }
+      curves.forEach((curve: any, i: number) => {
+        const pts = curve.points ?? [];
+        if (pts.length === 0) return;
+        series.push({
+          name: curve.label ?? curve.name ?? `Kurve ${i + 1}`,
+          color: CHART_COLORS[i % CHART_COLORS.length],
+          data: pts.map((p: any) => [Number(p.x) ?? 0, Number(p.y) ?? 0] as [number, number]),
+        });
+      });
+    } else {
+      // Altes Format: curves als Objekt mit variablenbasierten Keys
+      Object.entries(curves).forEach(([name, curve]: [string, any], i) => {
+        const pts: Array<{ [k: string]: number }> = curve.points ?? [];
+        if (pts.length === 0) return;
+        const keys = Object.keys(pts[0]);
+        const xKey = keys[0] ?? 'x';
+        const yKey = keys[1] ?? 'y';
+        series.push({
+          name,
+          color: CHART_COLORS[i % CHART_COLORS.length],
+          data: pts.map(p => [Number(p[xKey]) || 0, Number(p[yKey]) || 0] as [number, number]),
+        });
+      });
+    }
+
+    if (series.length === 0) throw new Error('Keine Kurven gefunden');
+    return {
+      chartType: 'line',
+      xAxis: { label: xVar, unit: xUnit },
+      yAxis: { label: yVar, unit: yUnit },
+      series,
+    };
   }
 
   throw new Error('Unbekanntes Format — erwartet: { chartType, xAxis, yAxis, series } oder { chart: { x_axis, y_axis, curves } }');
@@ -570,6 +647,7 @@ export default function DbTableAdmin({ mode = 'table' }: { mode?: 'table' | 'cha
   const [dragTableId, setDragTableId] = useState<string | null>(null);
   const [dragOverChapterId, setDragOverChapterId] = useState<string | null>(null);
   const [jsonChapter, setJsonChapter] = useState<string | null>(null);
+  const [hideEmpty, setHideEmpty] = useState(false);
 
   // Gefiltert nach mode
   const tables    = allTables.filter(t => (t.type ?? 'table') === mode);
@@ -662,19 +740,24 @@ export default function DbTableAdmin({ mode = 'table' }: { mode?: 'table' | 'cha
             <div style={{ fontWeight: 700, fontSize: 13 }}>{mode === 'chart' ? 'Diagramme' : 'Normtabellen'}</div>
             <div style={{ fontSize: 10, color: '#6b7280' }}>{normLabel}</div>
           </div>
-          <button onClick={() => {
-            const t = emptyTable(normId, null);
-            t.type = mode;
-            if (mode === 'chart') t.chart_json = emptyChartJson();
-            setSelected(null); setEditing(t); setMsg('');
-          }}
-            style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>+ Neu</button>
+          <div style={{ display: 'flex', gap: 5 }}>
+            <button onClick={() => setHideEmpty(v => !v)} title={hideEmpty ? 'Alle Kapitel anzeigen' : 'Leere Kapitel ausblenden'}
+              style={{ background: hideEmpty ? '#dbeafe' : '#f1f5f9', color: hideEmpty ? '#1e40af' : '#6b7280', border: `1px solid ${hideEmpty ? '#93c5fd' : '#d1d5db'}`, borderRadius: 5, padding: '4px 7px', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}>
+              👁
+            </button>
+            <button onClick={() => {
+              const t = emptyTable(normId, null);
+              t.type = mode;
+              if (mode === 'chart') t.chart_json = emptyChartJson();
+              setSelected(null); setEditing(t); setMsg('');
+            }} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>+ Neu</button>
+          </div>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '6px 4px' }} onDragOver={e => e.preventDefault()}>
           {tree.map(node => (
             <ChapterTreeNode key={node.id} node={node} depth={0} selectedTableId={selected} selectedChapterId={selectedChapterId} expanded={expanded} dragOverId={dragOverChapterId}
-              showCsv={mode === 'table'} showJson={mode === 'chart'}
+              showCsv={mode === 'table'} showJson={mode === 'chart'} hideEmpty={hideEmpty}
               onToggle={toggle} onSelectTable={selectTable} onSelectChapter={selectChapter} onNewIn={newInChapter}
               onCsvIn={mode === 'table' ? id => setCsvChapter(id) : () => {}}
               onJsonIn={mode === 'chart' ? id => setJsonChapter(id) : () => {}}

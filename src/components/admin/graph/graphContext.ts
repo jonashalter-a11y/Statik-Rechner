@@ -1,8 +1,8 @@
 import { createContext, useContext } from 'react';
 import { BlockData } from '../../../types/graph';
 
-export interface DbTableMeta { id: string; title: string; }
-export interface DbTableFull { id: string; title: string; headers: string[]; rows: string[][]; }
+export interface DbTableMeta { id: string; title: string; chapter_id?: string | null; type?: string; }
+export interface DbTableFull { id: string; title: string; headers: string[]; rows: string[][]; chart_json?: { series: { name: string; data: [number,number][] }[] } | null; }
 
 export interface GraphCtxValue {
   updateNodeData: (id: string, patch: Partial<BlockData>) => void;

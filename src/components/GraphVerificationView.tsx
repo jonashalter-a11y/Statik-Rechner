@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Verification } from '../types';
 import MathDisplay from './MathDisplay';
 import { nameToLatex } from '../utils/formatName';
@@ -7,6 +7,103 @@ import { evalGraph, topoSort, collectTableRefs, DbTableData } from '../utils/eva
 import { formatNumber } from '../utils/substituteFormula';
 import { api } from '../api';
 import { useStore } from '../store/useStore';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  Legend, ResponsiveContainer, ReferenceLine,
+} from 'recharts';
+
+const CHART_COLORS = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#7c3aed', '#0891b2'];
+
+function interpolateY(data: [number, number][], x: number): number | undefined {
+  if (!data.length) return undefined;
+  for (let i = 0; i < data.length - 1; i++) {
+    const [x0, y0] = data[i], [x1, y1] = data[i + 1];
+    if (x >= x0 && x <= x1) return x0 === x1 ? y0 : y0 + (y1 - y0) * (x - x0) / (x1 - x0);
+  }
+  if (x === data[data.length - 1][0]) return data[data.length - 1][1];
+  return undefined;
+}
+
+function ChartLookupModal({ chartJson, xAxisLabel, yAxisLabel, xUnit, currentX, direction, onClose }: {
+  chartJson: any; xAxisLabel: string; yAxisLabel: string; xUnit: string;
+  currentX: number; direction: 'x_to_y' | 'y_to_x'; onClose: () => void;
+}) {
+  const [hoverX, setHoverX] = useState<number | null>(null);
+  const activeX = hoverX ?? currentX;
+  const series: { name: string; data: [number, number][] }[] = chartJson?.series ?? [];
+
+  const origX = Array.from(new Set(series.flatMap(s => s.data.map(d => d[0])))).sort((a, b) => a - b);
+  const xMin = origX[0] ?? 0, xMax = origX[origX.length - 1] ?? 1;
+  const range = xMax - xMin;
+  const step = range <= 200 ? 1 : Math.ceil(range / 200);
+  const denseX: number[] = [];
+  for (let x = xMin; x <= xMax + 1e-9; x = Math.round((x + step) * 1e9) / 1e9) denseX.push(x);
+  const allX = Array.from(new Set([...denseX, ...origX])).sort((a, b) => a - b);
+  const chartData = allX.map(x => {
+    const pt: Record<string, number> = { x };
+    series.forEach((s, i) => { const y = interpolateY(s.data, x); if (y !== undefined) pt[`s${i}`] = Math.round(y * 10000) / 10000; });
+    return pt;
+  });
+
+  const xLabel = xUnit ? `${xAxisLabel} [${xUnit}]` : xAxisLabel;
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 2000, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      onClick={onClose}>
+      <div style={{ background: '#fff', borderRadius: 12, padding: 24, width: 720, maxWidth: '95vw', boxShadow: '0 24px 60px rgba(0,0,0,0.25)' }}
+        onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>📉 Diagramm</div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#9ca3af' }}>×</button>
+        </div>
+
+        {/* Aktuelle Werte */}
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12, padding: '8px 12px', background: '#f0fdf4', borderRadius: 8, border: '1px solid #a7f3d0' }}>
+          <div style={{ fontSize: 12, color: '#6b7280' }}>
+            {direction === 'x_to_y' ? xAxisLabel : yAxisLabel}: <strong style={{ color: '#047857' }}>{isFinite(activeX) ? Math.round(activeX * 1000) / 1000 : '–'}</strong>
+            {xUnit && <span style={{ marginLeft: 3, color: '#9ca3af' }}>{xUnit}</span>}
+          </div>
+          {series.map((s, i) => {
+            const y = isFinite(activeX) ? interpolateY(s.data, activeX) : undefined;
+            return (
+              <div key={i} style={{ fontSize: 12, color: '#6b7280' }}>
+                <span style={{ color: CHART_COLORS[i % CHART_COLORS.length], fontWeight: 600 }}>{s.name}</span>
+                {': '}
+                <strong>{y !== undefined ? Math.round(y * 10000) / 10000 : '–'}</strong>
+              </div>
+            );
+          })}
+        </div>
+
+        <ResponsiveContainer width="100%" height={340}>
+          <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 40, left: 16 }}
+            onMouseMove={(e: any) => { if (e?.activeLabel != null) setHoverX(Number(e.activeLabel)); }}
+            onMouseLeave={() => setHoverX(null)}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="x" tick={{ fontSize: 11 }}
+              label={{ value: xLabel, position: 'insideBottom', offset: -28, fontSize: 11 }} />
+            <YAxis tick={{ fontSize: 11 }} width={48}
+              label={{ value: yAxisLabel, angle: -90, position: 'insideLeft', offset: 12, fontSize: 11 }} />
+            <Tooltip contentStyle={{ fontSize: 11 }}
+              formatter={(v: any, name: any) => [v, name]}
+              labelFormatter={(x: any) => `${xAxisLabel}: ${x}${xUnit ? ` ${xUnit}` : ''}`} />
+            <Legend wrapperStyle={{ fontSize: 11 }} />
+            {isFinite(activeX) && (
+              <ReferenceLine x={activeX} stroke={hoverX !== null ? '#6b7280' : '#059669'}
+                strokeWidth={hoverX !== null ? 1 : 2} strokeDasharray={hoverX !== null ? '4 3' : undefined}
+                label={{ value: String(Math.round(activeX * 100) / 100), position: 'top', fontSize: 10, fill: hoverX !== null ? '#6b7280' : '#047857' }} />
+            )}
+            {series.map((s, i) => (
+              <Line key={i} type="linear" dataKey={`s${i}`} name={s.name}
+                stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={2} dot={false}
+                activeDot={{ r: 4, strokeWidth: 2, stroke: '#fff' }} />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
 
 // Store-Verification → vom Legacy-Adapter erwartete Form
 function toLegacyShape(v: Verification) {
@@ -40,6 +137,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
   // Im Print-Modus: initialInputs als Startzustand; sonst leer (Defaults kommen via useEffect)
   const [inputs, setInputs] = useState<Record<string, string>>(initialInputs || {});
   const [imageModal, setImageModal] = useState<{ src: string; label?: string; source?: string } | null>(null);
+  const [chartModal, setChartModal] = useState<string | null>(null); // Node-ID
   const materialProps = useMemo(() => {
     const woodClass = apiWoodClasses.find(c => c.id === woodClassId);
     return Object.fromEntries((woodClass?.properties || []).map(p => [p.key, p.value]));
@@ -51,7 +149,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
     const refs = collectTableRefs(graph);
     if (!refs.length) { setTables({}); return; }
     Promise.all(refs.map(id => api.getDbTableFull(id)
-      .then((t: any) => [id, { headers: t.headers || [], rows: t.rows || [] }] as const)
+      .then((t: any) => [id, { headers: t.headers || [], rows: t.rows || [], chart_json: t.chart_json ?? null }] as const)
       .catch(() => null)))
       .then(pairs => { if (!alive) return; const m: Record<string, DbTableData> = {}; pairs.forEach(p => { if (p) m[p[0]] = p[1]; }); setTables(m); });
     return () => { alive = false; };
@@ -287,6 +385,49 @@ export default function GraphVerificationView({ verification, readOnly = false, 
           );
         }
 
+        if (n.type === 'chartlookup') {
+          const dir: 'x_to_y' | 'y_to_x' = (d as any).direction ?? 'x_to_y';
+          const allVals: number[] | undefined = (r as any).allSeriesValues;
+          const seriesNames = tables[(d as any).chart_ref]?.chart_json?.series?.map((s: any) => s.name) ?? [];
+          const chartJson = tables[(d as any).chart_ref]?.chart_json;
+          const currentX: number = (r as any).inputValue ?? NaN;
+          return (
+            <div key={n.id} style={{ ...card, background: '#ecfdf5', borderColor: '#a7f3d0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ flex: 1 }}>
+                  {d.label && <div style={{ color: '#6b7280', fontSize: 11, marginBottom: 4 }}>{d.label}</div>}
+                  {allVals ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                      {allVals.map((v, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <MathDisplay latex={nameToLatex(seriesNames[i] ?? `${d.name}_${i + 1}`)} />
+                          <span style={{ color: '#6b7280', fontSize: 12 }}>=</span>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 600, color: isNaN(v) ? '#9ca3af' : 'inherit' }}>{num(v)}</span>
+                          {d.unit && !isNaN(v) && <span style={{ color: '#9ca3af', fontSize: 12 }}>{d.unit}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} />
+                      <span style={{ color: '#6b7280', fontSize: 12 }}>=</span>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{num(r.value)}</span>
+                      {d.unit && <span style={{ color: '#9ca3af', fontSize: 12 }}>{d.unit}</span>}
+                    </div>
+                  )}
+                </div>
+                {chartJson && !readOnly && (
+                  <button onClick={() => setChartModal(n.id)}
+                    title="Diagramm anzeigen"
+                    style={{ background: '#d1fae5', border: '1px solid #6ee7b7', borderRadius: 6, padding: '4px 8px', cursor: 'pointer', fontSize: 13, color: '#047857', flexShrink: 0 }}>
+                    📉
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        }
+
         if (n.type === 'calc' || n.type === 'stdcalc') {
           const parentCondId = conditionAfterNode.get(n.id);
           return (
@@ -458,6 +599,27 @@ export default function GraphVerificationView({ verification, readOnly = false, 
           </div>
         </div>
       )}
+
+      {/* Diagramm-Modal */}
+      {chartModal && (() => {
+        const node = graph.nodes.find(n => n.id === chartModal);
+        if (!node) return null;
+        const nd = node.data as any;
+        const cj = tables[nd.chart_ref]?.chart_json;
+        if (!cj) return null;
+        const inputVal: number = (ev.results[chartModal] as any)?.inputValue ?? NaN;
+        return (
+          <ChartLookupModal
+            chartJson={cj}
+            xAxisLabel={cj.xAxis?.label ?? 'x'}
+            yAxisLabel={cj.yAxis?.label ?? 'y'}
+            xUnit={cj.xAxis?.unit ?? ''}
+            currentX={inputVal}
+            direction={nd.direction ?? 'x_to_y'}
+            onClose={() => setChartModal(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

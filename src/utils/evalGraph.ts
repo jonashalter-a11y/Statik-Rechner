@@ -9,7 +9,9 @@ import { latexToJs, latexCondToJs } from './latexToJs';
 import { formatNumber, substituteValues } from './substituteFormula';
 import { nameToLatex } from './formatName';
 
-export interface DbTableData { headers: string[]; rows: string[][]; }
+export interface ChartSeriesData { name: string; data: [number, number][]; }
+export interface ChartJsonData { series: ChartSeriesData[]; xAxis?: { label?: string; unit?: string }; yAxis?: { label?: string; unit?: string }; }
+export interface DbTableData { headers: string[]; rows: string[][]; chart_json?: ChartJsonData | null; }
 export interface NodeResult {
   value?: number;                 // numerisches Ergebnis (variable, tablevalue, calc, stdcalc)
   substituted?: string;           // "mit Werten" (calc/stdcalc)
@@ -167,6 +169,33 @@ function extractMissingSymbols(expr: string, symbols: Record<string, number>): s
   return Array.from(new Set(ids.filter(id => !ignored.has(id) && !(id in symbols))));
 }
 
+// Lineare Interpolation in einer sortierten Kurve; NaN wenn ausserhalb des Bereichs
+function interpolateChart(pts: [number, number][], x: number): number {
+  if (!pts.length) return NaN;
+  if (x < pts[0][0] || x > pts[pts.length - 1][0]) return NaN;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
+    if (x >= x0 && x <= x1) return x0 === x1 ? y0 : y0 + (y1 - y0) * (x - x0) / (x1 - x0);
+  }
+  return NaN;
+}
+
+// Umkehr-Interpolation: Y → X (erstes Segment das den Y-Wert enthält)
+function interpolateChartInverse(pts: [number, number][], y: number): number {
+  if (!pts.length) return NaN;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
+    const yMin = Math.min(y0, y1), yMax = Math.max(y0, y1);
+    if (y >= yMin && y <= yMax) {
+      if (Math.abs(y1 - y0) < 1e-12) return x0;
+      return x0 + (x1 - x0) * (y - y0) / (y1 - y0);
+    }
+  }
+  // Klemmen
+  if (y <= pts[0][1]) return pts[0][0];
+  return pts[pts.length - 1][0];
+}
+
 // Topologische Sortierung über Workflow-Kanten (Kahn). Bei Zyklen: Rest in Originalreihenfolge.
 export function topoSort(graph: VerificationGraph): GraphNode[] {
   const nodes = graph.nodes;
@@ -316,6 +345,33 @@ export function evalGraph(
           if (d.name && v != null) setSymbol(symbols, d.name, v);
           break;
         }
+        case 'chartlookup': {
+          const chartData = d.chart_ref ? tables[d.chart_ref]?.chart_json : undefined;
+          const series = chartData?.series ?? [];
+          const inRaw = d.x_name || '';
+          const inKey = deUmlaut(inRaw)
+            .replace(/\\/g, '')
+            .replace(/_\{([^{}]+)\}/g, (_m: string, sub: string) => '_' + sub.replace(/[,\s.]+/g, '_'))
+            .replace(/[{},\s.]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+          const inVal = symbols[inKey] ?? symbols[inRaw] ?? NaN;
+          const inverse = (d.direction ?? 'x_to_y') === 'y_to_x';
+          const interpolate = (pts: [number,number][]) =>
+            isFinite(inVal) && pts.length ? (inverse ? interpolateChartInverse(pts, inVal) : interpolateChart(pts, inVal)) : NaN;
+
+          if (d.all_series && series.length > 0) {
+            const allValues: number[] = series.map((s: ChartSeriesData) => interpolate(s.data));
+            results[node.id] = { value: allValues[0] ?? NaN, allSeriesValues: allValues, inputValue: inVal } as any;
+            allValues.forEach((v, i) => {
+              if (isFinite(v)) setSymbol(symbols, series[i].name, v);
+            });
+          } else {
+            const pts = series[d.series_index ?? 0]?.data ?? [];
+            const outVal = interpolate(pts);
+            results[node.id] = { value: outVal, inputValue: inVal } as any;
+            if (d.name && isFinite(outVal)) setSymbol(symbols, d.name, outVal);
+          }
+          break;
+        }
         case 'condition': {
           let active = '';
           if ((d.mode || 'expr') === 'select') {
@@ -387,6 +443,7 @@ export function collectTableRefs(graph: VerificationGraph): string[] {
   for (const n of graph.nodes) {
     const d: any = n.data;
     if (d.table_ref) ids.add(d.table_ref);
+    if (d.chart_ref) ids.add(d.chart_ref);
   }
   return [...ids];
 }
