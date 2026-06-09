@@ -22,7 +22,10 @@ export default function MathDisplay({ latex, display = false, style }: Props) {
 
   return (
     <span
-      style={style}
+      // Display-Math ist ein Block-Element (.katex-display). In einem inline <span>
+      // reserviert es seine Höhe nicht → es überläuft die Box und überlappt Nachbarn.
+      // Darum im Display-Modus selbst Block werden.
+      style={display ? { display: 'block', ...style } : style}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

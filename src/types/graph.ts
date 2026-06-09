@@ -19,6 +19,7 @@ export type BlockType =
   | 'title'        // 📌 Abschnittstitel (einklappbar im Frontend)
   | 'frame'        // 🔲 Visueller Rahmen auf dem Canvas (nicht im Frontend gerendert)
   | 'ref'          // 🔗 Referenz auf einen anderen Block (nur Anzeige, kein neuer Eingabe)
+  | 'cases'        // ⑂  Fallunterscheidung (piecewise): mehrere Formeln mit JS-Bedingungen
   | 'output';      // ⬜ PDF/Ausgabe
 
 export type EdgeKind = 'workflow' | 'condition';
@@ -170,10 +171,22 @@ export interface RefData {
   source_id: string;      // Node-ID des referenzierten Blocks
 }
 
+export interface CasesData {
+  kind: 'cases';
+  name: string;           // LaTeX-Name des Ergebnisses (z.B. "c_h")
+  label: string;
+  unit: string;
+  cases: Array<{
+    id: string;
+    formula_latex: string; // Formel (LaTeX, wird zu JS konvertiert)
+    cond_expr: string;     // JS-Bedingung (leer = else/Standard)
+  }>;
+}
+
 export type BlockData =
   | VariableData | DropdownData | WoodClassData | TableValueData | CalcData
   | StdCalcData | TableCalcData | ChartLookupData | ConditionData | CheckData | MinMaxData | ImageBlockData
-  | TitleData | FrameData | RefData | OutputData;
+  | TitleData | FrameData | RefData | CasesData | OutputData;
 
 // ── React-Flow-kompatible Node/Edge-Strukturen ──────────────────────────────
 export interface GraphNode {

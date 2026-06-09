@@ -69,10 +69,13 @@ function convertPowers(s: string): string {
     // linke Seite
     let l = idx - 1; while (s[l] === ' ') l--;
     let left: string; let lStart: number;
-    if (s[l] === ')') {
+    if (s[l] === ')' || s[l] === ']') {
+      const close = s[l]; const open = close === ')' ? '(' : '[';
       let depth = 0; let k = l;
-      for (; k >= 0; k--) { if (s[k] === ')') depth++; else if (s[k] === '(') { depth--; if (depth === 0) break; } }
-      lStart = k; left = s.slice(k, l + 1);
+      for (; k >= 0; k--) { if (s[k] === close) depth++; else if (s[k] === open) { depth--; if (depth === 0) break; } }
+      lStart = k;
+      // eckige Klammern → runde, damit Math.pow-Argument gültiges JS ist
+      left = close === ']' ? '(' + s.slice(k + 1, l) + ')' : s.slice(k, l + 1);
     } else {
       let k = l; while (k >= 0 && /[\w.]/.test(s[k])) k--; lStart = k + 1; left = s.slice(k + 1, l + 1);
     }

@@ -30,6 +30,7 @@ const PALETTE: { type: BlockType; icon: string; label: string; color: string }[]
   { type: 'title',      icon: '📌', label: 'Titel',             color: '#0284c7' },
   { type: 'frame',      icon: '🔲', label: 'Rahmen',            color: '#94a3b8' },
   { type: 'ref',        icon: '🔗', label: 'Referenz',          color: '#0369a1' },
+  { type: 'cases',      icon: '⑂',  label: 'Fallunterscheidung', color: '#7c3aed' },
   { type: 'output',     icon: '⬜', label: 'PDF / Ausgabe',     color: '#6b7280' },
 ];
 
@@ -50,6 +51,7 @@ function defaultData(type: BlockType): BlockData {
     case 'title':      return { kind: 'title', label: '', color: '#2563eb' };
     case 'frame':      return { kind: 'frame', label: '', color: '#2563eb' };
     case 'ref':        return { kind: 'ref', source_id: '' };
+    case 'cases':      return { kind: 'cases', name: '', label: '', unit: '', cases: [] };
     case 'output':     return { kind: 'output', label: 'PDF', blocks: [] };
   }
 }

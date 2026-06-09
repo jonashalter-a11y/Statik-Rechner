@@ -1,0 +1,6 @@
+/* Formel-Boxen: linksbündige Display-Math verhindert linkes Clipping bei breiten Formeln.
+   margin:0 entfernt KaTeXs Standard-Abstand (1em oben/unten), der die Box sprengt. */
+.formula-block .katex-display {
+  text-align: left;
+  margin: 0;
+}

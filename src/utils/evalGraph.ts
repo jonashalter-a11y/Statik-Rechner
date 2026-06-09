@@ -4,7 +4,7 @@
 // Wiederverwendung: evalFormula, substituteValues, formatNumber.
 
 import { VerificationGraph, GraphNode } from '../types/graph';
-import { evalFormula } from './evalFormula';
+import { evalFormula, evalCondExpr } from './evalFormula';
 import { latexToJs, latexCondToJs } from './latexToJs';
 import { formatNumber, substituteValues } from './substituteFormula';
 import { nameToLatex } from './formatName';
@@ -114,8 +114,21 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// Formatiert Zahlen für LaTeX-Anzeige: kein "1.04e+9", sondern "1.04\cdot10^{9}"
+function formatLatexNumber(n: number): string {
+  if (!isFinite(n)) return String(n);
+  if (n === 0) return '0';
+  const abs = Math.abs(n);
+  if (abs >= 1e6 || (abs < 1e-3 && abs > 0)) {
+    const exp = Math.floor(Math.log10(abs));
+    const m = Math.round((n / Math.pow(10, exp)) * 100) / 100;
+    return `${m}\\cdot10^{${exp}}`;
+  }
+  return String(Math.round(n * 1000) / 1000);
+}
+
 function replaceLatexSymbol(formula: string, symbol: string, value: number) {
-  const val = formatNumber(value);
+  const val = formatLatexNumber(value);
   if (!symbol) return formula;
 
   // Single-letter variables such as a, b and h must not be replaced inside
@@ -203,9 +216,10 @@ export function topoSort(graph: VerificationGraph): GraphNode[] {
   const indeg = new Map<string, number>();
   const adj = new Map<string, string[]>();
   nodes.forEach(n => { indeg.set(n.id, 0); adj.set(n.id, []); });
-  // ref-Blöcke hängen implizit von ihrem source_id ab (egal ob Kante existiert)
+  // ref-Blöcke: implizite Abhängigkeit von source_id wenn keine echte Kante existiert
+  const hasIncoming = new Set(flowEdges.map(e => e.target));
   nodes.forEach(n => {
-    if (n.type === 'ref') {
+    if (n.type === 'ref' && !hasIncoming.has(n.id)) {
       const srcId = (n.data as any).source_id;
       if (srcId && adj.has(srcId) && indeg.has(n.id)) {
         adj.get(srcId)!.push(n.id);
@@ -218,7 +232,12 @@ export function topoSort(graph: VerificationGraph): GraphNode[] {
     adj.get(e.source)!.push(e.target);
     indeg.set(e.target, (indeg.get(e.target) || 0) + 1);
   });
-  const queue = nodes.filter(n => (indeg.get(n.id) || 0) === 0).map(n => n.id);
+  // Eingabe-Blöcke immer zuerst: stellt sicher, dass symbols/strSymbols befüllt sind
+  // bevor Berechnungsblöcke (calc, cases, …) ohne explizite Kanten ausgewertet werden.
+  const INPUT_TYPES = new Set(['variable', 'dropdown', 'woodclass', 'tablevalue', 'chartlookup']);
+  const zeroNodes = nodes.filter(n => (indeg.get(n.id) || 0) === 0);
+  zeroNodes.sort((a, b) => (INPUT_TYPES.has(a.type) ? 0 : 1) - (INPUT_TYPES.has(b.type) ? 0 : 1));
+  const queue = zeroNodes.map(n => n.id);
   const order: string[] = [];
   const seen = new Set<string>();
   while (queue.length) {
@@ -244,6 +263,8 @@ export function evalGraph(
 ): EvalResult {
   const results: Record<string, NodeResult> = {};
   const symbols: Record<string, number> = {};
+  // String-Werte von Dropdown-Blöcken (z.B. GK = 'III') für Bedingungsausdrücke
+  const strSymbols: Record<string, string> = {};
   const ordered = topoSort(graph);
 
   const incomingFrom = (targetId: string, kind: 'workflow' | 'condition' = 'workflow') =>
@@ -288,9 +309,13 @@ export function evalGraph(
           // mode=custom: gewählter Wert direkt als Symbol (falls Name gesetzt)
           if (d.mode === 'custom' && d.name) {
             const opt = (d.options || []).find((o: any) => o.label === selLabel || o.value === selLabel);
-            const v = parseNum(opt ? opt.value : selLabel);
+            const strVal = opt ? String(opt.value) : selLabel;
+            const v = parseNum(strVal);
             setSymbol(symbols, d.name, v);
             results[node.id].value = v;
+            // String-Wert für Bedingungsausdrücke (GK === 'III')
+            const jsName = deUmlaut(d.name).replace(/[^A-Za-z0-9_$]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+            if (jsName) strSymbols[jsName] = strVal;
           }
           break;
         }
@@ -394,8 +419,9 @@ export function evalGraph(
             for (const c of (d.conditions || [])) {
               // c.expr kann fehlen wenn Graph vor dem Auto-Ableitungs-Feature gespeichert wurde
               const expr = c.expr || latexCondToJs(c.latex || '');
-              const v = evalFormula(expr, symbols);
-              if (v != null && v !== 0) { active = c.id; break; }
+              // evalCondExpr: akzeptiert String- und Zahlenvariablen (z.B. GK === 'III' && z < 5)
+              const ok = evalCondExpr(expr, { ...symbols, ...strSymbols });
+              if (ok) { active = c.id; break; }
             }
           }
           results[node.id] = { activeConditionId: active };
@@ -431,8 +457,31 @@ export function evalGraph(
           if (d.name && v != null && isFinite(v)) setSymbol(symbols, d.name, v);
           break;
         }
+        case 'cases': {
+          const caseDefs: Array<{ formula_latex: string; cond_expr: string }> = d.cases || [];
+          const caseValues: number[] = caseDefs.map(c => {
+            const expr = latexToJs(c.formula_latex || '');
+            return evalFormula(expr, symbols) ?? NaN;
+          });
+          let activeCaseIndex = -1;
+          let elseIdx = -1;
+          for (let i = 0; i < caseDefs.length; i++) {
+            const condExpr = (caseDefs[i].cond_expr || '').trim();
+            if (!condExpr) { if (elseIdx < 0) elseIdx = i; continue; }
+            if (evalCondExpr(condExpr, { ...symbols, ...strSymbols })) { activeCaseIndex = i; break; }
+          }
+          if (activeCaseIndex < 0 && elseIdx >= 0) activeCaseIndex = elseIdx;
+          const v = activeCaseIndex >= 0 ? (caseValues[activeCaseIndex] ?? NaN) : NaN;
+          const activeFormula = activeCaseIndex >= 0 ? (caseDefs[activeCaseIndex].formula_latex || '') : '';
+          const substitutedLatex = activeFormula ? substituteLatexValues(activeFormula, symbols) : '';
+          results[node.id] = { value: v, caseValues, activeCaseIndex, substitutedLatex };
+          if (d.name && isFinite(v)) setSymbol(symbols, d.name, v);
+          break;
+        }
         case 'ref': {
-          const srcId = (d as any).source_id;
+          // Gezogene Kante hat Vorrang über gespeicherte source_id
+          const wiredId = incomingFrom(node.id, 'workflow')[0];
+          const srcId = wiredId || (d as any).source_id;
           const srcResult = srcId ? results[srcId] : undefined;
           results[node.id] = srcResult ? { ...srcResult } : { value: NaN };
           break;

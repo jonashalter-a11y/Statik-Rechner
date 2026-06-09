@@ -363,9 +363,12 @@ export default function GraphVerificationView({ verification, readOnly = false, 
 
                 // Referenz-Block → zeigt den Wert des referenzierten Blocks (read-only, halb-breit)
                 if (n.type === 'ref') {
-                  const srcNode = graph.nodes.find(nn => nn.id === (d as any).source_id);
+                  // Gezogene Kante hat Vorrang über gespeicherte source_id (analog evalGraph)
+                  const wiredSrcId = graph.edges.find(e => e.target === n.id && (e.data?.kind ?? 'workflow') === 'workflow')?.source;
+                  const effectiveSrcId = wiredSrcId || (d as any).source_id;
+                  const srcNode = graph.nodes.find(nn => nn.id === effectiveSrcId);
                   const srcD: any = srcNode?.data;
-                  const refVal = ev.results[(d as any).source_id]?.value;
+                  const refVal = ev.results[effectiveSrcId]?.value;
                   return (
                     <div key={n.id} style={{ ...card, marginBottom: 0, background: '#f0f9ff', borderColor: '#bae6fd' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 3 }}>
@@ -554,10 +557,25 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                     </div>
                   );
                 })()}
-                {d.latex && <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: '5px 8px', marginBottom: 4, overflowX: 'auto' }}><MathDisplay latex={d.latex} display /></div>}
+                {d.latex && (() => {
+                  // Formel beginnt mit "=" → linke Seite (Name) voranstellen
+                  const tpl = d.latex.trimStart().startsWith('=') && d.name
+                    ? `${nameToLatex(d.name)} ${d.latex.trimStart()}`
+                    : d.latex;
+                  return (
+                    <div className="formula-block" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: '5px 8px', marginBottom: 4, overflowX: 'auto' }}>
+                      <MathDisplay latex={tpl} display />
+                    </div>
+                  );
+                })()}
                 {r.substitutedLatex && (
-                  <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '5px 8px', marginBottom: 4, overflowX: 'auto' }}>
-                    <MathDisplay latex={isFiniteNumber(r.value) ? `${r.substitutedLatex} = ${resultLatex(r.value, d.unit)}` : r.substitutedLatex} display />
+                  <div className="formula-block" style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '5px 8px', marginBottom: 4, overflowX: 'auto' }}>
+                    {(() => {
+                      const sub = r.substitutedLatex.trimStart().startsWith('=') && d.name
+                        ? `${nameToLatex(d.name)} ${r.substitutedLatex.trimStart()}`
+                        : r.substitutedLatex;
+                      return <MathDisplay latex={isFiniteNumber(r.value) ? `${sub} = ${resultLatex(r.value, d.unit)}` : sub} display />;
+                    })()}
                   </div>
                 )}
                 {(r.missingSymbols || []).length > 0 && (
@@ -591,12 +609,12 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                   {d.label && <span style={{ color: '#6b7280', fontSize: 12 }}>{d.label}</span>}
                 </div>
                 {rawCases.length > 0 && (
-                  <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: '5px 8px', marginBottom: 4, overflowX: 'auto' }}>
+                  <div className="formula-block" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: '5px 8px', marginBottom: 4, overflowX: 'auto' }}>
                     <MathDisplay latex={`${nameLatex} = ${modeStr} \\begin{cases} ${rawCases.join(' \\\\ ')} \\end{cases}`} display />
                   </div>
                 )}
                 {subLatex && (
-                  <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '5px 8px', marginBottom: 4, overflowX: 'auto' }}>
+                  <div className="formula-block" style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '5px 8px', marginBottom: 4, overflowX: 'auto' }}>
                     <MathDisplay latex={isFiniteNumber(r.value) ? `${subLatex} = ${resultLatex(r.value, d.unit)}` : subLatex} display />
                   </div>
                 )}
@@ -610,6 +628,61 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                           <MathDisplay latex={((r as any).substitutedCases || [])[i] || caseLatex} />
                         </div>
                         <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: isActive ? 700 : 400, color: isActive ? '#111827' : '#6b7280', flexShrink: 0 }}>
+                          {isFinite(caseVals[i]) ? num(caseVals[i]) : '—'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              {parentCondId && renderCondition(parentCondId)}
+            </React.Fragment>
+          );
+        }
+
+        if (n.type === 'cases') {
+          const caseVals: number[] = (r as any).caseValues || [];
+          const activeIdx: number = (r as any).activeCaseIndex ?? -1;
+          const caseDefs: Array<{ formula_latex: string; cond_expr: string }> = d.cases || [];
+          const subLatex: string = r.substitutedLatex || '';
+          const nameLatex = d.name ? nameToLatex(d.name) : '?';
+          const parentCondId = conditionAfterNode.get(n.id);
+          const activeTemplate = activeIdx >= 0 ? (caseDefs[activeIdx]?.formula_latex || '') : '';
+          return (
+            <React.Fragment key={n.id}>
+              <div style={{ ...card, background: '#fafafa' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <MathDisplay latex={nameLatex} />
+                  {d.label && <span style={{ color: '#6b7280', fontSize: 12 }}>{d.label}</span>}
+                  {d.unit && <span style={{ color: '#9ca3af', fontSize: 11 }}><MathDisplay latex={`[${unitLatex(d.unit)}]`} /></span>}
+                </div>
+                {/* Template-Formel des aktiven Falls (weiss, wie bei calc-Blöcken) */}
+                {activeTemplate && (
+                  <div className="formula-block" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: '5px 8px', marginBottom: 4, overflowX: 'auto' }}>
+                    <MathDisplay latex={activeTemplate} display />
+                  </div>
+                )}
+                {/* Eingesetzte Werte (gelb) */}
+                {subLatex && (
+                  <div className="formula-block" style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '5px 8px', marginBottom: 4, overflowX: 'auto' }}>
+                    <MathDisplay latex={isFiniteNumber(r.value) ? `${subLatex} = ${resultLatex(r.value, d.unit)}` : subLatex} display />
+                  </div>
+                )}
+                {/* Alle Fälle */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  {caseDefs.map((c, i) => {
+                    const isActive = i === activeIdx;
+                    const isElse = !(c.cond_expr || '').trim();
+                    return (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderRadius: 4, background: isActive ? '#f5f3ff' : '#f9fafb', border: `1px solid ${isActive ? '#c4b5fd' : '#e5e7eb'}` }}>
+                        <span style={{ fontSize: 13, color: isActive ? '#7c3aed' : '#d1d5db', flexShrink: 0, lineHeight: 1 }}>{isActive ? '✓' : '○'}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ overflowX: 'auto' }}><MathDisplay latex={c.formula_latex} /></div>
+                          <div style={{ fontSize: 9.5, color: '#9ca3af', marginTop: 1, fontFamily: 'monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {isElse ? 'sonst' : c.cond_expr}
+                          </div>
+                        </div>
+                        <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: isActive ? 700 : 400, color: isActive ? '#6d28d9' : '#9ca3af', flexShrink: 0 }}>
                           {isFinite(caseVals[i]) ? num(caseVals[i]) : '—'}
                         </span>
                       </div>

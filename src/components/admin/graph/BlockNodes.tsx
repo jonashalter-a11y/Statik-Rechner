@@ -10,7 +10,7 @@ import { useStore } from '../../../store/useStore';
 import {
   VariableData, DropdownData, WoodClassData, TableValueData, CalcData,
   StdCalcData, TableCalcData, ChartLookupData, ConditionData, CheckData, MinMaxData, ImageBlockData,
-  TitleData, FrameData, RefData, OutputData,
+  TitleData, FrameData, RefData, CasesData, OutputData,
 } from '../../../types/graph';
 
 // ── Block-Stil je Typ ────────────────────────────────────────────────────────
@@ -30,6 +30,7 @@ const THEME: Record<string, { bg: string; border: string; icon: string; label: s
   title:      { bg: '#f0f9ff', border: '#0284c7', icon: '📌', label: 'Titel' },
   frame:      { bg: '#f8fafc', border: '#94a3b8', icon: '🔲', label: 'Rahmen' },
   ref:        { bg: '#e0f2fe', border: '#0369a1', icon: '🔗', label: 'Referenz' },
+  cases:      { bg: '#faf5ff', border: '#7c3aed', icon: '⑂',  label: 'Fallunterscheidung' },
   output:     { bg: '#f9fafb', border: '#6b7280', icon: '⬜', label: 'PDF / Ausgabe' },
 };
 
@@ -831,7 +832,6 @@ export function ConditionNode({ id, data, selected }: NodeProps) {
 
   const upd = (i: number, k: 'latex' | 'expr' | 'match', v: string) => {
     const c = [...conds]; c[i] = { ...c[i], [k]: v };
-    // Beim Ändern des LaTeX-Felds: JS-Ausdruck automatisch ableiten (falls Ungleichung)
     if (k === 'latex' && mode !== 'select') {
       const auto = latexCondToJs(v);
       if (auto) c[i] = { ...c[i], expr: auto };
@@ -1175,28 +1175,101 @@ function FrameNode({ id, data, selected }: NodeProps) {
 
 function RefNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as RefData;
-  const { updateNodeData, graphNodes } = useGraphCtx();
+  const { updateNodeData, graphNodes, sourceNodesMap } = useGraphCtx();
   const set = (p: Partial<RefData>) => updateNodeData(id, p as any);
+
+  // Auto-Wire: wenn eine Kante zu diesem Block gezogen wurde, diesen Knoten verwenden
+  const wiredSources = (sourceNodesMap[id] || []).filter(n => !['frame', 'title', 'image', 'output'].includes(n.type));
+  const autoSrc = wiredSources[0];
+
+  // Auto-Wire hat Vorrang; sonst gespeicherter source_id
+  const activeSrcId = autoSrc?.id || d.source_id;
+  const src = graphNodes.find(n => n.id === activeSrcId);
   const available = graphNodes.filter(n => n.id !== id && !['frame', 'title', 'image', 'output', 'ref'].includes(n.type));
-  const src = graphNodes.find(n => n.id === d.source_id);
+
   return (
     <Shell id={id} type="ref" selected={selected}>
-      <div style={lbl}>Verweist auf</div>
-      <select className="nodrag" style={{ ...inp, background: '#fff' }}
-        value={d.source_id || ''}
-        onChange={e => set({ source_id: e.target.value })}>
-        <option value="">— Knoten wählen —</option>
-        {available.map(n => (
-          <option key={n.id} value={n.id}>
-            {n.name ? `${n.label || n.name} (${n.name})` : n.label || n.id}
-          </option>
-        ))}
-      </select>
-      {src && (
-        <div style={{ fontSize: 8.5, color: '#0369a1', marginTop: 3, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {THEME[src.type]?.icon ?? ''} {src.label || src.name}
+      {autoSrc ? (
+        <div style={{ fontSize: 9, color: '#0369a1', padding: '3px 0', lineHeight: 1.4 }}>
+          <span style={{ fontWeight: 700 }}>{THEME[autoSrc.type]?.icon ?? '🔗'} </span>
+          {autoSrc.data?.label || autoSrc.data?.name || autoSrc.id}
+          <div style={{ fontSize: 8, color: '#64748b', marginTop: 1 }}>Automatisch verbunden (Kante)</div>
         </div>
+      ) : (
+        <>
+          <div style={lbl}>Verweist auf</div>
+          <select className="nodrag" style={{ ...inp, background: '#fff' }}
+            value={d.source_id || ''}
+            onChange={e => set({ source_id: e.target.value })}>
+            <option value="">— Knoten wählen —</option>
+            {available.map(n => (
+              <option key={n.id} value={n.id}>
+                {n.name ? `${n.label || n.name} (${n.name})` : n.label || n.id}
+              </option>
+            ))}
+          </select>
+          {src && (
+            <div style={{ fontSize: 8.5, color: '#0369a1', marginTop: 3, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {THEME[src.type]?.icon ?? ''} {src.label || src.name}
+            </div>
+          )}
+        </>
       )}
+    </Shell>
+  );
+}
+
+// ── ⑂ Fallunterscheidung ────────────────────────────────────────────────────
+function CasesNode({ id, data, selected }: NodeProps) {
+  const d = data as unknown as CasesData;
+  const { updateNodeData } = useGraphCtx();
+  const set = (p: Partial<CasesData>) => updateNodeData(id, p as any);
+  const cases = d.cases || [];
+  const addCase = () => set({ cases: [...cases, { id: 'f' + (cases.length + 1), formula_latex: '', cond_expr: '' }] });
+  const removeCase = (i: number) => set({ cases: cases.filter((_, j) => j !== i) });
+  const updCase = (i: number, k: 'formula_latex' | 'cond_expr', v: string) => {
+    const next = [...cases]; next[i] = { ...next[i], [k]: v }; set({ cases: next });
+  };
+  return (
+    <Shell id={id} type="cases" selected={selected}>
+      <div style={lbl}>Ergebnis-Name (LaTeX)</div>
+      <F value={d.name || ''} placeholder="c_h" onChange={e => set({ name: e.target.value })} />
+      {d.name && <div style={{ fontSize: 10, marginTop: 1 }}><MathDisplay latex={nameToLatex(d.name)} /></div>}
+      <div style={lbl}>Bezeichnung</div>
+      <F value={d.label || ''} placeholder="Profilbeiwert" onChange={e => set({ label: e.target.value })} />
+      <div style={lbl}>Einheit</div>
+      <UnitField value={d.unit || ''} onChange={unit => set({ unit })} placeholder="-" />
+      <NameChips targetId={id} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+        <div style={lbl}>Fälle</div>
+        <button className="nodrag" onClick={addCase}
+          style={{ fontSize: 10, border: 'none', background: '#ede9fe', color: '#6d28d9', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>+</button>
+      </div>
+      {cases.map((c, i) => (
+        <div key={c.id} style={{ border: '1px solid #ddd6fe', borderRadius: 4, padding: '4px 5px', marginTop: 4, background: '#fff' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+            <div style={{ fontSize: 8, color: '#6d28d9', fontWeight: 700 }}>
+              Fall {i + 1}{!(c.cond_expr || '').trim() ? ' — else' : ''}
+            </div>
+            <button className="nodrag" onClick={() => removeCase(i)}
+              style={{ background: 'none', border: 'none', color: '#c4b5fd', cursor: 'pointer', fontSize: 11, padding: '0 2px', lineHeight: 1 }}>✕</button>
+          </div>
+          <div style={lbl}>Bedingung (JS · leer = else)</div>
+          <F value={c.cond_expr} placeholder="z < 5 && GK === 'II'"
+            onChange={e => updCase(i, 'cond_expr', e.target.value)}
+            style={{ fontFamily: 'monospace', fontSize: 8.5, background: (c.cond_expr || '').trim() ? '#fffbeb' : '#f5f3ff', borderColor: (c.cond_expr || '').trim() ? '#d1d5db' : '#c4b5fd' }} />
+          <div style={lbl}>Formel (LaTeX)</div>
+          <LatexArea value={c.formula_latex}
+            placeholder="1.6 \cdot \left[\left(\frac{5}{z_g}\right)^{\alpha_r} + 0{,}375\right]^2"
+            onChange={v => updCase(i, 'formula_latex', v)}
+            style={{ ...inp, minHeight: 30, fontFamily: 'monospace', resize: 'vertical' }} />
+          {c.formula_latex && (
+            <div style={{ background: '#faf5ff', borderRadius: 3, padding: '2px 4px', marginTop: 2, overflowX: 'auto', fontSize: 10 }}>
+              <MathDisplay latex={c.formula_latex} display />
+            </div>
+          )}
+        </div>
+      ))}
     </Shell>
   );
 }
@@ -1217,5 +1290,6 @@ export const nodeTypes = {
   title: TitleNode,
   frame: FrameNode,
   ref: RefNode,
+  cases: CasesNode,
   output: OutputNode,
 };

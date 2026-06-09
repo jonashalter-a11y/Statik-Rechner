@@ -22,3 +22,18 @@ export function evalFormula(expr: string, vars: Record<string, number>): number 
     return null;
   }
 }
+
+// Für Bedingungsausdrücke: akzeptiert String- und Zahlenvariablen, gibt boolean zurück.
+// Erlaubt kombinierte Ausdrücke wie: GK === 'III' && z < 5
+export function evalCondExpr(expr: string, vars: Record<string, string | number>): boolean {
+  if (!expr?.trim()) return false;
+  try {
+    const names = Object.keys(vars);
+    const values = Object.values(vars);
+    // eslint-disable-next-line @typescript-eslint/no-implied-eval
+    const fn = new Function(...names, `"use strict"; return !!(${expr});`);
+    return !!fn(...values);
+  } catch {
+    return false;
+  }
+}
