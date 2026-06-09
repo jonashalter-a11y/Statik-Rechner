@@ -9,7 +9,8 @@ import { api } from '../../../api';
 import { useStore } from '../../../store/useStore';
 import {
   VariableData, DropdownData, WoodClassData, TableValueData, CalcData,
-  StdCalcData, TableCalcData, ChartLookupData, ConditionData, CheckData, MinMaxData, ImageBlockData, OutputData,
+  StdCalcData, TableCalcData, ChartLookupData, ConditionData, CheckData, MinMaxData, ImageBlockData,
+  TitleData, FrameData, RefData, OutputData,
 } from '../../../types/graph';
 
 // ── Block-Stil je Typ ────────────────────────────────────────────────────────
@@ -26,8 +27,13 @@ const THEME: Record<string, { bg: string; border: string; icon: string; label: s
   check:      { bg: '#f0fdf4', border: '#059669', icon: '✅', label: 'Nachweis' },
   minmax:     { bg: '#fff1f2', border: '#be123c', icon: '↕', label: 'Min / Max' },
   image:      { bg: '#fdf4ff', border: '#a855f7', icon: '🖼', label: 'Bild' },
+  title:      { bg: '#f0f9ff', border: '#0284c7', icon: '📌', label: 'Titel' },
+  frame:      { bg: '#f8fafc', border: '#94a3b8', icon: '🔲', label: 'Rahmen' },
+  ref:        { bg: '#e0f2fe', border: '#0369a1', icon: '🔗', label: 'Referenz' },
   output:     { bg: '#f9fafb', border: '#6b7280', icon: '⬜', label: 'PDF / Ausgabe' },
 };
+
+const PRESET_COLORS = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#7c3aed', '#0891b2', '#be185d', '#0f766e', '#374151'];
 
 const inp: React.CSSProperties = {
   border: '1px solid #d1d5db', borderRadius: 3, padding: '1px 5px',
@@ -1048,6 +1054,8 @@ export function ImageNode({ id, data, selected }: NodeProps) {
 
   return (
     <Shell id={id} type="image" selected={selected}>
+      <div style={lbl}>Titel</div>
+      <F value={(d as any).title || ''} onChange={e => set({ title: e.target.value } as any)} placeholder="z.B. Figur 3 · Dachformen" />
       <div style={lbl}>Beschriftung</div>
       <F value={d.label} onChange={e => set({ label: e.target.value })} placeholder="z.B. Wandaufbau Schema" />
       <div style={lbl}>Quelle</div>
@@ -1104,6 +1112,95 @@ export function ImageNode({ id, data, selected }: NodeProps) {
   );
 }
 
+function TitleNode({ id, data, selected }: NodeProps) {
+  const { removeNode, updateNodeData } = useGraphCtx();
+  const d = data as unknown as TitleData;
+  const set = (p: Partial<TitleData>) => updateNodeData(id, p as any);
+  const color = d.color || '#2563eb';
+  return (
+    <div style={{ background: `${color}18`, border: `2px solid ${color}`, borderRadius: 6, width: '100%', minWidth: 200, height: '100%', minHeight: 34, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+      <NodeResizer isVisible={selected} minWidth={200} minHeight={34} color={color}
+        lineStyle={{ borderWidth: 1.5, borderColor: color, opacity: 0.5 }}
+        handleStyle={{ width: 7, height: 7, borderRadius: 2, background: color }} />
+      <Handle type="target" position={Position.Left} style={{ background: color, width: 7, height: 7 }} />
+      <div style={{ background: color, color: '#fff', padding: '2px 6px', borderRadius: '3px 3px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 9.5, fontWeight: 700, lineHeight: 1.2, flexShrink: 0 }}>
+        <span>📌 Titel</span>
+        <button className="nodrag" onClick={() => removeNode(id)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}>✕</button>
+      </div>
+      <div style={{ padding: 4 }}>
+        <F value={d.label || ''} placeholder="Abschnittsüberschrift..." onChange={e => set({ label: e.target.value })} style={{ fontWeight: 700, fontSize: 11 }} />
+        <div style={{ marginTop: 4, display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+          {PRESET_COLORS.map(c => (
+            <button key={c} type="button" className="nodrag" onClick={() => set({ color: c })}
+              style={{ width: 14, height: 14, background: c, border: color === c ? '2px solid #000' : '1px solid rgba(0,0,0,0.1)', borderRadius: 2, cursor: 'pointer', padding: 0, flexShrink: 0 }} />
+          ))}
+        </div>
+      </div>
+      <Handle type="source" position={Position.Right} style={{ background: color, width: 7, height: 7 }} />
+    </div>
+  );
+}
+
+function FrameNode({ id, data, selected }: NodeProps) {
+  const { removeNode, updateNodeData } = useGraphCtx();
+  const d = data as unknown as FrameData;
+  const set = (p: Partial<FrameData>) => updateNodeData(id, p as any);
+  const color = d.color || '#2563eb';
+  return (
+    <div style={{ width: '100%', height: '100%', background: `${color}0d`, border: `2px dashed ${color}`, borderRadius: 10, boxSizing: 'border-box', position: 'relative', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+      <NodeResizer isVisible={selected} minWidth={120} minHeight={60} color={color}
+        lineStyle={{ borderWidth: 1.5, borderColor: color, opacity: 0.5 }}
+        handleStyle={{ width: 7, height: 7, borderRadius: 2, background: color }} />
+      {/* Label (immer sichtbar oben links) */}
+      <div style={{ position: 'absolute', top: 5, left: 10, right: selected ? 130 : 10, fontSize: 10, color, fontWeight: 700, opacity: 0.8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {d.label || ''}
+      </div>
+      {/* Toolbar (nur wenn selektiert) */}
+      {selected && (
+        <div className="nodrag" style={{ position: 'absolute', top: 4, right: 6, display: 'flex', alignItems: 'center', gap: 3 }}>
+          {PRESET_COLORS.map(c => (
+            <button key={c} type="button" onClick={() => set({ color: c })}
+              style={{ width: 12, height: 12, background: c, border: color === c ? '2px solid #000' : '1px solid rgba(0,0,0,0.1)', borderRadius: 2, cursor: 'pointer', padding: 0, flexShrink: 0 }} />
+          ))}
+          <input defaultValue={d.label || ''} onChange={e => set({ label: e.target.value })}
+            placeholder="Label…"
+            style={{ border: `1px solid ${color}`, background: `${color}20`, borderRadius: 3, fontSize: 9, padding: '1px 5px', outline: 'none', width: 70, color: '#374151', marginLeft: 2 }} />
+          <button type="button" onClick={() => removeNode(id)}
+            style={{ background: color, border: 'none', color: '#fff', cursor: 'pointer', fontSize: 10, borderRadius: 3, padding: '1px 4px', lineHeight: 1.4 }}>✕</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RefNode({ id, data, selected }: NodeProps) {
+  const d = data as unknown as RefData;
+  const { updateNodeData, graphNodes } = useGraphCtx();
+  const set = (p: Partial<RefData>) => updateNodeData(id, p as any);
+  const available = graphNodes.filter(n => n.id !== id && !['frame', 'title', 'image', 'output', 'ref'].includes(n.type));
+  const src = graphNodes.find(n => n.id === d.source_id);
+  return (
+    <Shell id={id} type="ref" selected={selected}>
+      <div style={lbl}>Verweist auf</div>
+      <select className="nodrag" style={{ ...inp, background: '#fff' }}
+        value={d.source_id || ''}
+        onChange={e => set({ source_id: e.target.value })}>
+        <option value="">— Knoten wählen —</option>
+        {available.map(n => (
+          <option key={n.id} value={n.id}>
+            {n.name ? `${n.label || n.name} (${n.name})` : n.label || n.id}
+          </option>
+        ))}
+      </select>
+      {src && (
+        <div style={{ fontSize: 8.5, color: '#0369a1', marginTop: 3, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {THEME[src.type]?.icon ?? ''} {src.label || src.name}
+        </div>
+      )}
+    </Shell>
+  );
+}
+
 export const nodeTypes = {
   variable: VariableNode,
   dropdown: DropdownNode,
@@ -1117,5 +1214,8 @@ export const nodeTypes = {
   check: CheckNode,
   minmax: MinMaxNode,
   image: ImageNode,
+  title: TitleNode,
+  frame: FrameNode,
+  ref: RefNode,
   output: OutputNode,
 };

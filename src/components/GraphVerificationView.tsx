@@ -138,6 +138,8 @@ export default function GraphVerificationView({ verification, readOnly = false, 
   const [inputs, setInputs] = useState<Record<string, string>>(initialInputs || {});
   const [imageModal, setImageModal] = useState<{ src: string; label?: string; source?: string } | null>(null);
   const [chartModal, setChartModal] = useState<string | null>(null); // Node-ID
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const toggleSection = (id: string) => setCollapsedSections(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   const materialProps = useMemo(() => {
     const woodClass = apiWoodClasses.find(c => c.id === woodClassId);
     return Object.fromEntries((woodClass?.properties || []).map(p => [p.key, p.value]));
@@ -191,7 +193,17 @@ export default function GraphVerificationView({ verification, readOnly = false, 
     return next;
   });
   const ev = useMemo(() => evalGraph(graph, inputs, tables, materialProps, { woodType, woodClassId }), [graph, inputs, tables, materialProps, woodType, woodClassId]);
-  const ordered = useMemo(() => topoSort(graph), [graph]);
+  const ordered = useMemo(() => {
+    const sorted = topoSort(graph);
+    const order = graph.display_order;
+    if (!order?.length) return sorted;
+    const idToNode = new Map(sorted.map(n => [n.id, n]));
+    const result: typeof sorted = [];
+    for (const id of order) { const n = idToNode.get(id); if (n) result.push(n); }
+    const inOrder = new Set(order);
+    for (const n of sorted) { if (!inOrder.has(n.id)) result.push(n); }
+    return result;
+  }, [graph]);
   // Welche Bedingung führt via Condition-Kante zu welchem Node?
   const conditionAfterNode = useMemo(() => {
     const map = new Map<string, string>(); // targetNodeId → conditionNodeId
@@ -266,15 +278,22 @@ export default function GraphVerificationView({ verification, readOnly = false, 
     );
   };
 
-  const imageBlocks = ordered.filter(n => n.type === 'image' && (n.data as any).image);
-
   // Aufeinanderfolgende Variablen zu Gruppen zusammenfassen (2-Spalten-Raster)
-  type Sec = { type: 'vars'; nodes: typeof ordered } | { type: 'single'; node: (typeof ordered)[0] };
+  // Titel-Blöcke bilden einklappbare Abschnitte; Bild-Blöcke erscheinen an ihrer Workflow-Position
+  type Sec =
+    | { type: 'vars'; nodes: typeof ordered }
+    | { type: 'single'; node: (typeof ordered)[0] }
+    | { type: 'title'; node: (typeof ordered)[0] };
   const sections: Sec[] = [];
   for (const n of ordered) {
     const r = ev.results[n.id] || {};
-    if (r.skipped || n.type === 'output' || n.type === 'woodclass' || n.type === 'image' || n.type === 'condition') continue;
-    if (n.type === 'variable') {
+    if (n.type === 'frame') continue; // nur Canvas-Optik, nicht rendern
+    if (r.skipped || n.type === 'output' || n.type === 'woodclass' || n.type === 'condition') continue;
+    if (n.type === 'title') {
+      sections.push({ type: 'title', node: n });
+      continue;
+    }
+    if (n.type === 'variable' || n.type === 'dropdown' || n.type === 'ref') {
       const last = sections[sections.length - 1];
       if (last?.type === 'vars') last.nodes.push(n);
       else sections.push({ type: 'vars', nodes: [n] });
@@ -283,29 +302,85 @@ export default function GraphVerificationView({ verification, readOnly = false, 
     }
   }
 
+  // Berechne welche sections-Einträge durch einen eingeklappten Titel verdeckt sind
+  const hiddenBySectionCollapse = useMemo(() => {
+    const hidden = new Set<number>();
+    let activeCollapsedIdx: number | null = null;
+    sections.forEach((sec, i) => {
+      if (sec.type === 'title') {
+        activeCollapsedIdx = collapsedSections.has(sec.node.id) ? i : null;
+      } else if (activeCollapsedIdx !== null) {
+        hidden.add(i);
+      }
+    });
+    return hidden;
+  }, [sections, collapsedSections]);
+
   return (
     <div>
-      {imageBlocks.map(n => {
-        const d: any = n.data;
-        return (
-          <div key={n.id} style={{ ...card, padding: 0, overflow: 'hidden', cursor: 'pointer' }} onClick={() => setImageModal({ src: d.image, label: d.label, source: d.source })}>
-            <img src={d.image} style={{ width: '100%', maxHeight: 320, objectFit: 'contain', display: 'block' }} />
-            {(d.label || d.source) && (
-              <div style={{ padding: '6px 12px', borderTop: '1px solid #f0f0f0' }}>
-                {d.label && <div style={{ fontSize: 11, color: '#374151' }}>{d.label}</div>}
-                {d.source && <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>Quelle: {d.source}</div>}
-              </div>
-            )}
-          </div>
-        );
-      })}
       {sections.map((sec, si) => {
+        if (hiddenBySectionCollapse.has(si)) return null;
+        if (sec.type === 'title') {
+          const d: any = sec.node.data;
+          const color: string = d.color || '#2563eb';
+          const isCollapsed = collapsedSections.has(sec.node.id);
+          return (
+            <div key={sec.node.id} onClick={() => toggleSection(sec.node.id)}
+              style={{ ...card, background: `${color}12`, borderColor: color, borderWidth: 2, cursor: 'pointer', marginTop: 10, marginBottom: 4, userSelect: 'none' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 3, height: 16, background: color, borderRadius: 2, flexShrink: 0 }} />
+                <span style={{ fontWeight: 700, fontSize: 13, color: '#1f2937', flex: 1 }}>{d.label || 'Abschnitt'}</span>
+                <span style={{ fontSize: 11, color, fontWeight: 700 }}>{isCollapsed ? '▶' : '▼'}</span>
+              </div>
+            </div>
+          );
+        }
         if (sec.type === 'vars') {
           return (
             <div key={`vars_${si}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
               {sec.nodes.map(n => {
                 const d: any = n.data;
-                // Volle Breite für Variablen mit Kommentar, Dropdown oder Tabellenspalte
+
+                // Dropdown-Block (type='dropdown') → halb-breit in der Grid
+                if (n.type === 'dropdown') {
+                  const opts = d.mode === 'custom' ? (d.options || []).map((o: any) => o.label) : rowLabels(d.table_ref, d.label_col ?? 0);
+                  const dropVal = ev.results[n.id]?.value;
+                  const hasValue = d.mode === 'custom' && d.name && dropVal != null && isFiniteNumber(dropVal);
+                  return (
+                    <div key={n.id} style={{ ...card, marginBottom: 0 }}>
+                      <div style={lbl}>{d.label || 'Auswahl'}</div>
+                      <select style={sel} disabled={readOnly} value={inputs[n.id] ?? ''} onChange={e => setInput(n.id, e.target.value)}>
+                        {opts.map((o: string, i: number) => <option key={i} value={o}>{o}</option>)}
+                      </select>
+                      {hasValue && (
+                        <div style={{ marginTop: 4, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 4, padding: '3px 8px', overflowX: 'auto' }}>
+                          <MathDisplay latex={`${displayName(d.name)} = ${num(dropVal)}${d.unit ? `\\;${unitLatex(d.unit)}` : ''}`} />
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                // Referenz-Block → zeigt den Wert des referenzierten Blocks (read-only, halb-breit)
+                if (n.type === 'ref') {
+                  const srcNode = graph.nodes.find(nn => nn.id === (d as any).source_id);
+                  const srcD: any = srcNode?.data;
+                  const refVal = ev.results[(d as any).source_id]?.value;
+                  return (
+                    <div key={n.id} style={{ ...card, marginBottom: 0, background: '#f0f9ff', borderColor: '#bae6fd' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 3 }}>
+                        {srcD?.name && <MathDisplay latex={nameToLatex(srcD.name)} />}
+                        {srcD?.label && <span style={{ color: '#6b7280', fontSize: 11 }}>{srcD.label}</span>}
+                        {srcD?.unit && <span style={{ color: '#9ca3af', fontSize: 11 }}><MathDisplay latex={`[${unitLatex(srcD.unit)}]`} /></span>}
+                      </div>
+                      <div style={{ fontFamily: 'monospace', fontSize: 13, fontWeight: 700, color: isFiniteNumber(refVal) ? '#0369a1' : '#9ca3af', textAlign: 'right' }}>
+                        {num(refVal)}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Variable-Block → volle Breite bei Kommentar, Dropdown-Input, Tabellenspalte oder Link
                 const fullWidth = (d.inputKind === 'number_comment' && d.comment) || d.inputKind === 'dropdown' || d.inputKind === 'table_column' || d.inputKind === 'number_link';
                 return (
                   <div key={n.id} style={{ ...card, marginBottom: 0, ...(fullWidth ? { gridColumn: '1 / -1' } : {}) }}>
@@ -352,6 +427,35 @@ export default function GraphVerificationView({ verification, readOnly = false, 
         const n = sec.node;
         const d: any = n.data;
         const r = ev.results[n.id] || {};
+
+        if (n.type === 'image') {
+          return (
+            <div key={n.id} style={{ ...card, padding: 0, overflow: 'hidden' }}>
+              {d.title && (
+                <div style={{ padding: '7px 12px 4px', fontWeight: 600, fontSize: 12, color: '#374151', borderBottom: d.image ? '1px solid #f0f0f0' : undefined }}>
+                  {d.title}
+                </div>
+              )}
+              {d.image && (
+                <div style={{ position: 'relative' }}>
+                  <img src={d.image} style={{ width: '100%', maxHeight: 320, objectFit: 'contain', display: 'block', cursor: 'pointer' }}
+                    onClick={() => setImageModal({ src: d.image, label: d.label, source: d.source })} />
+                  <button onClick={() => setImageModal({ src: d.image, label: d.label, source: d.source })}
+                    title="Bild vergrössern"
+                    style={{ position: 'absolute', bottom: 6, right: 6, background: 'rgba(0,0,0,0.45)', border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', color: '#fff', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    🔍
+                  </button>
+                </div>
+              )}
+              {(d.label || d.source) && (
+                <div style={{ padding: '5px 12px 7px', borderTop: d.image ? '1px solid #f0f0f0' : undefined }}>
+                  {d.label && <div style={{ fontSize: 11, color: '#374151' }}>{d.label}</div>}
+                  {d.source && <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>Quelle: {d.source}</div>}
+                </div>
+              )}
+            </div>
+          );
+        }
 
         if (n.type === 'dropdown') {
           const opts = d.mode === 'custom' ? (d.options || []).map((o: any) => o.label) : rowLabels(d.table_ref, d.label_col ?? 0);

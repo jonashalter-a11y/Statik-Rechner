@@ -125,7 +125,7 @@ function applyWoodClassToVerifications(
 export const useStore = create<AppState>((set, get) => ({
   discipline: 'Statik',
   standard:   'SIA',
-  normId:     'sia265',
+  normId:     (localStorage.getItem('sia-norm-id') || 'sia265') as string,
   woodType:   'Vollholz',
   woodClassId: 'C24',
   chapters: staticChapters,
@@ -150,20 +150,22 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   // Norm innerhalb SIA wechseln — setzt normId sofort; API-Daten kommen via loadNormData
-  setNormId: (id) => set(state => {
-    // Wenn Daten gecacht: sofort anzeigen, sonst leer lassen (API-Reload folgt)
-    const chapData = state.rawChapterDataByNorm[id] || [];
-    const normVerifs = state._verifsByNorm[id] || [];
-    const chapters = chapData.length > 0
-      ? buildChapterTree(chapData, normVerifs, 'SIA', state).chapters
-      : [];
-    return {
-      normId: id,
-      standard: 'SIA',
-      chapters,
-      verifications: normVerifs.length > 0 ? normVerifs : state.verifications,
-    };
-  }),
+  setNormId: (id) => {
+    localStorage.setItem('sia-norm-id', id);
+    set(state => {
+      const chapData = state.rawChapterDataByNorm[id] || [];
+      const normVerifs = state._verifsByNorm[id] || [];
+      const chapters = chapData.length > 0
+        ? buildChapterTree(chapData, normVerifs, 'SIA', state).chapters
+        : [];
+      return {
+        normId: id,
+        standard: 'SIA',
+        chapters,
+        verifications: normVerifs.length > 0 ? normVerifs : state.verifications,
+      };
+    });
+  },
 
   // Holzart wechseln: passende Klassen filtern, zweite (mittlere) automatisch wählen + Werte einfüllen
   setWoodType: (w) => set(state => {

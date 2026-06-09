@@ -12,6 +12,7 @@ import { useStore } from '../../../store/useStore';
 import {
   VerificationGraph, BlockType, BlockData, GraphNode, GraphEdge,
 } from '../../../types/graph';
+import { topoSort } from '../../../utils/evalGraph';
 
 const PALETTE: { type: BlockType; icon: string; label: string; color: string }[] = [
   { type: 'variable',   icon: '🟪', label: 'Variabel',          color: '#7c3aed' },
@@ -26,6 +27,9 @@ const PALETTE: { type: BlockType; icon: string; label: string; color: string }[]
   { type: 'check',      icon: '✅', label: 'Nachweis',          color: '#059669' },
   { type: 'minmax',     icon: '↕',  label: 'Min / Max',         color: '#be123c' },
   { type: 'image',      icon: '🖼', label: 'Bild',              color: '#a855f7' },
+  { type: 'title',      icon: '📌', label: 'Titel',             color: '#0284c7' },
+  { type: 'frame',      icon: '🔲', label: 'Rahmen',            color: '#94a3b8' },
+  { type: 'ref',        icon: '🔗', label: 'Referenz',          color: '#0369a1' },
   { type: 'output',     icon: '⬜', label: 'PDF / Ausgabe',     color: '#6b7280' },
 ];
 
@@ -43,6 +47,9 @@ function defaultData(type: BlockType): BlockData {
     case 'check':      return { kind: 'check', label: '', latex: '', expr: '' };
     case 'minmax':     return { kind: 'minmax', name: '', label: '', unit: '', latex: '', expr: '' };
     case 'image':      return { kind: 'image', label: '' };
+    case 'title':      return { kind: 'title', label: '', color: '#2563eb' };
+    case 'frame':      return { kind: 'frame', label: '', color: '#2563eb' };
+    case 'ref':        return { kind: 'ref', source_id: '' };
     case 'output':     return { kind: 'output', label: 'PDF', blocks: [] };
   }
 }
@@ -105,7 +112,7 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
   const globalUnits = useStore(s => s.globalUnits);
   const { screenToFlowPosition } = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(
-    graph.nodes.map(n => ({ id: n.id, type: n.type, position: n.position, data: n.data as any, ...(n.style ? { style: n.style } : {}) })),
+    graph.nodes.map(n => ({ id: n.id, type: n.type, position: n.position, data: n.data as any, ...(n.style ? { style: n.style } : {}), ...(n.type === 'frame' ? { zIndex: -1 } : {}) })),
   );
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(
     graph.edges.map(e => ({
@@ -120,6 +127,12 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
   const [clipboardCount, setClipboardCount] = useState(0);
   const [lassoMode, setLassoMode] = useState(false);
   const [, setHistoryVersion] = useState(0);
+  const [showOrderPanel, setShowOrderPanel] = useState(false);
+  const [displayOrder, setDisplayOrder] = useState<string[] | null>(graph.display_order ?? null);
+  const [dragOrderIdx, setDragOrderIdx] = useState<number | null>(null);
+  const [dragOverOrderIdx, setDragOverOrderIdx] = useState<number | null>(null);
+  const [collapsedOrderSections, setCollapsedOrderSections] = useState<Set<string>>(new Set());
+  const toggleOrderSection = (id: string) => setCollapsedOrderSections(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   const tableCache = useRef<Map<string, DbTableFull>>(new Map());
   const clipboardRef = useRef<GraphClipboard | null>(null);
   const historyRef = useRef<GraphSnapshot[]>([]);
@@ -134,16 +147,27 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
       version: 1,
       nodes: nodes.map(n => {
         const gn: GraphNode = { id: n.id, type: n.type as BlockType, position: n.position, data: n.data as any };
-        // Grösse (vom NodeResizer) speichern
         const w = (n.style as any)?.width ?? n.width;
         const h = (n.style as any)?.height ?? n.height;
         if (w || h) gn.style = { ...(w ? { width: w } : {}), ...(h ? { height: h } : {}) };
         return gn;
       }) as GraphNode[],
       edges: edges.map(e => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle ?? null, targetHandle: e.targetHandle ?? null, data: (e.data as any) || { kind: 'workflow' } })) as GraphEdge[],
+      ...(displayOrder ? { display_order: displayOrder } : {}),
     };
     onChange(g);
-  }, [nodes, edges]);
+  }, [nodes, edges, displayOrder]);
+
+  // Sync: neue Nodes ans Ende der Reihenfolge hängen, gelöschte entfernen
+  useEffect(() => {
+    if (!displayOrder) return;
+    const nodeIds = new Set(nodes.map(n => n.id));
+    const cleaned = displayOrder.filter(id => nodeIds.has(id));
+    const newIds = nodes.filter(n => !displayOrder.includes(n.id)).map(n => n.id);
+    if (cleaned.length !== displayOrder.length || newIds.length) {
+      setDisplayOrder([...cleaned, ...newIds]);
+    }
+  }, [nodes]);
 
   useEffect(() => {
     if (restoringHistoryRef.current) {
@@ -266,6 +290,7 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
       id, type,
       position: position ?? { x: 120 + (nds.length % 4) * 60, y: 60 + nds.length * 30 },
       data: defaultData(type) as any,
+      ...(type === 'frame' ? { style: { width: 300, height: 200 }, zIndex: -1 } : {}),
     }]);
   };
 
@@ -443,6 +468,21 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
               <span>{p.icon}</span><span>{p.label}</span>
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => setShowOrderPanel(s => !s)}
+            style={{
+              marginTop: 8, width: '100%', display: 'flex', alignItems: 'center', gap: 5,
+              border: `1px solid ${(showOrderPanel || displayOrder) ? '#2563eb' : '#cbd5e1'}`,
+              borderLeft: `4px solid ${(showOrderPanel || displayOrder) ? '#2563eb' : '#94a3b8'}`,
+              background: (showOrderPanel || displayOrder) ? '#eff6ff' : '#fff',
+              borderRadius: 6, padding: '5px 7px', cursor: 'pointer', fontSize: 11,
+              color: (showOrderPanel || displayOrder) ? '#1d4ed8' : '#334155',
+              fontWeight: (showOrderPanel || displayOrder) ? 700 : 400,
+            }}
+          >
+            <span>📋</span><span>Reihenfolge{displayOrder ? ' ✓' : ''}</span>
+          </button>
           <div style={{ marginTop: 10, fontSize: 10, color: '#9ca3af', lineHeight: 1.4 }}>
             Pfeil ziehen = Workflow.<br />Aus 🔶 = Bedingung.<br />Klick auf Pfeil = löschen.
           </div>
@@ -456,6 +496,7 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
             onConnect={onConnect} onEdgeClick={onEdgeClick}
             nodeTypes={nodeTypes as any}
             fitView proOptions={{ hideAttribution: true }}
+            minZoom={0.05}
             defaultEdgeOptions={{ markerEnd: { type: MarkerType.ArrowClosed } }}
             style={{ background: 'transparent' }}
             selectionOnDrag={lassoMode}
@@ -467,6 +508,132 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
             <MiniMap nodeStrokeWidth={3} pannable zoomable style={{ width: 120, height: 80 }} />
           </ReactFlow>
         </div>
+
+        {/* Reihenfolge-Panel */}
+        {showOrderPanel && (() => {
+          const NON_RENDERABLE = new Set(['output', 'condition', 'woodclass', 'image', 'frame']);
+          const paletteIcon = (t: string) => PALETTE.find(p => p.type === t)?.icon ?? '■';
+          const nodeLabel = (n: Node) => { const d: any = n.data; return d.label || d.name || n.type || '?'; };
+
+          const sortedNodes = (() => {
+            try {
+              const g: any = { version: 1, nodes: nodes.map(n => ({ id: n.id, type: n.type, position: n.position, data: n.data })), edges: edges.map(e => ({ id: e.id, source: e.source, target: e.target, data: e.data || { kind: 'workflow' } })) };
+              return topoSort(g);
+            } catch { return nodes; }
+          })();
+
+          const currentOrder: Node[] = displayOrder
+            ? (() => {
+                const idToNode = new Map(nodes.map(n => [n.id, n]));
+                const res: Node[] = [];
+                for (const id of displayOrder) { const n = idToNode.get(id); if (n) res.push(n); }
+                const inOrd = new Set(displayOrder);
+                for (const n of nodes) { if (!inOrd.has(n.id)) res.push(n); }
+                return res;
+              })()
+            : sortedNodes as unknown as Node[];
+
+          const handleDragStart = (i: number) => setDragOrderIdx(i);
+          const handleDragOver = (e: React.DragEvent, i: number) => { e.preventDefault(); setDragOverOrderIdx(i); };
+          const handleDrop = (e: React.DragEvent, i: number) => {
+            e.preventDefault();
+            if (dragOrderIdx == null || dragOrderIdx === i) { setDragOrderIdx(null); setDragOverOrderIdx(null); return; }
+            const ids = currentOrder.map(n => n.id);
+            const [moved] = ids.splice(dragOrderIdx, 1);
+            ids.splice(i, 0, moved);
+            setDisplayOrder(ids);
+            setDragOrderIdx(null);
+            setDragOverOrderIdx(null);
+          };
+          const handleDragEnd = () => { setDragOrderIdx(null); setDragOverOrderIdx(null); };
+
+          // Sichtbarkeit: Blöcke nach einem eingeklappten Titel ausblenden
+          const visibleIndices = new Set<number>();
+          let activeTitleCollapsed = false;
+          currentOrder.forEach((n, i) => {
+            if (String(n.type) === 'title') {
+              activeTitleCollapsed = collapsedOrderSections.has(n.id);
+              visibleIndices.add(i);
+            } else if (!activeTitleCollapsed) {
+              visibleIndices.add(i);
+            }
+          });
+
+          return (
+            <div style={{ width: 210, borderLeft: '1px solid #e5e7eb', background: '#fff', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+              <div style={{ padding: '8px 10px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: '#374151' }}>📋 Reihenfolge</span>
+                <button type="button" onClick={() => setShowOrderPanel(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#9ca3af', lineHeight: 1, padding: 0 }}>×</button>
+              </div>
+
+              {/* Toggle Standard / Anpassen */}
+              <div style={{ display: 'flex', gap: 4, padding: '6px 8px', borderBottom: '1px solid #f1f5f9' }}>
+                <button type="button"
+                  onClick={() => setDisplayOrder(null)}
+                  style={{ flex: 1, border: `1px solid ${!displayOrder ? '#2563eb' : '#e5e7eb'}`, background: !displayOrder ? '#eff6ff' : '#f9fafb', borderRadius: 4, padding: '4px 0', fontSize: 10, cursor: 'pointer', color: !displayOrder ? '#1d4ed8' : '#6b7280', fontWeight: !displayOrder ? 700 : 400 }}>
+                  Standard
+                </button>
+                <button type="button"
+                  onClick={() => { if (!displayOrder) setDisplayOrder(currentOrder.map(n => n.id)); }}
+                  style={{ flex: 1, border: `1px solid ${displayOrder ? '#2563eb' : '#e5e7eb'}`, background: displayOrder ? '#eff6ff' : '#f9fafb', borderRadius: 4, padding: '4px 0', fontSize: 10, cursor: 'pointer', color: displayOrder ? '#1d4ed8' : '#6b7280', fontWeight: displayOrder ? 700 : 400 }}>
+                  Anpassen
+                </button>
+              </div>
+
+              {!displayOrder && (
+                <div style={{ padding: '8px 10px', fontSize: 10, color: '#9ca3af', lineHeight: 1.5 }}>
+                  Reihenfolge folgt automatisch dem Workflow (Pfeile im Graphen).
+                </div>
+              )}
+
+              {/* Liste (Standard = nur Vorschau, Anpassen = Drag & Drop) */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '4px 6px' }}>
+                {displayOrder && <div style={{ fontSize: 10, color: '#9ca3af', marginBottom: 4, paddingLeft: 4 }}>Ziehen zum Umsortieren:</div>}
+                {currentOrder.map((n, i) => {
+                  if (!visibleIndices.has(i)) return null;
+                  const isTitle = String(n.type) === 'title';
+                  const isNonRend = NON_RENDERABLE.has(String(n.type || ''));
+                  const isDragging = dragOrderIdx === i;
+                  const isDragOver = dragOverOrderIdx === i;
+                  const titleColor = isTitle ? ((n.data as any).color || '#2563eb') : undefined;
+                  const isCollapsed = isTitle && collapsedOrderSections.has(n.id);
+                  return (
+                    <div
+                      key={n.id}
+                      draggable={!!displayOrder}
+                      onDragStart={() => displayOrder && handleDragStart(i)}
+                      onDragOver={e => displayOrder && handleDragOver(e, i)}
+                      onDrop={e => displayOrder && handleDrop(e, i)}
+                      onDragEnd={handleDragEnd}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        padding: isTitle ? '5px 6px' : '3px 6px 3px 18px',
+                        marginBottom: isTitle ? 4 : 2, borderRadius: 4,
+                        border: `1px solid ${isDragOver ? '#2563eb' : isTitle ? (titleColor + '60') : '#e5e7eb'}`,
+                        background: isDragging ? '#f0f9ff' : isDragOver ? '#eff6ff' : isTitle ? (titleColor + '15') : '#fafafa',
+                        cursor: displayOrder ? 'grab' : 'default',
+                        fontSize: 11, opacity: isNonRend ? 0.4 : 1,
+                        userSelect: 'none',
+                        borderLeft: isTitle ? `3px solid ${titleColor}` : undefined,
+                        marginTop: isTitle ? 4 : 0,
+                      }}
+                    >
+                      {displayOrder && <span style={{ color: '#d1d5db', fontSize: 12, flexShrink: 0 }}>≡</span>}
+                      <span style={{ flexShrink: 0 }}>{paletteIcon(String(n.type || ''))}</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: isTitle ? titleColor : '#374151', flex: 1, fontWeight: isTitle ? 700 : 400 }}>{nodeLabel(n)}</span>
+                      {isTitle && (
+                        <button type="button" onClick={() => toggleOrderSection(n.id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 9, color: titleColor, padding: 0, lineHeight: 1, flexShrink: 0 }}>
+                          {isCollapsed ? '▶' : '▼'}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </GraphCtx.Provider>
   );

@@ -16,6 +16,9 @@ export type BlockType =
   | 'check'        // ✅ Nachweis-Prüfung (Ungleichung → grün/rot)
   | 'minmax'       // ↕ Min / Max aus mehreren Ausdrücken
   | 'image'        // 🖼 Bild-Block (nur Anzeige)
+  | 'title'        // 📌 Abschnittstitel (einklappbar im Frontend)
+  | 'frame'        // 🔲 Visueller Rahmen auf dem Canvas (nicht im Frontend gerendert)
+  | 'ref'          // 🔗 Referenz auf einen anderen Block (nur Anzeige, kein neuer Eingabe)
   | 'output';      // ⬜ PDF/Ausgabe
 
 export type EdgeKind = 'workflow' | 'condition';
@@ -144,14 +147,33 @@ export interface ChartLookupData {
 
 export interface ImageBlockData {
   kind: 'image';
-  label: string;          // optionale Bildunterschrift
+  title?: string;         // Titelzeile über dem Bild (z.B. "Figur 3")
+  label: string;          // Bildunterschrift / Beschreibung (unter dem Bild)
   source?: string;        // Quelle / Kommentar
   image?: string;         // base64 Daten-URL
 }
 
+export interface TitleData {
+  kind: 'title';
+  label: string;          // Abschnittsüberschrift
+  color: string;          // Akzentfarbe (#hex)
+}
+
+export interface FrameData {
+  kind: 'frame';
+  label: string;          // optionaler Beschriftungstext
+  color: string;          // Rahmenfarbe (#hex)
+}
+
+export interface RefData {
+  kind: 'ref';
+  source_id: string;      // Node-ID des referenzierten Blocks
+}
+
 export type BlockData =
   | VariableData | DropdownData | WoodClassData | TableValueData | CalcData
-  | StdCalcData | TableCalcData | ChartLookupData | ConditionData | CheckData | MinMaxData | ImageBlockData | OutputData;
+  | StdCalcData | TableCalcData | ChartLookupData | ConditionData | CheckData | MinMaxData | ImageBlockData
+  | TitleData | FrameData | RefData | OutputData;
 
 // ── React-Flow-kompatible Node/Edge-Strukturen ──────────────────────────────
 export interface GraphNode {
@@ -175,6 +197,7 @@ export interface VerificationGraph {
   version: number;
   nodes: GraphNode[];
   edges: GraphEdge[];
+  display_order?: string[]; // optionale Anzeigereihenfolge im Frontend (Node-IDs)
 }
 
 export const emptyGraph = (): VerificationGraph => ({ version: 1, nodes: [], edges: [] });

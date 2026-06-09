@@ -22,6 +22,8 @@ export default function App() {
 
   const [sidebarW, setSidebarW] = useState(DEFAULT_SIDEBAR);
   const [printW,   setPrintW]   = useState(DEFAULT_PRINT);
+  const [showSidebar, setShowSidebar] = useState(() => localStorage.getItem('sia-sidebar') !== 'false');
+  const toggleSidebar = useCallback(() => setShowSidebar(v => { localStorage.setItem('sia-sidebar', String(!v)); return !v; }), []);
   const [containerW, setContainerW] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -105,7 +107,7 @@ export default function App() {
         if (Array.isArray(units))
           setGlobalUnits(units.map((u: any) => u.latex));
       } catch {}
-      await loadNormData('sia265');
+      await loadNormData(normId);
     })();
   }, []);
 
@@ -139,10 +141,21 @@ export default function App() {
       <div ref={containerRef} style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
         {/* Sidebar */}
-        <div style={{ width: sidebarW, minWidth: MIN_SIDEBAR, display: 'flex', flexDirection: 'column', background: '#fff', overflow: 'hidden', borderRight: '1px solid #e5e7eb', flexShrink: 0 }}>
-          <LeftSidebar />
-        </div>
-        <Splitter onResize={onResizeSidebar} />
+        {showSidebar ? (
+          <>
+            <div style={{ width: sidebarW, minWidth: MIN_SIDEBAR, display: 'flex', flexDirection: 'column', background: '#fff', overflow: 'hidden', borderRight: '1px solid #e5e7eb', flexShrink: 0 }}>
+              <LeftSidebar onToggle={toggleSidebar} />
+            </div>
+            <Splitter onResize={onResizeSidebar} />
+          </>
+        ) : (
+          <button onClick={toggleSidebar} title="Inhaltsverzeichnis einblenden"
+            style={{ width: 22, background: '#f8fafc', border: 'none', borderRight: '1px solid #e5e7eb', cursor: 'pointer', fontSize: 13, color: '#94a3b8', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.15s' }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#2563eb')}
+            onMouseLeave={e => (e.currentTarget.style.color = '#94a3b8')}>
+            ☰
+          </button>
+        )}
 
         {/* Nachweis-Panel — explizite Breite (wenn containerW bekannt), sonst flex:1 */}
         <div style={{ ...(middleW !== undefined ? { width: middleW, flexShrink: 0 } : { flex: 1 }), minWidth: MIN_MIDDLE, display: 'flex', flexDirection: 'column', background: '#fff', overflow: 'hidden' }}>

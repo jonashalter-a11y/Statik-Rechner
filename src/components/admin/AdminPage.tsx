@@ -19,9 +19,13 @@ const tabs: { id: Tab; label: string; icon: string }[] = [
 export const NormContext = React.createContext<{ normId: string; normLabel: string }>({ normId: 'sia265', normLabel: 'SIA 265' });
 
 export default function AdminPage({ onClose }: { onClose: () => void }) {
-  const [activeTab, setActiveTab] = useState<Tab>('verifications');
+  const [activeTab, setActiveTab] = useState<Tab>(
+    () => (localStorage.getItem('admin-tab') as Tab | null) ?? 'verifications'
+  );
   const [norms, setNorms] = useState<Norm[]>([]);
-  const [activeNorm, setActiveNorm] = useState<string>('sia265');
+  const [activeNorm, setActiveNorm] = useState<string>(
+    () => localStorage.getItem('admin-norm') ?? 'sia265'
+  );
   const [showNewNorm, setShowNewNorm] = useState(false);
   const [newNorm, setNewNorm] = useState({ name: '', year: String(new Date().getFullYear()) });
   const [normMsg, setNormMsg] = useState('');
@@ -58,6 +62,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
       await api.createNorm({ id, name, label, year, description: '' });
       const loaded = await api.getNorms();
       setNorms(loaded);
+      localStorage.setItem('admin-norm', id);
       setActiveNorm(id);
       setShowNewNorm(false);
       setNewNorm({ name: '', year: String(new Date().getFullYear()) });
@@ -93,7 +98,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(0,0,0,0.2)', borderRadius: 7, padding: '3px 6px' }}>
             <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.65)' }}>Norm:</span>
             {norms.map(n => (
-              <button key={n.id} onClick={() => setActiveNorm(n.id)} style={{
+              <button key={n.id} onClick={() => { localStorage.setItem('admin-norm', n.id); setActiveNorm(n.id); }} style={{
                 background: activeNorm === n.id ? 'rgba(255,255,255,0.3)' : 'transparent',
                 border: activeNorm === n.id ? '1px solid rgba(255,255,255,0.5)' : '1px solid transparent',
                 color: '#fff', borderRadius: 5, padding: '3px 10px',
@@ -122,7 +127,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
           {/* Tabs */}
           <div style={{ display: 'flex', gap: 3 }}>
             {tabs.map(t => (
-              <button key={t.id} onClick={() => setActiveTab(t.id)} style={{
+              <button key={t.id} onClick={() => { localStorage.setItem('admin-tab', t.id); setActiveTab(t.id); }} style={{
                 background: activeTab === t.id ? 'rgba(255,255,255,0.22)' : 'transparent',
                 border: activeTab === t.id ? '1px solid rgba(255,255,255,0.4)' : '1px solid transparent',
                 color: '#fff', borderRadius: 6, padding: '4px 12px',

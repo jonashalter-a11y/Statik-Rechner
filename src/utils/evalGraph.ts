@@ -203,6 +203,16 @@ export function topoSort(graph: VerificationGraph): GraphNode[] {
   const indeg = new Map<string, number>();
   const adj = new Map<string, string[]>();
   nodes.forEach(n => { indeg.set(n.id, 0); adj.set(n.id, []); });
+  // ref-Blöcke hängen implizit von ihrem source_id ab (egal ob Kante existiert)
+  nodes.forEach(n => {
+    if (n.type === 'ref') {
+      const srcId = (n.data as any).source_id;
+      if (srcId && adj.has(srcId) && indeg.has(n.id)) {
+        adj.get(srcId)!.push(n.id);
+        indeg.set(n.id, (indeg.get(n.id) || 0) + 1);
+      }
+    }
+  });
   flowEdges.forEach(e => {
     if (!adj.has(e.source) || !indeg.has(e.target)) return;
     adj.get(e.source)!.push(e.target);
@@ -419,6 +429,12 @@ export function evalGraph(
           const substitutedLatex = substituteLatexValues(d.latex || '', symbols);
           results[node.id] = { value: v ?? NaN, caseValues, activeCaseIndex, substitutedCases: caseSubstituted, modeStr: modeMatch ? modeMatch[1] : 'min', substitutedLatex } as any;
           if (d.name && v != null && isFinite(v)) setSymbol(symbols, d.name, v);
+          break;
+        }
+        case 'ref': {
+          const srcId = (d as any).source_id;
+          const srcResult = srcId ? results[srcId] : undefined;
+          results[node.id] = srcResult ? { ...srcResult } : { value: NaN };
           break;
         }
         case 'image':
