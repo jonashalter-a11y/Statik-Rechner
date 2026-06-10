@@ -12,6 +12,8 @@ export interface GraphCtxValue {
   // Verfügbare benannte Werte (für klickbare Chips in Rechnungen)
   allNames: { id: string; name: string; label: string }[];
   graphNodes: { id: string; type: string; label: string; name: string }[];
+  // Vollständige Node-Daten (für Dropdown-Optionen etc.)
+  allNodeData: Record<string, any>;
   // Eingehende Knoten je Ziel-ID (Kante source → target)
   sourceNodesMap: Record<string, Array<{ id: string; type: string; data: any }>>;
   unitOptions: string[];

@@ -460,6 +460,9 @@ export function DropdownNode({ id, data, selected }: NodeProps) {
     <Shell id={id} type="dropdown" selected={selected}>
       <div style={lbl}>Bezeichnung</div>
       <F value={d.label} placeholder="Geländekategorie" onChange={e => set({ label: e.target.value })} />
+      <div style={lbl}>Variablen-Name (für Berechnung / Bedingungen)</div>
+      <F value={d.name || ''} placeholder="GK" onChange={e => set({ name: e.target.value })} />
+      {d.name && <div style={{ fontSize: 10, marginTop: 1, color: '#92400e' }}><MathDisplay latex={formulaName(d.name)} /></div>}
       <div style={lbl}>Einheit</div>
       <UnitField value={d.unit || ''} onChange={unit => set({ unit })} placeholder="-" />
       <div style={lbl}>Art</div>
@@ -487,9 +490,6 @@ export function DropdownNode({ id, data, selected }: NodeProps) {
       )}
       {d.mode === 'custom' && (
         <>
-          <div style={lbl}>Variablen-Name (für Berechnung)</div>
-          <F value={d.name || ''} placeholder="n_Wand" onChange={e => set({ name: e.target.value })} />
-          {d.name && <div style={{ fontSize: 10, marginTop: 1, color: '#92400e' }}><MathDisplay latex={formulaName(d.name)} /></div>}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={lbl}>Optionen</div>
             <button className="nodrag" onClick={addOpt} style={{ fontSize: 10, border: 'none', background: '#fed7aa', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>+</button>
@@ -806,18 +806,44 @@ export function ChartLookupNode({ id, data, selected }: NodeProps) {
 // ── 🔶 Bedingung ─────────────────────────────────────────────────────────────
 export function ConditionNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as ConditionData;
-  const { updateNodeData, graphNodes, dbTables, loadTableFull } = useGraphCtx();
+  const { updateNodeData, graphNodes, dbTables, loadTableFull, allNodeData, sourceNodesMap } = useGraphCtx();
   const set = (p: Partial<ConditionData>) => updateNodeData(id, p);
   const conds = d.conditions || [];
   const mode = d.mode || 'expr';
   const selectableNodes = graphNodes.filter(n =>
-    n.id !== id && (
-      n.type === 'dropdown' ||
-      n.type === 'woodclass' ||
-      (n.type === 'variable')
-    )
+    n.id !== id && (n.type === 'dropdown' || n.type === 'woodclass' || n.type === 'variable')
   );
-  const add = () => set({ conditions: [...conds, { id: 'c' + (conds.length + 1), latex: '', expr: '', match: '' }] });
+  const add = () => set({ conditions: [...conds, { id: 'c' + Date.now(), latex: '', expr: '', match: '' }] });
+
+  // Wenn ein Dropdown per Pfeil verbunden wird → automatisch Quelle setzen + Zweige befüllen
+  useEffect(() => {
+    const wiredDropdown = (sourceNodesMap[id] || []).find(n => n.type === 'dropdown');
+    if (!wiredDropdown) return;
+    if (d.source === wiredDropdown.id) return; // bereits gesetzt
+    const nd = wiredDropdown.data as any;
+    const doFill = async () => {
+      type Entry = { key: string; label: string };
+      let entries: Entry[] = [];
+      if (nd.mode === 'table' && nd.table_ref) {
+        const full = await loadTableFull(nd.table_ref);
+        const labelCol: number = nd.label_col != null ? Number(nd.label_col) : 1;
+        entries = (full?.rows || [])
+          .map((r: string[]) => ({ key: String(r[0] || '').trim(), label: String(r[labelCol] ?? r[0] ?? '').trim() }))
+          .filter(e => e.key);
+      } else if (nd.options?.length) {
+        entries = (nd.options as Array<{ value: string; label: string }>)
+          .map(o => ({ key: String(o.value || o.label || '').trim(), label: String(o.label || o.value || '').trim() }))
+          .filter(e => e.key);
+      }
+      set({
+        mode: 'select',
+        source: wiredDropdown.id,
+        conditions: entries.map((e, i) => ({ id: 'c' + (i + 1), latex: e.label, expr: '', match: e.label })),
+      });
+    };
+    doFill();
+  }, [sourceNodesMap[id]?.map(n => n.id).join(',')]);
+
   // Beim ersten Rendern: fehlende exprs aus LaTeX ableiten
   useEffect(() => {
     if (mode === 'select') return;
@@ -838,27 +864,50 @@ export function ConditionNode({ id, data, selected }: NodeProps) {
     }
     set({ conditions: c });
   };
+
+  // Auto-Fill Zweige aus Quelle
   const fillFromSource = async () => {
-    if ((d.source || 'woodType') !== 'woodType') return;
-    const woodTable = dbTables.find(t => String(t.title || '').trim().toLowerCase() === 'holzart');
-    if (!woodTable) return;
-    const full = await loadTableFull(woodTable.id);
-    const values = (full?.rows || [])
-      .map(row => String(row?.[0] || '').trim())
-      .filter(Boolean);
-    const unique = Array.from(new Set<string>(values));
-    if (!unique.length) return;
-    set({
-      mode: 'select',
-      source: 'woodType',
-      conditions: unique.map((value, i) => ({
-        id: 'c' + (i + 1),
-        latex: value,
-        expr: '',
-        match: value,
-      })),
-    });
+    const src = d.source || 'woodType';
+    if (src === 'woodType') {
+      const woodTable = dbTables.find(t => String(t.title || '').trim().toLowerCase() === 'holzart');
+      if (!woodTable) return;
+      const full = await loadTableFull(woodTable.id);
+      const values = (full?.rows || []).map(row => String(row?.[0] || '').trim()).filter(Boolean);
+      const unique = Array.from(new Set<string>(values));
+      if (!unique.length) return;
+      set({ mode: 'select', source: 'woodType', conditions: unique.map((v, i) => ({ id: 'c' + (i + 1), latex: v, expr: '', match: v })) });
+      return;
+    }
+    // Beliebiges Dropdown: Optionen aus allNodeData lesen
+    const nodeData = allNodeData[src];
+    if (!nodeData) return;
+    let values: string[] = [];
+    type Entry = { key: string; label: string };
+    let entries: Entry[] = [];
+    if (nodeData.mode === 'table' && nodeData.table_ref) {
+      const full = await loadTableFull(nodeData.table_ref);
+      const labelCol: number = nodeData.label_col != null ? Number(nodeData.label_col) : 1;
+      entries = (full?.rows || [])
+        .map((row: string[]) => ({ key: String(row[0] || '').trim(), label: String(row[labelCol] ?? row[0] ?? '').trim() }))
+        .filter(e => e.key);
+    } else if (nodeData.options?.length) {
+      entries = (nodeData.options as Array<{ value: string; label: string }>)
+        .map(o => ({ key: String(o.value || o.label || '').trim(), label: String(o.label || o.value || '').trim() }))
+        .filter(e => e.key);
+    }
+    if (!entries.length) return;
+    set({ mode: 'select', source: src, conditions: entries.map((e, i) => ({ id: 'c' + (i + 1), latex: e.label, expr: '', match: e.label })) });
   };
+
+  // Zeige lesbaren Namen der Quelle
+  const sourceName = (() => {
+    const src = d.source || 'woodType';
+    if (src === 'woodType') return 'Holzart';
+    if (src === 'woodClass') return 'Holzklasse';
+    const n = selectableNodes.find(n => n.id === src);
+    return n ? (n.label || n.name || src) : src;
+  })();
+
   return (
     <Shell id={id} type="condition" selected={selected} extraHandles={
       <>
@@ -876,10 +925,11 @@ export function ConditionNode({ id, data, selected }: NodeProps) {
       </select>
       {mode === 'select' && (
         <>
-          <div style={lbl}>Quelle</div>
-          <select className="nodrag" value={d.source || 'woodType'} onChange={e => set({ source: e.target.value })} style={inp}>
-            <option value="woodType">Holzart (Backend-Tabelle/Header)</option>
-            <option value="woodClass">Holzklasse aus Header</option>
+          <div style={lbl}>Quelle — <span style={{ fontWeight: 700, color: '#92400e' }}>{sourceName}</span></div>
+          <select className="nodrag" value={d.source || 'woodType'}
+            onChange={e => set({ source: e.target.value, conditions: [] })} style={inp}>
+            <option value="woodType">Holzart (Backend-Tabelle)</option>
+            <option value="woodClass">Holzklasse</option>
             {selectableNodes.map(n => (
               <option key={n.id} value={n.id}>{n.label || n.name || n.id}</option>
             ))}
@@ -889,19 +939,25 @@ export function ConditionNode({ id, data, selected }: NodeProps) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={lbl}>{mode === 'select' ? 'Ausgänge' : 'Bedingungen'}</div>
         <div style={{ display: 'flex', gap: 3 }}>
-          {mode === 'select' && (d.source || 'woodType') === 'woodType' && (
-            <button className="nodrag" onClick={fillFromSource} title="Zweige aus Tabelle Holzart erstellen" style={{ fontSize: 10, border: 'none', background: '#dbeafe', color: '#1e40af', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>Auto</button>
+          {mode === 'select' && (
+            <button className="nodrag" onClick={fillFromSource} title="Zweige automatisch aus Dropdown-Optionen erstellen"
+              style={{ fontSize: 10, border: 'none', background: '#dbeafe', color: '#1e40af', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>Auto</button>
           )}
           <button className="nodrag" onClick={add} style={{ fontSize: 10, border: 'none', background: '#fde68a', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>+</button>
         </div>
       </div>
       {conds.map((c, i) => (
         <div key={c.id} style={{ borderTop: '1px dashed #e5e7eb', paddingTop: 2, marginTop: 2 }}>
-          <div style={{ fontSize: 8, color: '#a16207' }}>Zweig {c.id} →</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+            <div style={{ fontSize: 8, color: '#a16207' }}>Zweig {c.id} →</div>
+            <button className="nodrag" onClick={() => set({ conditions: conds.filter((_, j) => j !== i) })}
+              style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 11, padding: '0 2px', lineHeight: 1 }}>✕</button>
+          </div>
           {mode === 'select' ? (
             <>
-              <F value={c.latex} placeholder="Anzeige, z.B. Vollholz" onChange={e => upd(i, 'latex', e.target.value)} style={{ marginBottom: 2 }} />
-              <F value={c.match || ''} placeholder="Wert, z.B. Vollholz" onChange={e => upd(i, 'match', e.target.value)} style={{ fontFamily: 'monospace', background: '#fffbeb' }} />
+              <F value={c.latex} placeholder="Anzeige, z.B. II" onChange={e => upd(i, 'latex', e.target.value)} style={{ marginBottom: 2 }} />
+              <div style={{ fontSize: 8, color: '#92400e', marginBottom: 1 }}>Vergleichswert</div>
+              <F value={c.match || ''} placeholder="Wert (z.B. II)" onChange={e => upd(i, 'match', e.target.value)} style={{ fontFamily: 'monospace', fontSize: 10, background: '#fffbeb', color: '#78350f' }} />
             </>
           ) : (
             <>
@@ -1222,14 +1278,54 @@ function RefNode({ id, data, selected }: NodeProps) {
 // ── ⑂ Fallunterscheidung ────────────────────────────────────────────────────
 function CasesNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as CasesData;
-  const { updateNodeData } = useGraphCtx();
+  const { updateNodeData, graphNodes, loadTableFull, sourceNodesMap } = useGraphCtx();
   const set = (p: Partial<CasesData>) => updateNodeData(id, p as any);
   const cases = d.cases || [];
-  const addCase = () => set({ cases: [...cases, { id: 'f' + (cases.length + 1), formula_latex: '', cond_expr: '' }] });
+  const mode = d.mode || 'expr';
+  const isSelect = mode === 'select';
+
+  const selectableNodes = graphNodes.filter(n =>
+    n.id !== id && (n.type === 'dropdown' || n.type === 'variable')
+  );
+
+  // Wenn ein Dropdown per Pfeil verbunden wird → automatisch Quelle setzen + Fälle befüllen
+  useEffect(() => {
+    const wiredDropdown = (sourceNodesMap[id] || []).find(n => n.type === 'dropdown');
+    if (!wiredDropdown) return;
+    if (d.source === wiredDropdown.id) return;
+    const nd = wiredDropdown.data as any;
+    const doFill = async () => {
+      type Entry = { key: string; label: string };
+      let entries: Entry[] = [];
+      if (nd.mode === 'table' && nd.table_ref) {
+        const full = await loadTableFull(nd.table_ref);
+        const labelCol: number = nd.label_col != null ? Number(nd.label_col) : 1;
+        entries = (full?.rows || [])
+          .map((r: string[]) => ({ key: String(r[0] || '').trim(), label: String(r[labelCol] ?? r[0] ?? '').trim() }))
+          .filter(e => e.key);
+      } else if (nd.options?.length) {
+        entries = (nd.options as Array<{ value: string; label: string }>)
+          .map(o => ({ key: String(o.value || o.label || '').trim(), label: String(o.label || o.value || '').trim() }))
+          .filter(e => e.key);
+      }
+      set({
+        mode: 'select',
+        source: wiredDropdown.id,
+        cases: entries.map((e, i) => ({ id: 'f' + (i + 1), formula_latex: e.label, cond_expr: '', match_value: e.label })),
+      });
+    };
+    doFill();
+  }, [sourceNodesMap[id]?.map(n => n.id).join(',')]);
+
+  const addCase = () => set({ cases: [...cases, { id: 'f' + Date.now(), formula_latex: '', cond_expr: '', match_value: '' }] });
   const removeCase = (i: number) => set({ cases: cases.filter((_, j) => j !== i) });
-  const updCase = (i: number, k: 'formula_latex' | 'cond_expr', v: string) => {
-    const next = [...cases]; next[i] = { ...next[i], [k]: v }; set({ cases: next });
+  const updCase = (i: number, patch: Partial<typeof cases[0]>) => {
+    const next = [...cases]; next[i] = { ...next[i], ...patch }; set({ cases: next });
   };
+
+  const isElse = (c: typeof cases[0]) =>
+    isSelect ? !(c.match_value || '').trim() : !(c.cond_expr || '').trim();
+
   return (
     <Shell id={id} type="cases" selected={selected}>
       <div style={lbl}>Ergebnis-Name (LaTeX)</div>
@@ -1239,6 +1335,23 @@ function CasesNode({ id, data, selected }: NodeProps) {
       <F value={d.label || ''} placeholder="Profilbeiwert" onChange={e => set({ label: e.target.value })} />
       <div style={lbl}>Einheit</div>
       <UnitField value={d.unit || ''} onChange={unit => set({ unit })} placeholder="-" />
+      <div style={lbl}>Bedingungsart</div>
+      <select className="nodrag" value={mode} onChange={e => set({ mode: e.target.value as any })} style={inp}>
+        <option value="expr">JS-Ausdruck (z &lt; 5 &amp;&amp; GK === 'II')</option>
+        <option value="select">Dropdown-Vergleich</option>
+      </select>
+      {isSelect && (
+        <>
+          <div style={lbl}>Quelle (Dropdown)</div>
+          <select className="nodrag" value={d.source || ''}
+            onChange={e => set({ source: e.target.value, cases: [] })} style={inp}>
+            <option value="">— wählen —</option>
+            {selectableNodes.map(n => (
+              <option key={n.id} value={n.id}>{n.label || n.name || n.id}</option>
+            ))}
+          </select>
+        </>
+      )}
       <NameChips targetId={id} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
         <div style={lbl}>Fälle</div>
@@ -1249,19 +1362,30 @@ function CasesNode({ id, data, selected }: NodeProps) {
         <div key={c.id} style={{ border: '1px solid #ddd6fe', borderRadius: 4, padding: '4px 5px', marginTop: 4, background: '#fff' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
             <div style={{ fontSize: 8, color: '#6d28d9', fontWeight: 700 }}>
-              Fall {i + 1}{!(c.cond_expr || '').trim() ? ' — else' : ''}
+              Fall {i + 1}{isElse(c) ? ' — else' : ''}
             </div>
             <button className="nodrag" onClick={() => removeCase(i)}
               style={{ background: 'none', border: 'none', color: '#c4b5fd', cursor: 'pointer', fontSize: 11, padding: '0 2px', lineHeight: 1 }}>✕</button>
           </div>
-          <div style={lbl}>Bedingung (JS · leer = else)</div>
-          <F value={c.cond_expr} placeholder="z < 5 && GK === 'II'"
-            onChange={e => updCase(i, 'cond_expr', e.target.value)}
-            style={{ fontFamily: 'monospace', fontSize: 8.5, background: (c.cond_expr || '').trim() ? '#fffbeb' : '#f5f3ff', borderColor: (c.cond_expr || '').trim() ? '#d1d5db' : '#c4b5fd' }} />
+          {isSelect ? (
+            <>
+              <div style={lbl}>Wert (leer = else)</div>
+              <F value={c.match_value || ''} placeholder="II"
+                onChange={e => updCase(i, { match_value: e.target.value })}
+                style={{ fontFamily: 'monospace', fontSize: 10, background: (c.match_value || '').trim() ? '#fffbeb' : '#f5f3ff', borderColor: (c.match_value || '').trim() ? '#d1d5db' : '#c4b5fd' }} />
+            </>
+          ) : (
+            <>
+              <div style={lbl}>Bedingung (JS · leer = else)</div>
+              <F value={c.cond_expr} placeholder="z < 5 && GK === 'II'"
+                onChange={e => updCase(i, { cond_expr: e.target.value })}
+                style={{ fontFamily: 'monospace', fontSize: 8.5, background: (c.cond_expr || '').trim() ? '#fffbeb' : '#f5f3ff', borderColor: (c.cond_expr || '').trim() ? '#d1d5db' : '#c4b5fd' }} />
+            </>
+          )}
           <div style={lbl}>Formel (LaTeX)</div>
           <LatexArea value={c.formula_latex}
             placeholder="1.6 \cdot \left[\left(\frac{5}{z_g}\right)^{\alpha_r} + 0{,}375\right]^2"
-            onChange={v => updCase(i, 'formula_latex', v)}
+            onChange={v => updCase(i, { formula_latex: v })}
             style={{ ...inp, minHeight: 30, fontFamily: 'monospace', resize: 'vertical' }} />
           {c.formula_latex && (
             <div style={{ background: '#faf5ff', borderRadius: 3, padding: '2px 4px', marginTop: 2, overflowX: 'auto', fontSize: 10 }}>

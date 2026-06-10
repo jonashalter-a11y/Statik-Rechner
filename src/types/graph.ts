@@ -176,10 +176,13 @@ export interface CasesData {
   name: string;           // LaTeX-Name des Ergebnisses (z.B. "c_h")
   label: string;
   unit: string;
+  mode?: 'expr' | 'select'; // 'expr' = JS-Bedingung (Standard), 'select' = Dropdown-Vergleich
+  source?: string;           // Node-ID der Quelle (für mode='select')
   cases: Array<{
     id: string;
-    formula_latex: string; // Formel (LaTeX, wird zu JS konvertiert)
-    cond_expr: string;     // JS-Bedingung (leer = else/Standard)
+    formula_latex: string;  // Formel (LaTeX, wird zu JS konvertiert)
+    cond_expr: string;      // JS-Bedingung (leer = else/Standard) — nur für mode='expr'
+    match_value?: string;   // Vergleichswert (für mode='select'), z.B. 'II'
   }>;
 }
 
@@ -210,7 +213,8 @@ export interface VerificationGraph {
   version: number;
   nodes: GraphNode[];
   edges: GraphEdge[];
-  display_order?: string[]; // optionale Anzeigereihenfolge im Frontend (Node-IDs)
+  display_order?: string[];
+  hidden_nodes?: string[];  // ausgeblendete Blöcke im Frontend
 }
 
 export const emptyGraph = (): VerificationGraph => ({ version: 1, nodes: [], edges: [] });

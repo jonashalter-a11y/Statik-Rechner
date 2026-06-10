@@ -122,22 +122,49 @@ const INEQ_OPS = [
 
 export function latexCondToJs(tex: string): string {
   if (!tex?.trim()) return '';
-  // LaTeX-Anzeige-Befehle zuerst normalisieren (für die Suche nach dem Operator)
   let s = tex.trim()
     .replace(/\\text\s*\{([^{}]*)\}/g, '$1')
     .replace(/\\left|\\right/g, '');
+
+  // Alle Ungleichungs-Operatoren + ihre Positionen finden
+  type IneqMatch = { idx: number; len: number; op: string };
+  const found: IneqMatch[] = [];
   for (const { re, js: jsOp } of INEQ_OPS) {
-    const match = s.match(re);
-    if (!match) continue;
-    const idx = s.search(re);
-    const lhsTex = s.slice(0, idx).trim();
-    const rhsTex = s.slice(idx + match[0].length).trim();
-    const lhsJs = latexExprToJs(lhsTex);
-    const rhsJs = latexExprToJs(rhsTex);
-    if (!lhsJs || !rhsJs) continue;
-    return `(${lhsJs}) ${jsOp} (${rhsJs}) ? 1 : 0`;
+    const globalRe = new RegExp(re.source, 'g');
+    let m: RegExpExecArray | null;
+    while ((m = globalRe.exec(s)) !== null) {
+      found.push({ idx: m.index, len: m[0].length, op: jsOp });
+    }
   }
-  return '';
+  if (found.length === 0) return '';
+  found.sort((a, b) => a.idx - b.idx);
+
+  // Verkettete Ungleichung: a < b < c → (a) < (b) && (b) < (c)
+  if (found.length >= 2) {
+    const parts: string[] = [];
+    const boundaries = [0, ...found.map(f => f.idx), ...found.map(f => f.idx + f.len), s.length];
+    // Segmente extrahieren: vor Op1, zwischen Op1 und Op2, nach Op2
+    let prev = 0;
+    const segments: string[] = [];
+    for (const f of found) {
+      segments.push(s.slice(prev, f.idx).trim());
+      prev = f.idx + f.len;
+    }
+    segments.push(s.slice(prev).trim());
+    for (let i = 0; i < found.length; i++) {
+      const lhsJs = latexExprToJs(segments[i]);
+      const rhsJs = latexExprToJs(segments[i + 1]);
+      if (lhsJs && rhsJs) parts.push(`(${lhsJs}) ${found[i].op} (${rhsJs})`);
+    }
+    if (parts.length > 0) return parts.join(' && ') + ' ? 1 : 0';
+  }
+
+  // Einzelne Ungleichung
+  const f = found[0];
+  const lhsJs = latexExprToJs(s.slice(0, f.idx).trim());
+  const rhsJs = latexExprToJs(s.slice(f.idx + f.len).trim());
+  if (!lhsJs || !rhsJs) return '';
+  return `(${lhsJs}) ${f.op} (${rhsJs}) ? 1 : 0`;
 }
 
 // Erkennt ob ein LaTeX-String eine Ungleichung enthält

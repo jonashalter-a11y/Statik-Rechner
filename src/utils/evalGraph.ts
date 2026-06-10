@@ -306,6 +306,15 @@ export function evalGraph(
             rowIndex = tbl.rows.findIndex(r => String(r[labelCol]) === selLabel);
           }
           results[node.id] = { selected: { tableId: d.table_ref, rowIndex, label: selLabel } };
+          // table-mode: Schlüssel-Spalte (col 0) als String-Symbol speichern (z.B. GK = 'IIa')
+          if (d.mode !== 'custom' && d.name && tbl && rowIndex >= 0) {
+            const jsName = deUmlaut(d.name).replace(/[^A-Za-z0-9_$]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+            const keyVal = String(tbl.rows[rowIndex][0]);
+            if (jsName) strSymbols[jsName] = keyVal;
+            const numVal = parseNum(keyVal);
+            if (isFinite(numVal)) setSymbol(symbols, d.name, numVal);
+            results[node.id].value = isFinite(numVal) ? numVal : NaN;
+          }
           // mode=custom: gewählter Wert direkt als Symbol (falls Name gesetzt)
           if (d.mode === 'custom' && d.name) {
             const opt = (d.options || []).find((o: any) => o.label === selLabel || o.value === selLabel);
@@ -417,8 +426,8 @@ export function evalGraph(
             }
           } else {
             for (const c of (d.conditions || [])) {
-              // c.expr kann fehlen wenn Graph vor dem Auto-Ableitungs-Feature gespeichert wurde
-              const expr = c.expr || latexCondToJs(c.latex || '');
+              // Immer frisch aus latex ableiten (verhindert veraltete c.expr-Werte im Graph)
+              const expr = latexCondToJs(c.latex || '') || c.expr || '';
               // evalCondExpr: akzeptiert String- und Zahlenvariablen (z.B. GK === 'III' && z < 5)
               const ok = evalCondExpr(expr, { ...symbols, ...strSymbols });
               if (ok) { active = c.id; break; }
@@ -428,7 +437,7 @@ export function evalGraph(
           break;
         }
         case 'check': {
-          const expr = d.expr || latexCondToJs(d.latex || '');
+          const expr = latexCondToJs(d.latex || '') || d.expr || '';
           const v = evalFormula(expr, symbols);
           const passed = v != null && v !== 0;
           const substitutedLatex = d.latex ? substituteLatexValues(d.latex, symbols) : '';
@@ -458,17 +467,29 @@ export function evalGraph(
           break;
         }
         case 'cases': {
-          const caseDefs: Array<{ formula_latex: string; cond_expr: string }> = d.cases || [];
+          const caseDefs: Array<{ formula_latex: string; cond_expr: string; match_value?: string }> = d.cases || [];
           const caseValues: number[] = caseDefs.map(c => {
             const expr = latexToJs(c.formula_latex || '');
             return evalFormula(expr, symbols) ?? NaN;
           });
+          const isElseExpr = (s: string) => !s || /^\(leer\s*[=:]\s*else\)$/i.test(s) || /^else$/i.test(s) || /^sonst$/i.test(s);
           let activeCaseIndex = -1;
           let elseIdx = -1;
-          for (let i = 0; i < caseDefs.length; i++) {
-            const condExpr = (caseDefs[i].cond_expr || '').trim();
-            if (!condExpr) { if (elseIdx < 0) elseIdx = i; continue; }
-            if (evalCondExpr(condExpr, { ...symbols, ...strSymbols })) { activeCaseIndex = i; break; }
+          if (d.mode === 'select' && d.source) {
+            // Dropdown-Modus: Vergleich nach match_value
+            const selVal = getSelectionValue(d.source).trim();
+            for (let i = 0; i < caseDefs.length; i++) {
+              const mv = (caseDefs[i].match_value || '').trim();
+              if (!mv) { if (elseIdx < 0) elseIdx = i; continue; }
+              if (selVal === mv || selVal.toLowerCase() === mv.toLowerCase()) { activeCaseIndex = i; break; }
+            }
+          } else {
+            // Ausdruck-Modus: JS-Bedingungen
+            for (let i = 0; i < caseDefs.length; i++) {
+              const condExpr = (caseDefs[i].cond_expr || '').trim();
+              if (isElseExpr(condExpr)) { if (elseIdx < 0) elseIdx = i; continue; }
+              if (evalCondExpr(condExpr, { ...symbols, ...strSymbols })) { activeCaseIndex = i; break; }
+            }
           }
           if (activeCaseIndex < 0 && elseIdx >= 0) activeCaseIndex = elseIdx;
           const v = activeCaseIndex >= 0 ? (caseValues[activeCaseIndex] ?? NaN) : NaN;

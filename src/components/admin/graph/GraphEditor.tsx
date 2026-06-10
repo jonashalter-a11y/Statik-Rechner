@@ -30,7 +30,6 @@ const PALETTE: { type: BlockType; icon: string; label: string; color: string }[]
   { type: 'title',      icon: '📌', label: 'Titel',             color: '#0284c7' },
   { type: 'frame',      icon: '🔲', label: 'Rahmen',            color: '#94a3b8' },
   { type: 'ref',        icon: '🔗', label: 'Referenz',          color: '#0369a1' },
-  { type: 'cases',      icon: '⑂',  label: 'Fallunterscheidung', color: '#7c3aed' },
   { type: 'output',     icon: '⬜', label: 'PDF / Ausgabe',     color: '#6b7280' },
 ];
 
@@ -131,6 +130,7 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
   const [, setHistoryVersion] = useState(0);
   const [showOrderPanel, setShowOrderPanel] = useState(false);
   const [displayOrder, setDisplayOrder] = useState<string[] | null>(graph.display_order ?? null);
+  const [hiddenNodes, setHiddenNodes] = useState<Set<string>>(new Set(graph.hidden_nodes ?? []));
   const [dragOrderIdx, setDragOrderIdx] = useState<number | null>(null);
   const [dragOverOrderIdx, setDragOverOrderIdx] = useState<number | null>(null);
   const [collapsedOrderSections, setCollapsedOrderSections] = useState<Set<string>>(new Set());
@@ -156,9 +156,10 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
       }) as GraphNode[],
       edges: edges.map(e => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle ?? null, targetHandle: e.targetHandle ?? null, data: (e.data as any) || { kind: 'workflow' } })) as GraphEdge[],
       ...(displayOrder ? { display_order: displayOrder } : {}),
+      ...(hiddenNodes.size > 0 ? { hidden_nodes: [...hiddenNodes] } : {}),
     };
     onChange(g);
-  }, [nodes, edges, displayOrder]);
+  }, [nodes, edges, displayOrder, hiddenNodes]);
 
   // Sync: neue Nodes ans Ende der Reihenfolge hängen, gelöschte entfernen
   useEffect(() => {
@@ -258,6 +259,10 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
   }, [nodes, globalUnits]);
   const graphNodes = useMemo(
     () => nodes.map(n => ({ id: n.id, type: String(n.type || ''), name: (n.data as any).name || '', label: (n.data as any).label || '' })),
+    [nodes],
+  );
+  const allNodeData = useMemo(
+    () => Object.fromEntries(nodes.map(n => [n.id, n.data])),
     [nodes],
   );
   const sourceNodesMap = useMemo(() => {
@@ -401,8 +406,8 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
 
   const ctxValue = useMemo(() => ({
     updateNodeData, removeNode, dbTables, loadTableFull,
-    allNames, graphNodes, sourceNodesMap, unitOptions, pickTargetId, setPickTargetId, insertName,
-  }), [updateNodeData, removeNode, dbTables, loadTableFull, allNames, graphNodes, sourceNodesMap, unitOptions, pickTargetId, insertName]);
+    allNames, graphNodes, allNodeData, sourceNodesMap, unitOptions, pickTargetId, setPickTargetId, insertName,
+  }), [updateNodeData, removeNode, dbTables, loadTableFull, allNames, graphNodes, allNodeData, sourceNodesMap, unitOptions, pickTargetId, insertName]);
 
   return (
     <GraphCtx.Provider value={ctxValue}>
@@ -623,6 +628,12 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
                       {displayOrder && <span style={{ color: '#d1d5db', fontSize: 12, flexShrink: 0 }}>≡</span>}
                       <span style={{ flexShrink: 0 }}>{paletteIcon(String(n.type || ''))}</span>
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: isTitle ? titleColor : '#374151', flex: 1, fontWeight: isTitle ? 700 : 400 }}>{nodeLabel(n)}</span>
+                      <button type="button"
+                        onClick={e => { e.stopPropagation(); setHiddenNodes(prev => { const next = new Set(prev); next.has(n.id) ? next.delete(n.id) : next.add(n.id); return next; }); }}
+                        title={hiddenNodes.has(n.id) ? 'Einblenden' : 'Ausblenden'}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, padding: 0, lineHeight: 1, flexShrink: 0, color: hiddenNodes.has(n.id) ? '#d1d5db' : '#6b7280', opacity: hiddenNodes.has(n.id) ? 0.5 : 1 }}>
+                        {hiddenNodes.has(n.id) ? '🙈' : '👁'}
+                      </button>
                       {isTitle && (
                         <button type="button" onClick={() => toggleOrderSection(n.id)}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 9, color: titleColor, padding: 0, lineHeight: 1, flexShrink: 0 }}>

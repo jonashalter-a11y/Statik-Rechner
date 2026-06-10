@@ -5,6 +5,8 @@ import { nameToLatex } from '../utils/formatName';
 import { getGraph } from '../utils/legacyToGraph';
 import { evalGraph, topoSort, collectTableRefs, DbTableData } from '../utils/evalGraph';
 import { formatNumber } from '../utils/substituteFormula';
+import { evalCondExpr } from '../utils/evalFormula';
+import { latexCondToJs } from '../utils/latexToJs';
 import { api } from '../api';
 import { useStore } from '../store/useStore';
 import {
@@ -136,6 +138,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
   const [tables, setTables] = useState<Record<string, DbTableData>>({});
   // Im Print-Modus: initialInputs als Startzustand; sonst leer (Defaults kommen via useEffect)
   const [inputs, setInputs] = useState<Record<string, string>>(initialInputs || {});
+  const [decimals, setDecimals] = useState(3);
   const [imageModal, setImageModal] = useState<{ src: string; label?: string; source?: string } | null>(null);
   const [chartModal, setChartModal] = useState<string | null>(null); // Node-ID
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
@@ -213,6 +216,33 @@ export default function GraphVerificationView({ verification, readOnly = false, 
     return map;
   }, [graph]);
 
+  // Welche Knoten sind über aktive Bedingungszweige erreichbar?
+  const activeNodeIds = useMemo(() => {
+    const active = new Set<string>();
+    const visit = (nodeId: string) => {
+      if (active.has(nodeId)) return;
+      active.add(nodeId);
+      for (const e of graph.edges) {
+        if (e.source !== nodeId) continue;
+        const kind = e.data?.kind ?? 'workflow';
+        if (kind === 'workflow') {
+          visit(e.target);
+        } else if (kind === 'condition') {
+          const condResult = ev.results[nodeId];
+          const condId = e.data?.conditionId || e.sourceHandle;
+          if (!condId || condResult?.activeConditionId === condId) {
+            visit(e.target);
+          }
+        }
+      }
+    };
+    const hasIncoming = new Set(graph.edges.map(e => e.target));
+    for (const n of graph.nodes) {
+      if (!hasIncoming.has(n.id)) visit(n.id);
+    }
+    return active;
+  }, [graph, ev.results]);
+
   // Tabellen-Spalten-Optionen (für variable inputKind=table_column)
   const colOptions = (tableId?: string, col?: number) => {
     const t = tableId ? tables[tableId] : null;
@@ -228,7 +258,11 @@ export default function GraphVerificationView({ verification, readOnly = false, 
     return t.rows.map(r => String(r[col ?? 0] ?? ''));
   };
 
-  const num = (x?: number) => (x == null || isNaN(x)) ? '—' : formatNumber(x);
+  const num = (x?: number) => {
+    if (x == null || isNaN(x)) return '—';
+    if (Math.abs(x) >= 1e5 || (Math.abs(x) < 1e-3 && x !== 0)) return x.toExponential(2);
+    return String(Math.round(x * Math.pow(10, decimals)) / Math.pow(10, decimals));
+  };
   const isFiniteNumber = (x?: number) => typeof x === 'number' && isFinite(x);
   const displayName = (name?: string) => {
     const trimmed = String(name || '').trim();
@@ -265,12 +299,29 @@ export default function GraphVerificationView({ verification, readOnly = false, 
     if (!cn) return null;
     const d: any = cn.data;
     const r = ev.results[condId] || {};
+
+    // Wenn der Block skipped/unausgewertet: selbst auswerten mit bekannten Werten
+    let activeCondId = r.activeConditionId as string | undefined;
+    if (!activeCondId) {
+      const localSymbols: Record<string, number | string> = {};
+      for (const n of graph.nodes) {
+        const nd: any = n.data;
+        const val = ev.results[n.id]?.value;
+        if (nd.name && val != null && isFinite(val as number)) localSymbols[nd.name] = val as number;
+        if (n.type === 'dropdown' && nd.name && inputs[n.id] != null) localSymbols[nd.name] = inputs[n.id];
+      }
+      for (const c of (d.conditions || [])) {
+        const expr = latexCondToJs(c.latex || '') || c.expr || '';
+        if (expr && evalCondExpr(expr, localSymbols)) { activeCondId = c.id; break; }
+      }
+    }
+
     return (
       <div key={`cond_after_${condId}`} style={{ ...card, background: '#fefce8', borderColor: '#fde68a' }}>
         <div style={lbl}>🔶 {d.label || 'Bedingung'}</div>
         {(d.conditions || []).map((c: any) => (
-          <div key={c.id} style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0', color: r.activeConditionId === c.id ? '#15803d' : '#9ca3af' }}>
-            <span>{r.activeConditionId === c.id ? '✓' : '○'}</span>
+          <div key={c.id} style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0', color: activeCondId === c.id ? '#15803d' : '#9ca3af' }}>
+            <span>{activeCondId === c.id ? '✓' : '○'}</span>
             <MathDisplay latex={c.latex || c.expr} />
           </div>
         ))}
@@ -287,8 +338,9 @@ export default function GraphVerificationView({ verification, readOnly = false, 
   const sections: Sec[] = [];
   for (const n of ordered) {
     const r = ev.results[n.id] || {};
-    if (n.type === 'frame') continue; // nur Canvas-Optik, nicht rendern
-    if (r.skipped || n.type === 'output' || n.type === 'woodclass' || n.type === 'condition') continue;
+    if (n.type === 'frame') continue;
+    const isHidden = (graph.hidden_nodes ?? []).includes(n.id);
+    if (isHidden || r.skipped || !activeNodeIds.has(n.id) || n.type === 'output' || n.type === 'woodclass' || n.type === 'condition') continue;
     if (n.type === 'title') {
       sections.push({ type: 'title', node: n });
       continue;
@@ -318,6 +370,20 @@ export default function GraphVerificationView({ verification, readOnly = false, 
 
   return (
     <div>
+      {!readOnly && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, justifyContent: 'flex-end' }}>
+          <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 600 }}>Kommastellen:</span>
+          {[1, 2, 3, 4].map(d => (
+            <button key={d} onClick={() => setDecimals(d)} style={{
+              padding: '2px 9px', fontSize: 12, borderRadius: 4, cursor: 'pointer',
+              border: `1px solid ${decimals === d ? '#2563eb' : '#d1d5db'}`,
+              background: decimals === d ? '#eff6ff' : '#fff',
+              color: decimals === d ? '#1d4ed8' : '#374151',
+              fontWeight: decimals === d ? 700 : 400,
+            }}>{d}</button>
+          ))}
+        </div>
+      )}
       {sections.map((sec, si) => {
         if (hiddenBySectionCollapse.has(si)) return null;
         if (sec.type === 'title') {
@@ -670,16 +736,19 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                 )}
                 {/* Alle Fälle */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  {caseDefs.map((c, i) => {
+                  {caseDefs.map((c: any, i: number) => {
                     const isActive = i === activeIdx;
-                    const isElse = !(c.cond_expr || '').trim();
+                    const isSelectMode = d.mode === 'select';
+                    const condLabel = isSelectMode
+                      ? ((c.match_value || '').trim() || 'sonst')
+                      : (() => { const _ce = (c.cond_expr || '').trim(); return (!_ce || /^\(leer\s*[=:]\s*else\)$/i.test(_ce) || /^else$/i.test(_ce) || /^sonst$/i.test(_ce)) ? 'sonst' : _ce; })();
                     return (
                       <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderRadius: 4, background: isActive ? '#f5f3ff' : '#f9fafb', border: `1px solid ${isActive ? '#c4b5fd' : '#e5e7eb'}` }}>
                         <span style={{ fontSize: 13, color: isActive ? '#7c3aed' : '#d1d5db', flexShrink: 0, lineHeight: 1 }}>{isActive ? '✓' : '○'}</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ overflowX: 'auto' }}><MathDisplay latex={c.formula_latex} /></div>
                           <div style={{ fontSize: 9.5, color: '#9ca3af', marginTop: 1, fontFamily: 'monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {isElse ? 'sonst' : c.cond_expr}
+                            {condLabel}
                           </div>
                         </div>
                         <span style={{ fontFamily: 'monospace', fontSize: 12, fontWeight: isActive ? 700 : 400, color: isActive ? '#6d28d9' : '#9ca3af', flexShrink: 0 }}>

@@ -539,7 +539,7 @@ export default function VerificationAdmin() {
           </div>
           {/* Canvas */}
           <div style={{ flex: 1, minHeight: 0 }}>
-            <GraphEditor key={editing.id || 'new'} graph={editing.graph} dbTables={dbTables.filter(t => t.chapter_id === editing.chapter_id)} onChange={g => setEditing(prev => prev ? { ...prev, graph: g } : prev)} />
+            <GraphEditor key={editing.id || 'new'} graph={editing.graph} dbTables={dbTables.filter(t => !t.chapter_id || t.chapter_id === editing.chapter_id)} onChange={g => setEditing(prev => prev ? { ...prev, graph: g } : prev)} />
           </div>
           {/* Notizen-Panel */}
           <div style={{ borderTop: '1px solid #e5e7eb', background: '#fafafa', flexShrink: 0 }}>
