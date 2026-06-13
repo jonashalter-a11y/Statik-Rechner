@@ -22,7 +22,6 @@ interface Verification {
 }
 interface Chapter { id: string; number: string; title: string; parent_id: string | null; }
 interface ChapterNode extends Chapter { children: ChapterNode[]; verifications: Verification[]; expanded?: boolean; totalCount: number; }
-interface BlockTemplateMeta { id: string; name: string; description: string; node_count: number; edge_count: number; updated_at: string; }
 
 function buildTree(chapters: Chapter[], verifications: Verification[]): ChapterNode[] {
   const map = new Map<string, ChapterNode>();
@@ -147,47 +146,6 @@ function serializeNotes(d: NotesData): string {
 }
 
 const labelStyle: React.CSSProperties = { fontSize: 10, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 };
-
-function cloneJson<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value));
-}
-
-function remapTemplateGraph(target: VerificationGraph, template: VerificationGraph): VerificationGraph {
-  const stamp = Date.now().toString(36);
-  const idMap = new Map<string, string>();
-  template.nodes.forEach((node, index) => idMap.set(node.id, `${node.type}_${stamp}_${index + 1}`));
-
-  const remapData = (data: any) => {
-    const next = cloneJson(data || {});
-    if (next.source_dropdown && idMap.has(next.source_dropdown)) next.source_dropdown = idMap.get(next.source_dropdown);
-    if (next.source_tablecalc && idMap.has(next.source_tablecalc)) next.source_tablecalc = idMap.get(next.source_tablecalc);
-    if (next.source_id && idMap.has(next.source_id)) next.source_id = idMap.get(next.source_id);
-    if (Array.isArray(next.blocks)) next.blocks = next.blocks.map((id: string) => idMap.get(id) || id);
-    return next;
-  };
-
-  const offset = 48;
-  const nodes = template.nodes.map(node => ({
-    ...cloneJson(node),
-    id: idMap.get(node.id)!,
-    position: { x: node.position.x + offset, y: node.position.y + offset },
-    data: remapData(node.data),
-  }));
-  const edges = template.edges
-    .filter(edge => idMap.has(edge.source) && idMap.has(edge.target))
-    .map((edge, index) => ({
-      ...cloneJson(edge),
-      id: `e_${stamp}_${index + 1}`,
-      source: idMap.get(edge.source)!,
-      target: idMap.get(edge.target)!,
-    }));
-
-  return {
-    ...target,
-    nodes: [...target.nodes, ...nodes],
-    edges: [...target.edges, ...edges],
-  };
-}
 
 function ChapterTreeNode({ node, depth, selectedId, expanded, hideEmpty, canPaste, onToggle, onSelect, onNewIn, onEditChapter, onNewSubChapter, onPasteIn }: {
   node: ChapterNode; depth: number; selectedId: string | null;
@@ -382,9 +340,6 @@ export default function VerificationAdmin() {
   const [chapterForm, setChapterForm] = useState<{ id: string; number: string; title: string; parent_id: string | null } | null | 'new'>(null);
   const [hideEmpty, setHideEmpty] = useState(false);
   const [copied, setCopied] = useState<Editing | null>(null);
-  const [blockTemplates, setBlockTemplates] = useState<BlockTemplateMeta[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState('');
-  const [graphEditorNonce, setGraphEditorNonce] = useState(0);
   const editingRef = useRef<Editing | null>(null);
   const savedSnapshotRef = useRef('');
   const savingRef = useRef(false);
@@ -398,18 +353,6 @@ export default function VerificationAdmin() {
       .then((metas: any[]) => setDbTables(metas.map((t: any) => ({ id: t.id, title: t.title, chapter_id: t.chapter_id ?? null, type: t.type ?? 'table' }))))
       .catch(() => {});
   }, [normId]);
-
-  const loadBlockTemplates = useCallback(async () => {
-    try {
-      const templates = await api.getBlockTemplates();
-      setBlockTemplates(templates);
-      if (!selectedTemplateId && templates[0]) setSelectedTemplateId(templates[0].id);
-    } catch {
-      setBlockTemplates([]);
-    }
-  }, [selectedTemplateId]);
-
-  useEffect(() => { loadBlockTemplates(); }, [loadBlockTemplates]);
 
   const reload = async () => {
     const [vsResult, chsResult] = await Promise.allSettled([
@@ -610,53 +553,6 @@ export default function VerificationAdmin() {
     }
   };
 
-  const saveCurrentAsTemplate = async () => {
-    const current = editingRef.current;
-    if (!current) return;
-    const name = prompt('Name der Block-Vorlage', current.title || 'Neue Block-Vorlage');
-    if (!name?.trim()) return;
-    try {
-      const saved = await api.saveBlockTemplate({
-        name: name.trim(),
-        description: `Aus Nachweis ${current.originalId || current.id || current.title}`,
-        graph: current.graph,
-      });
-      await loadBlockTemplates();
-      setSelectedTemplateId(saved.id);
-      setMsg(`✓ Vorlage gespeichert: ${saved.name}`);
-    } catch (err: any) {
-      setMsg(`⚠ Vorlage speichern fehlgeschlagen: ${err?.message || err}`);
-    }
-  };
-
-  const insertSelectedTemplate = async () => {
-    if (!editingRef.current || !selectedTemplateId) return;
-    try {
-      const template = await api.getBlockTemplate(selectedTemplateId);
-      const nextGraph = remapTemplateGraph(editingRef.current.graph, template.graph);
-      setEditing(prev => prev ? { ...prev, graph: nextGraph } : prev);
-      setGraphEditorNonce(v => v + 1);
-      setMsg(`✓ Vorlage eingefügt: ${template.name}`);
-    } catch (err: any) {
-      setMsg(`⚠ Vorlage einfügen fehlgeschlagen: ${err?.message || err}`);
-    }
-  };
-
-  const deleteSelectedTemplate = async () => {
-    if (!selectedTemplateId) return;
-    const template = blockTemplates.find(t => t.id === selectedTemplateId);
-    if (!confirm(`Vorlage "${template?.name || selectedTemplateId}" löschen?`)) return;
-    try {
-      await api.deleteBlockTemplate(selectedTemplateId);
-      const nextTemplates = await api.getBlockTemplates();
-      setBlockTemplates(nextTemplates);
-      setSelectedTemplateId(nextTemplates[0]?.id || '');
-      setMsg('✓ Vorlage gelöscht');
-    } catch (err: any) {
-      setMsg(`⚠ Vorlage löschen fehlgeschlagen: ${err?.message || err}`);
-    }
-  };
-
   const importJsonFile = async (file: File | null) => {
     if (!file) return;
     try {
@@ -762,20 +658,9 @@ export default function VerificationAdmin() {
               {saving ? 'Speichern…' : '💾 Speichern'}
             </button>
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '6px 14px', borderBottom: '1px solid #e5e7eb', background: '#f8fafc', flexShrink: 0 }}>
-            <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Block-Bibliothek</div>
-            <button onClick={saveCurrentAsTemplate} style={{ background: '#fff', color: '#374151', border: '1px solid #d1d5db', borderRadius: 6, padding: '5px 9px', cursor: 'pointer', fontSize: 12 }}>Vorlage speichern</button>
-            <select value={selectedTemplateId} onChange={e => setSelectedTemplateId(e.target.value)}
-              style={{ border: '1px solid #d1d5db', borderRadius: 6, padding: '5px 8px', fontSize: 12, minWidth: 220 }}>
-              <option value="">Keine Vorlage</option>
-              {blockTemplates.map(t => <option key={t.id} value={t.id}>{t.name} ({t.node_count})</option>)}
-            </select>
-            <button onClick={insertSelectedTemplate} disabled={!selectedTemplateId} style={{ background: selectedTemplateId ? '#fff' : '#f1f5f9', color: selectedTemplateId ? '#374151' : '#9ca3af', border: '1px solid #d1d5db', borderRadius: 6, padding: '5px 9px', cursor: selectedTemplateId ? 'pointer' : 'not-allowed', fontSize: 12 }}>Einfügen</button>
-            <button onClick={deleteSelectedTemplate} disabled={!selectedTemplateId} style={{ background: selectedTemplateId ? '#fff' : '#f1f5f9', color: selectedTemplateId ? '#b91c1c' : '#9ca3af', border: '1px solid #fecaca', borderRadius: 6, padding: '5px 9px', cursor: selectedTemplateId ? 'pointer' : 'not-allowed', fontSize: 12 }}>Löschen</button>
-          </div>
           {/* Canvas */}
           <div style={{ flex: 1, minHeight: 0 }}>
-            <GraphEditor key={`${editing.id || 'new'}-${graphEditorNonce}`} graph={editing.graph} dbTables={dbTables.filter(t => !t.chapter_id || t.chapter_id === editing.chapter_id)} onChange={g => setEditing(prev => prev ? { ...prev, graph: g } : prev)} />
+            <GraphEditor key={editing.id || 'new'} graph={editing.graph} dbTables={dbTables.filter(t => !t.chapter_id || t.chapter_id === editing.chapter_id)} onChange={g => setEditing(prev => prev ? { ...prev, graph: g } : prev)} />
           </div>
           {/* Notizen-Panel */}
           <div style={{ borderTop: '1px solid #e5e7eb', background: '#fafafa', flexShrink: 0 }}>

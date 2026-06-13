@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 const EXPORT_ROOT = path.join(__dirname, 'nachweise');
+const TRASH_ROOT = path.join(EXPORT_ROOT, '_papierkorb');
 
 function slugify(value) {
   const slug = String(value || 'nachweis')
@@ -68,6 +69,12 @@ function exportFilePathFor(payload) {
   return path.join(normDir, `${slugify(payload.verification.id)}.json`);
 }
 
+function trashFilePathFor(payload) {
+  const normDir = path.join(TRASH_ROOT, slugify(payload.verification.norm_id));
+  const deletedAt = new Date().toISOString().replace(/[:.]/g, '-');
+  return path.join(normDir, `${slugify(payload.verification.id)}__deleted_${deletedAt}.json`);
+}
+
 function deleteExportFile(normId, verificationId) {
   if (!normId || !verificationId) return;
   const filePath = path.join(EXPORT_ROOT, slugify(normId), `${slugify(verificationId)}.json`);
@@ -119,6 +126,21 @@ function exportVerificationById(db, verificationId) {
       fs.unlinkSync(path.join(normDir, file));
     }
   }
+  return filePath;
+}
+
+function trashVerificationExport(db, verificationId) {
+  const payload = buildVerificationExport(db, verificationId);
+  if (!payload) return null;
+
+  const filePath = trashFilePathFor(payload);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, `${JSON.stringify({
+    ...payload,
+    deleted_at: new Date().toISOString(),
+  }, null, 2)}\n`);
+
+  deleteExportFile(payload.verification.norm_id, payload.verification.id);
   return filePath;
 }
 
@@ -268,6 +290,7 @@ function exportActiveVerifications(db) {
   const keep = new Set(files.map(file => path.resolve(file)));
   if (fs.existsSync(EXPORT_ROOT)) {
     for (const norm of fs.readdirSync(EXPORT_ROOT)) {
+      if (norm === path.basename(TRASH_ROOT)) continue;
       const normDir = path.join(EXPORT_ROOT, norm);
       if (!fs.statSync(normDir).isDirectory()) continue;
       for (const file of fs.readdirSync(normDir)) {
@@ -281,10 +304,12 @@ function exportActiveVerifications(db) {
 
 module.exports = {
   EXPORT_ROOT,
+  TRASH_ROOT,
   buildVerificationExport,
   exportActiveVerifications,
   exportVerificationById,
   exportVerificationsByNorm,
   importVerificationExport,
   deleteExportFile,
+  trashVerificationExport,
 };

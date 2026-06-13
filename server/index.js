@@ -1,8 +1,14 @@
 const express = require('express');
 const cors = require('cors');
 const db = require('./db');
-const { buildVerificationExport, exportVerificationById, exportVerificationsByNorm, importVerificationExport, deleteExportFile } = require('./verification-export');
-const blockLibrary = require('./block-library');
+const {
+  buildVerificationExport,
+  exportVerificationById,
+  exportVerificationsByNorm,
+  importVerificationExport,
+  deleteExportFile,
+  trashVerificationExport,
+} = require('./verification-export');
 
 const app = express();
 app.use(cors());
@@ -51,43 +57,6 @@ app.post('/api/norms', (req, res) => {
     db.prepare('INSERT INTO norms (id, name, label, year, description) VALUES (?, ?, ?, ?, ?)')
       .run(String(id).trim(), String(name).trim(), String(label).trim(), Number(year), String(description || '').trim());
     res.json({ id: String(id).trim() });
-  } catch (err) {
-    res.status(400).json({ error: String(err.message || err) });
-  }
-});
-
-// ─── BLOCK-BIBLIOTHEK ────────────────────────────────────────────────────────
-app.get('/api/block-library', (_, res) => {
-  try {
-    res.json(blockLibrary.listTemplates());
-  } catch (err) {
-    res.status(500).json({ error: String(err.message || err) });
-  }
-});
-
-app.get('/api/block-library/:id', (req, res) => {
-  try {
-    const template = blockLibrary.readTemplate(req.params.id);
-    if (!template) return res.status(404).json({ error: 'Not found' });
-    res.json(template);
-  } catch (err) {
-    res.status(500).json({ error: String(err.message || err) });
-  }
-});
-
-app.post('/api/block-library', (req, res) => {
-  try {
-    const template = blockLibrary.saveTemplate(req.body);
-    res.json(template);
-  } catch (err) {
-    res.status(400).json({ error: String(err.message || err) });
-  }
-});
-
-app.delete('/api/block-library/:id', (req, res) => {
-  try {
-    blockLibrary.deleteTemplate(req.params.id);
-    res.json({ ok: true });
   } catch (err) {
     res.status(400).json({ error: String(err.message || err) });
   }
@@ -237,7 +206,11 @@ app.put('/api/verifications/:id', (req, res) => {
 });
 app.delete('/api/verifications/:id', (req, res) => {
   db.prepare('UPDATE verifications SET active=0 WHERE id=?').run(req.params.id);
-  safeExportVerification(req.params.id);
+  try {
+    trashVerificationExport(db, req.params.id);
+  } catch (err) {
+    console.error(`Nachweis-Papierkorb fehlgeschlagen (${req.params.id}):`, err);
+  }
   res.json({ ok: true });
 });
 
