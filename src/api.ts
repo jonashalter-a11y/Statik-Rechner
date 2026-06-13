@@ -21,6 +21,12 @@ export const api = {
   getNorms: () => get('/norms'),
   createNorm: (data: object) => post('/norms', data),
 
+  // Block-Bibliothek
+  getBlockTemplates: () => get('/block-library'),
+  getBlockTemplate:  (id: string) => get(`/block-library/${id}`),
+  saveBlockTemplate: (data: object) => post('/block-library', data),
+  deleteBlockTemplate: (id: string) => del(`/block-library/${id}`),
+
   // Kapitel (norm-gefiltert)
   getChapters:    (norm = 'sia265') => get(`/chapters?norm=${norm}`),
   createChapter:  (data: object) => post('/chapters', data),
