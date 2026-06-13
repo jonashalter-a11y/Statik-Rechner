@@ -4,6 +4,11 @@ import { defaultVerifications } from '../data/verifications';
 import { Chapter, Discipline, Standard, Verification, WoodType } from '../types';
 import { evalFormula } from '../utils/evalFormula';
 
+const LS_ACTIVE_CHAPTER = 'sia-active-chapter-id';
+const LS_ACTIVE_VERIFICATION = 'sia-active-verification-id';
+const LS_GRAPH_INPUTS = 'sia-graph-inputs-v1';
+const LS_VERIFICATION_DRAFTS = 'sia-verification-drafts-v1';
+
 // ─── Typen ───────────────────────────────────────────────────────────────────
 export interface ApiWoodType  { id: string; name: string; label: string; sort_order: number; }
 export interface ApiWoodClass { id: string; wood_type_id: string; name: string; label: string; properties: ApiProperty[]; }
@@ -74,6 +79,29 @@ function expandChapterInTree(chapters: Chapter[], id: string): Chapter[] {
   });
 }
 
+function readJsonStorage<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) as T : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeJsonStorage(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // localStorage kann voll oder blockiert sein; die App soll trotzdem weiterlaufen.
+  }
+}
+
+function patchVerificationDraft(verificationId: string, patch: Record<string, unknown>) {
+  const drafts = readJsonStorage<Record<string, any>>(LS_VERIFICATION_DRAFTS, {});
+  const next = { ...drafts, [verificationId]: { ...(drafts[verificationId] || {}), ...patch } };
+  writeJsonStorage(LS_VERIFICATION_DRAFTS, next);
+}
+
 function buildChapterTree(data: any[], verifications: Verification[], standard: Standard, state: any) {
   if (!data || data.length === 0) return { standard, chapters: state.chapters };
   const map = new Map<string, Chapter>();
@@ -141,11 +169,11 @@ export const useStore = create<AppState>((set, get) => ({
   woodType:   'Vollholz',
   woodClassId: 'C24',
   chapters: staticChapters,
-  activeChapterId: null,
-  activeVerificationId: null,
+  activeChapterId: localStorage.getItem(LS_ACTIVE_CHAPTER),
+  activeVerificationId: localStorage.getItem(LS_ACTIVE_VERIFICATION),
   verifications: defaultVerifications.map(v => computeVerification(v)),
   printItems: [],
-  graphInputsByVerif: {},
+  graphInputsByVerif: readJsonStorage<Record<string, Record<string, string>>>(LS_GRAPH_INPUTS, {}),
   restoreNonce: 0,
   apiWoodTypes:   [],
   apiWoodClasses: [],
@@ -171,11 +199,15 @@ export const useStore = create<AppState>((set, get) => ({
       const chapters = chapData.length > 0
         ? buildChapterTree(chapData, normVerifs, 'SIA', state).chapters
         : [];
+      localStorage.removeItem(LS_ACTIVE_CHAPTER);
+      localStorage.removeItem(LS_ACTIVE_VERIFICATION);
       return {
         normId: id,
         standard: 'SIA',
         chapters,
         verifications: normVerifs.length > 0 ? normVerifs : state.verifications,
+        activeChapterId: null,
+        activeVerificationId: null,
       };
     });
   },
@@ -201,12 +233,36 @@ export const useStore = create<AppState>((set, get) => ({
   toggleChapter: (id) =>
     set(state => ({ chapters: toggleChapterInTree(state.chapters, id) })),
 
-  setActiveChapter: (id) => set({ activeChapterId: id }),
-  setActiveVerification: (id) => set({ activeVerificationId: id }),
+  setActiveChapter: (id) => {
+    if (id) localStorage.setItem(LS_ACTIVE_CHAPTER, id);
+    else localStorage.removeItem(LS_ACTIVE_CHAPTER);
+    set({ activeChapterId: id });
+  },
+  setActiveVerification: (id) => {
+    const state = get();
+    const verification = id ? state.verifications.find(v => v.id === id) : null;
+    if (id) localStorage.setItem(LS_ACTIVE_VERIFICATION, id);
+    else localStorage.removeItem(LS_ACTIVE_VERIFICATION);
+    if (verification?.chapterId) localStorage.setItem(LS_ACTIVE_CHAPTER, verification.chapterId);
+    set({
+      activeVerificationId: id,
+      activeChapterId: verification?.chapterId ?? state.activeChapterId,
+      chapters: verification?.chapterId ? expandChapterInTree(state.chapters, verification.chapterId) : state.chapters,
+    });
+  },
 
   updateVariableValue: (verificationId, variableId, value) =>
-    set(state => ({
-      verifications: state.verifications.map(v => {
+    set(state => {
+      const current = state.verifications.find(v => v.id === verificationId);
+      if (current) {
+        const variables = {
+          ...(readJsonStorage<Record<string, any>>(LS_VERIFICATION_DRAFTS, {})[verificationId]?.variables || {}),
+          [variableId]: value,
+        };
+        patchVerificationDraft(verificationId, { variables });
+      }
+      return {
+        verifications: state.verifications.map(v => {
         if (v.id !== verificationId) return v;
         const updated = {
           ...v,
@@ -216,14 +272,18 @@ export const useStore = create<AppState>((set, get) => ({
         };
         return computeVerification(updated);
       }),
-    })),
+      };
+    }),
 
   updateComment: (verificationId, comment) =>
-    set(state => ({
-      verifications: state.verifications.map(v =>
-        v.id === verificationId ? { ...v, comment } : v
-      ),
-    })),
+    set(state => {
+      patchVerificationDraft(verificationId, { comment });
+      return {
+        verifications: state.verifications.map(v =>
+          v.id === verificationId ? { ...v, comment } : v
+        ),
+      };
+    }),
 
   // Immer neue Instanz mit eindeutigem key — beliebig viele des gleichen Nachweises möglich
   addVerificationToPrint: (id) =>
@@ -254,6 +314,9 @@ export const useStore = create<AppState>((set, get) => ({
       const chapters = chapterId
         ? expandChapterInTree(state.chapters, chapterId)
         : state.chapters;
+      localStorage.setItem(LS_ACTIVE_VERIFICATION, item.snapshot.id);
+      if (chapterId) localStorage.setItem(LS_ACTIVE_CHAPTER, chapterId);
+      writeJsonStorage(LS_GRAPH_INPUTS, { ...state.graphInputsByVerif, [item.snapshot.id]: item.graphInputs });
       return {
         activeVerificationId: item.snapshot.id,
         activeChapterId: chapterId,
@@ -264,7 +327,11 @@ export const useStore = create<AppState>((set, get) => ({
     }),
 
   setGraphInputs: (verifId, inputs) =>
-    set(state => ({ graphInputsByVerif: { ...state.graphInputsByVerif, [verifId]: inputs } })),
+    set(state => {
+      const graphInputsByVerif = { ...state.graphInputsByVerif, [verifId]: inputs };
+      writeJsonStorage(LS_GRAPH_INPUTS, graphInputsByVerif);
+      return { graphInputsByVerif };
+    }),
 
   addVerification: (v) =>
     set(state => ({ verifications: [...state.verifications, computeVerification(v)] })),
@@ -303,7 +370,9 @@ export const useStore = create<AppState>((set, get) => ({
         const totalCount = ownVs.length + childResults.reduce((s, r) => s + r.count, 0);
         return { node: { ...ch, verifications: ownVs, children: childResults.filter(r => r.count > 0).map(r => r.node), expanded: totalCount > 0 }, count: totalCount };
       };
-      return { rawChapterData: data, rawChapterDataByNorm: newByNorm, chapters: roots.map(r => countAndAnnotate(r)).filter(r => r.count > 0).map(r => r.node) };
+      let chapters = roots.map(r => countAndAnnotate(r)).filter(r => r.count > 0).map(r => r.node);
+      if (state.activeChapterId) chapters = expandChapterInTree(chapters, state.activeChapterId);
+      return { rawChapterData: data, rawChapterDataByNorm: newByNorm, chapters };
     });
   },
 
@@ -317,16 +386,19 @@ export const useStore = create<AppState>((set, get) => ({
 
       const woodClass = state.apiWoodClasses.find(c => c.id === state.woodClassId);
       const woodProps = new Map(woodClass?.properties.map(p => [p.key, p.value]) ?? []);
+      const drafts = readJsonStorage<Record<string, any>>(LS_VERIFICATION_DRAFTS, {});
 
       const mapped: Verification[] = (data || []).map((v: any) => {
         const existingV = existingVerifs.find(ev => ev.id === v.id);
+        const draft = drafts[v.id] || {};
+        const draftVars = draft.variables || {};
         return {
           id: v.id,
           chapterId: v.chapter_id,
           title: v.title,
           computeExpr: v.compute_expr,
           graph_json: v.graph_json ?? null,
-          comment: existingV?.comment || '',
+          comment: draft.comment ?? existingV?.comment ?? '',
           variables: (v.variables || []).map((vr: any) => {
             // Holzklassen-Kennwerte immer aus aktueller Klasse
             if (woodProps.has(vr.name)) {
@@ -356,7 +428,7 @@ export const useStore = create<AppState>((set, get) => ({
               type: vr.type as any,
               table_ref: vr.table_ref ?? undefined,
               table_col: vr.table_col != null ? Number(vr.table_col) : undefined,
-              value: existingVar !== undefined ? existingVar.value : defaultVal,
+              value: draftVars[vr.id] ?? (existingVar !== undefined ? existingVar.value : defaultVal),
               description: vr.description,
               options: opts,
             };
@@ -374,7 +446,17 @@ export const useStore = create<AppState>((set, get) => ({
       const computed = mapped.map(v => computeVerification(v));
       const _verifsByNorm = { ...state._verifsByNorm, [normId]: computed };
       if (normId !== state.normId) return { _verifsByNorm };
-      return { verifications: computed, _verifsByNorm };
+      const storedActive = localStorage.getItem(LS_ACTIVE_VERIFICATION);
+      const activeVerificationId = computed.some(v => v.id === state.activeVerificationId)
+        ? state.activeVerificationId
+        : (storedActive && computed.some(v => v.id === storedActive) ? storedActive : state.activeVerificationId);
+      const activeChapterId = activeVerificationId
+        ? computed.find(v => v.id === activeVerificationId)?.chapterId ?? state.activeChapterId
+        : state.activeChapterId;
+      if (activeVerificationId) localStorage.setItem(LS_ACTIVE_VERIFICATION, activeVerificationId);
+      if (activeChapterId) localStorage.setItem(LS_ACTIVE_CHAPTER, activeChapterId);
+      const chapters = activeChapterId ? expandChapterInTree(state.chapters, activeChapterId) : state.chapters;
+      return { verifications: computed, _verifsByNorm, activeVerificationId, activeChapterId, chapters };
     });
   },
 

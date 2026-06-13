@@ -1,0 +1,932 @@
+{
+  "version": 1,
+  "exported_at": "2026-06-13T21:58:34.264Z",
+  "verification": {
+    "id": "bauteile_verbindungen_schichtnachweis",
+    "norm_id": "lignum_brandschutz",
+    "chapter_id": "lignum_brandschutz_3_1_mqcm5nsl",
+    "title": "Bauteile und Verbindungen - Schichtnachweis",
+    "formula_latex": "",
+    "formula_description": "",
+    "compute_expr": "",
+    "sort_order": 1,
+    "active": 1,
+    "graph_json": "{\"version\":1,\"nodes\":[{\"id\":\"title_bauteile_verbindungen\",\"type\":\"title\",\"position\":{\"x\":-20.346191444421606,\"y\":-148.54968012859712},\"data\":{\"kind\":\"title\",\"label\":\"Bauteile und Verbindungen - Schichtnachweis\",\"color\":\"#c2410c\"},\"style\":{\"width\":420,\"height\":54}},{\"id\":\"comment_norm_basis\",\"type\":\"comment\",\"position\":{\"x\":-80,\"y\":80},\"data\":{\"kind\":\"comment\",\"text\":\"Nachweis nach den Bildern/Kap. 2.2 bis 2.4: Schutzzeiten der vor der letzten Schicht liegenden Schichten plus Grundisolationszeit der letzten Schicht. Hohlraeume, Fugen, Delta t und k_pos,unexp koennen je Schicht eingegeben werden.\",\"extra\":\"none\"},\"style\":{\"width\":420,\"height\":130}},{\"id\":\"t_erf_required\",\"type\":\"variable\",\"position\":{\"x\":-80,\"y\":250},\"data\":{\"kind\":\"variable\",\"name\":\"t_{erf}\",\"label\":\"erforderliche Feuerwiderstandsdauer\",\"unit\":\"min\",\"default_value\":\"30\",\"inputKind\":\"number\",\"options\":[]},\"style\":{\"width\":250,\"height\":140}},{\"id\":\"layers_fire_resistance\",\"type\":\"loopblock\",\"position\":{\"x\":420,\"y\":40},\"data\":{\"kind\":\"loopblock\",\"label\":\"Mehrschichtiger Bauteilaufbau\",\"count_label\":\"Anzahl Schichten n\",\"max_count\":16,\"dropdown_label\":\"Material Schicht i bzw. n\",\"vars\":[{\"id\":\"v_d\",\"name\":\"d\",\"label\":\"Schichtdicke d_i\",\"unit\":\"mm\",\"default_value\":\"15\",\"scope\":\"layer\"},{\"id\":\"v_rho\",\"name\":\"rho\",\"label\":\"Rohdichte rho_i\",\"unit\":\"kg/m^3\",\"default_value\":\"26\"},{\"id\":\"v_beta0\",\"name\":\"\\\\beta_{0}\",\"label\":\"Abbrandrate beta_0\",\"unit\":\"mm/min\",\"default_value\":\"0.65\"},{\"id\":\"v_kpos_unexp\",\"name\":\"k_{pos,unexp}\",\"label\":\"k_pos,unexp\",\"unit\":\"-\",\"default_value\":\"1\"},{\"id\":\"v_delta_t\",\"name\":\"\\\\delta_{t}\",\"label\":\"Zeitdifferenz Delta t_i\",\"unit\":\"min\",\"default_value\":\"0\"},{\"id\":\"v_kj\",\"name\":\"k_{j}\",\"label\":\"Fugenbeiwert k_j\",\"unit\":\"-\",\"default_value\":\"1\"},{\"id\":\"v_kh\",\"name\":\"k_{h}\",\"label\":\"Hohlraum-/Sonderbeiwert\",\"unit\":\"-\",\"default_value\":\"1\"}],\"outputs\":[{\"id\":\"tprot\",\"name\":\"t_{prot,i}\",\"label\":\"Schutzzeit Schicht i\",\"unit\":\"min\"},{\"id\":\"tins\",\"name\":\"t_{ins,n}\",\"label\":\"Isolationsbeitrag letzte Schicht\",\"unit\":\"min\"},{\"id\":\"xdpzbd\",\"name\":\"\",\"label\":\"\",\"unit\":\"\"}],\"options\":[{\"id\":\"massivholz\",\"label\":\"Massivholzschalung / Massivholzplatte\",\"formulas\":{\"tprot\":\"((t_prot_0_i * k_pos_exp_i * k_pos_unexp * k_h) + delta_t) * k_j\",\"tins\":\"((t_ins_0_i * k_pos_exp_n * k_h) + delta_t) * k_j\"},\"calcs\":[{\"id\":\"massiv_tprot0\",\"name\":\"t_{prot,0,i}\",\"label\":\"Grundschutzzeit\",\"unit\":\"min\",\"formula\":\"Math.min(30 * Math.pow(d / 20, 1.1), d / beta_0)\",\"cond_expr\":\"\"},{\"id\":\"massiv_tins0\",\"name\":\"t_{ins,0,i}\",\"label\":\"Grundisolationszeit\",\"unit\":\"min\",\"formula\":\"19 * Math.pow(d / 20, 1.4)\",\"cond_expr\":\"\"},{\"id\":\"massiv_kpos_i_zero\",\"name\":\"k_{pos,exp,i}\",\"label\":\"Positionsbeiwert\",\"unit\":\"-\",\"formula\":\"1\",\"cond_expr\":\"t_prot_0_i <= 0\"},{\"id\":\"massiv_kpos_i_low\",\"name\":\"k_{pos,exp,i}\",\"label\":\"Positionsbeiwert\",\"unit\":\"-\",\"formula\":\"1 - 0.6 * sum_tprot_prev / t_prot_0_i\",\"cond_expr\":\"t_prot_0_i > 0 && sum_tprot_prev <= t_prot_0_i / 2\"},{\"id\":\"massiv_kpos_i_high\",\"name\":\"k_{pos,exp,i}\",\"label\":\"Positionsbeiwert\",\"unit\":\"-\",\"formula\":\"0.5 * Math.sqrt(t_prot_0_i / sum_tprot_prev)\",\"cond_expr\":\"t_prot_0_i > 0 && sum_tprot_prev > t_prot_0_i / 2\"},{\"id\":\"massiv_kpos_n_zero\",\"name\":\"k_{pos,exp,n}\",\"label\":\"Positionsbeiwert letzte Schicht\",\"unit\":\"-\",\"formula\":\"1\",\"cond_expr\":\"t_ins_0_i <= 0\"},{\"id\":\"massiv_kpos_n_low\",\"name\":\"k_{pos,exp,n}\",\"label\":\"Positionsbeiwert letzte Schicht\",\"unit\":\"-\",\"formula\":\"1 - 0.6 * sum_tprot_prev / t_ins_0_i\",\"cond_expr\":\"t_ins_0_i > 0 && sum_tprot_prev <= t_ins_0_i / 2\"},{\"id\":\"massiv_kpos_n_high\",\"name\":\"k_{pos,exp,n}\",\"label\":\"Positionsbeiwert letzte Schicht\",\"unit\":\"-\",\"formula\":\"0.5 * Math.sqrt(t_ins_0_i / sum_tprot_prev)\",\"cond_expr\":\"t_ins_0_i > 0 && sum_tprot_prev > t_ins_0_i / 2\"},{\"id\":\"60hwzs\",\"name\":\"\",\"label\":\"\",\"unit\":\"\",\"formula\":\"\"},{\"id\":\"ybnnr2\",\"name\":\"\",\"label\":\"\",\"unit\":\"\",\"formula\":\"\"}],\"formulaCases\":{\"tprot\":[]}},{\"id\":\"furnier_osb\",\"label\":\"Furniersperrholz / Furnierschichtholz / OSB-Platte\",\"formulas\":{\"tprot\":\"((t_prot_0_i * k_pos_exp_i * k_pos_unexp * k_h) + delta_t) * k_j\",\"tins\":\"((t_ins_0_i * k_pos_exp_n * k_h) + delta_t) * k_j\"},\"calcs\":[{\"id\":\"furnier_tprot0\",\"name\":\"t_{prot,0,i}\",\"label\":\"Grundschutzzeit\",\"unit\":\"min\",\"formula\":\"Math.min(23 * Math.pow(d / 20, 1.1), d / beta_0)\",\"cond_expr\":\"\"},{\"id\":\"furnier_tins0\",\"name\":\"t_{ins,0,i}\",\"label\":\"Grundisolationszeit\",\"unit\":\"min\",\"formula\":\"16 * Math.pow(d / 20, 1.4)\",\"cond_expr\":\"\"},{\"id\":\"furnier_kpos_i_zero\",\"name\":\"k_{pos,exp,i}\",\"label\":\"Positionsbeiwert\",\"unit\":\"-\",\"formula\":\"1\",\"cond_expr\":\"t_prot_0_i <= 0\"},{\"id\":\"furnier_kpos_i_low\",\"name\":\"k_{pos,exp,i}\",\"label\":\"Positionsbeiwert\",\"unit\":\"-\",\"formula\":\"1 - 0.6 * sum_tprot_prev / t_prot_0_i\",\"cond_expr\":\"t_prot_0_i > 0 && sum_tprot_prev <= t_prot_0_i / 2\"},{\"id\":\"furnier_kpos_i_high\",\"name\":\"k_{pos,exp,i}\",\"label\":\"Positionsbeiwert\",\"unit\":\"-\",\"formula\":\"0.5 * Math.sqrt(t_prot_0_i / sum_tprot_prev)\",\"cond_expr\":\"t_prot_0_i > 0 && sum_tprot_prev > t_prot_0_i / 2\"},{\"id\":\"furnier_kpos_n_zero\",\"name\":\"k_{pos,exp,n}\",\"label\":\"Positionsbeiwert letzte Schicht\",\"unit\":\"-\",\"formula\":\"1\",\"cond_expr\":\"t_ins_0_i <= 0\"},{\"id\":\"furnier_kpos_n_low\",\"name\":\"k_{pos,exp,n}\",\"label\":\"Positionsbeiwert letzte Schicht\",\"unit\":\"-\",\"formula\":\"1 - 0.6 * sum_tprot_prev / t_ins_0_i\",\"cond_expr\":\"t_ins_0_i > 0 && sum_tprot_prev <= t_ins_0_i / 2\"},{\"id\":\"furnier_kpos_n_high\",\"name\":\"k_{pos,exp,n}\",\"label\":\"Positionsbeiwert letzte Schicht\",\"unit\":\"-\",\"formula\":\"0.5 * Math.sqrt(t_ins_0_i / sum_tprot_prev)\",\"cond_expr\":\"t_ins_0_i > 0 && sum_tprot_prev > t_ins_0_i / 2\"}]},{\"id\":\"span_faser\",\"label\":\"Spanplatte / Faserplatte\",\"formulas\":{\"tprot\":\"((t_prot_0_i * k_pos_exp_i * k_pos_unexp * k_h) + delta_t) * k_j\",\"tins\":\"((t_ins_0_i * k_pos_exp_n * k_h) + delta_t) * k_j\"},\"calcs\":[{\"id\":\"span_tprot0\",\"name\":\"t_{prot,0,i}\",\"label\":\"Grundschutzzeit\",\"unit\":\"min\",\"formula\":\"Math.min(33 * Math.pow(d / 20, 1.1), d / beta_0)\",\"cond_expr\":\"\"},{\"id\":\"span_tins0\",\"name\":\"t_{ins,0,i}\",\"label\":\"Grundisolationszeit\",\"unit\":\"min\",\"formula\":\"22 * Math.pow(d / 20, 1.4)\",\"cond_expr\":\"\"},{\"id\":\"span_kpos_i_zero\",\"name\":\"k_{pos,exp,i}\",\"label\":\"Positionsbeiwert\",\"unit\":\"-\",\"formula\":\"1\",\"cond_expr\":\"t_prot_0_i <= 0\"},{\"id\":\"span_kpos_i_low\",\"name\":\"k_{pos,exp,i}\",\"label\":\"Positionsbeiwert\",\"unit\":\"-\",\"formula\":\"1 - 0.6 * sum_tprot_prev / t_prot_0_i\",\"cond_expr\":\"t_prot_0_i > 0 && sum_tprot_prev <= t_prot_0_i / 2\"},{\"id\":\"span_kpos_i_high\",\"name\":\"k_{pos,exp,i}\",\"label\":\"Positionsbeiwert\",\"unit\":\"-\",\"formula\":\"0.5 * Math.sqrt(t_prot_0_i / sum_tprot_prev)\",\"cond_expr\":\"t_prot_0_i > 0 && sum_tprot_prev > t_prot_0_i / 2\"},{\"id\":\"span_kpos_n_zero\",\"name\":\"k_{pos,exp,n}\",\"label\":\"Positionsbeiwert letzte Schicht\",\"unit\":\"-\",\"formula\":\"1\",\"cond_expr\":\"t_ins_0_i <= 0\"},{\"id\":\"span_kpos_n_low\",\"name\":\"k_{pos,exp,n}\",\"label\":\"Positionsbeiwert letzte Schicht\",\"unit\":\"-\",\"formula\":\"1 - 0.6 * sum_tprot_prev / t_ins_0_i\",\"cond_expr\":\"t_ins_0_i > 0 && sum_tprot_prev <= t_ins_0_i / 2\"},{\"id\":\"span_kpos_n_high\",\"name\":\"k_{pos,exp,n}\",\"label\":\"Positionsbeiwert letzte Schicht\",\"unit\":\"-\",\"formula\":\"0.5 * Math.sqrt(t_ins_0_i / sum_tprot_prev)\",\"cond_expr\":\"t_ins_0_i > 0 && sum_tprot_prev > t_ins_0_i / 2\"}]},{\"id\":\"gips\",\"label\":\"Gipsplatte / Gipsfaserplatte\",\"formulas\":{\"tprot\":\"((t_prot_0_i * k_pos_exp_i * k_pos_unexp * k_h) + delta_t) * k_j\",\"tins\":\"((t_ins_0_i * k_pos_exp_n * k_h) + delta_t) * k_j\"},\"calcs\":[{\"id\":\"gips_tprot0\",\"name\":\"t_{prot,0,i}\",\"label\":\"Grundschutzzeit\",\"unit\":\"min\",\"formula\":\"30 * Math.pow(d / 15, 1.2)\",\"cond_expr\":\"\"},{\"id\":\"gips_tins0\",\"name\":\"t_{ins,0,i}\",\"label\":\"Grundisolationszeit\",\"unit\":\"min\",\"formula\":\"24 * Math.pow(d / 15, 1.4)\",\"cond_expr\":\"\"},{\"id\":\"gips_kpos_i_zero\",\"name\":\"k_{pos,exp,i}\",\"label\":\"Positionsbeiwert\",\"unit\":\"-\",\"formula\":\"1\",\"cond_expr\":\"t_prot_0_i <= 0\"},{\"id\":\"gips_kpos_i_low\",\"name\":\"k_{pos,exp,i}\",\"label\":\"Positionsbeiwert\",\"unit\":\"-\",\"formula\":\"1 - 0.6 * sum_tprot_prev / t_prot_0_i\",\"cond_expr\":\"t_prot_0_i > 0 && sum_tprot_prev <= t_prot_0_i / 2\"},{\"id\":\"gips_kpos_i_high\",\"name\":\"k_{pos,exp,i}\",\"label\":\"Positionsbeiwert\",\"unit\":\"-\",\"formula\":\"0.5 * Math.sqrt(t_prot_0_i / sum_tprot_prev)\",\"cond_expr\":\"t_prot_0_i > 0 && sum_tprot_prev > t_prot_0_i / 2\"},{\"id\":\"gips_kpos_n_zero\",\"name\":\"k_{pos,exp,n}\",\"label\":\"Positionsbeiwert letzte Schicht\",\"unit\":\"-\",\"formula\":\"1\",\"cond_expr\":\"t_ins_0_i <= 0\"},{\"id\":\"gips_kpos_n_low\",\"name\":\"k_{pos,exp,n}\",\"label\":\"Positionsbeiwert letzte Schicht\",\"unit\":\"-\",\"formula\":\"1 - 0.6 * sum_tprot_prev / t_ins_0_i\",\"cond_expr\":\"t_ins_0_i > 0 && sum_tprot_prev <= t_ins_0_i / 2\"},{\"id\":\"gips_kpos_n_high\",\"name\":\"k_{pos,exp,n}\",\"label\":\"Positionsbeiwert letzte Schicht\",\"unit\":\"-\",\"formula\":\"0.5 * Math.sqrt(t_ins_0_i / sum_tprot_prev)\",\"cond_expr\":\"t_ins_0_i > 0 && sum_tprot_prev > t_ins_0_i / 2\"}]},{\"id\":\"mineralwolle_ge_26\",\"label\":\"Mineralwolle rho >= 26 kg/m3, Schmelzpunkt >= 1000 C\",\"formulas\":{\"tprot\":\"((t_prot_0_i * k_pos_exp_i * k_pos_unexp * k_h) + delta_t) * k_j\",\"tins\":\"((t_ins_0_i * k_pos_exp_n * k_h) + delta_t) * k_j\"},\"calcs\":[{\"id\":\"mw_high_tprot0\",\"name\":\"t_{prot,0,i}\",\"label\":\"Grundschutzzeit\",\"unit\":\"min\",\"formula\":\"0.3 * Math.pow(d, 0.75 * Math.log10(rho) - rho / 400)\",\"cond_expr\":\"\"},{\"id\":\"mw_high_tins0\",\"name\":\"t_{ins,0,i}\",\"label\":\"Grundisolationszeit\",\"unit\":\"min\",\"formula\":\"(0.01 * Math.pow(rho, 0.224) - 0.02) * d * d\",\"cond_expr\":\"\"},{\"id\":\"mw_high_kpos_i_zero\",\"name\":\"k_{pos,exp,i}\",\"label\":\"Positionsbeiwert\",\"unit\":\"-\",\"formula\":\"1\",\"cond_expr\":\"t_prot_0_i <= 0\"},{\"id\":\"mw_high_kpos_i_low\",\"name\":\"k_{pos,exp,i}\",\"label\":\"Positionsbeiwert\",\"unit\":\"-\",\"formula\":\"1 - 0.6 * sum_tprot_prev / t_prot_0_i\",\"cond_expr\":\"t_prot_0_i > 0 && sum_tprot_prev <= t_prot_0_i / 2\"},{\"id\":\"mw_high_kpos_i_high\",\"name\":\"k_{pos,exp,i}\",\"label\":\"Positionsbeiwert\",\"unit\":\"-\",\"formula\":\"0.5 * Math.sqrt(t_prot_0_i / sum_tprot_prev)\",\"cond_expr\":\"t_prot_0_i > 0 && sum_tprot_prev > t_prot_0_i / 2\"},{\"id\":\"mw_high_kpos_n_zero\",\"name\":\"k_{pos,exp,n}\",\"label\":\"Positionsbeiwert letzte Schicht\",\"unit\":\"-\",\"formula\":\"1\",\"cond_expr\":\"t_ins_0_i <= 0\"},{\"id\":\"mw_high_kpos_n_low\",\"name\":\"k_{pos,exp,n}\",\"label\":\"Positionsbeiwert letzte Schicht\",\"unit\":\"-\",\"formula\":\"1 - 0.6 * sum_tprot_prev / t_ins_0_i\",\"cond_expr\":\"t_ins_0_i > 0 && sum_tprot_prev <= t_ins_0_i / 2\"},{\"id\":\"mw_high_kpos_n_high\",\"name\":\"k_{pos,exp,n}\",\"label\":\"Positionsbeiwert letzte Schicht\",\"unit\":\"-\",\"formula\":\"0.5 * Math.sqrt(t_ins_0_i / sum_tprot_prev)\",\"cond_expr\":\"t_ins_0_i > 0 && sum_tprot_prev > t_ins_0_i / 2\"}]},{\"id\":\"mineralwolle_ge_15\",\"label\":\"Mineralwolle rho >= 15 kg/m3, Schmelzpunkt < 1000 C, d_i >= 40 mm\",\"formulas\":{\"tprot\":\"((t_prot_0_i * k_pos_exp_i * k_pos_unexp * k_h) + delta_t) * k_j\",\"tins\":\"((t_ins_0_i * k_pos_exp_n * k_h) + delta_t) * k_j\"},\"calcs\":[{\"id\":\"mw_low_tprot0\",\"name\":\"t_{prot,0,i}\",\"label\":\"Grundschutzzeit\",\"unit\":\"min\",\"formula\":\"d < 40 ? 0 : Math.min((0.0007 * rho + 0.046) * d + 13, 30)\",\"cond_expr\":\"\"},{\"id\":\"mw_low_tins0\",\"name\":\"t_{ins,0,i}\",\"label\":\"Grundisolationszeit\",\"unit\":\"min\",\"formula\":\"0\",\"cond_expr\":\"\"},{\"id\":\"mw_low_kpos_i_zero\",\"name\":\"k_{pos,exp,i}\",\"label\":\"Positionsbeiwert\",\"unit\":\"-\",\"formula\":\"1\",\"cond_expr\":\"t_prot_0_i <= 0\"},{\"id\":\"mw_low_kpos_i_low\",\"name\":\"k_{pos,exp,i}\",\"label\":\"Positionsbeiwert\",\"unit\":\"-\",\"formula\":\"1 - 0.8 * sum_tprot_prev / t_prot_0_i\",\"cond_expr\":\"t_prot_0_i > 0 && sum_tprot_prev <= t_prot_0_i / 4\"},{\"id\":\"mw_low_kpos_i_high\",\"name\":\"k_{pos,exp,i}\",\"label\":\"Positionsbeiwert\",\"unit\":\"-\",\"formula\":\"(0.001 * rho + 0.27) * Math.pow(t_prot_0_i / sum_tprot_prev, 0.75 - 0.002 * rho)\",\"cond_expr\":\"t_prot_0_i > 0 && sum_tprot_prev > t_prot_0_i / 4\"},{\"id\":\"mw_low_kpos_n_zero\",\"name\":\"k_{pos,exp,n}\",\"label\":\"Positionsbeiwert letzte Schicht\",\"unit\":\"-\",\"formula\":\"1\",\"cond_expr\":\"t_ins_0_i <= 0\"},{\"id\":\"mw_low_kpos_n_low\",\"name\":\"k_{pos,exp,n}\",\"label\":\"Positionsbeiwert letzte Schicht\",\"unit\":\"-\",\"formula\":\"1 - 0.6 * sum_tprot_prev / t_ins_0_i\",\"cond_expr\":\"t_ins_0_i > 0 && sum_tprot_prev <= t_ins_0_i / 2\"},{\"id\":\"mw_low_kpos_n_high\",\"name\":\"k_{pos,exp,n}\",\"label\":\"Positionsbeiwert letzte Schicht\",\"unit\":\"-\",\"formula\":\"0.5 * Math.sqrt(t_ins_0_i / sum_tprot_prev)\",\"cond_expr\":\"t_ins_0_i > 0 && sum_tprot_prev > t_ins_0_i / 2\"}]}],\"aggregations\":[{\"output_id\":\"sum_tprot_before_last\",\"method\":\"expr\",\"expr\":\"sum_tprot_before_last\",\"name\":\"\\\\sum t_{prot,i}\",\"label\":\"Summe Schutzzeiten vor letzter Schicht\",\"unit\":\"min\"},{\"output_id\":\"last_tins_value\",\"method\":\"expr\",\"expr\":\"last_tins\",\"name\":\"t_{ins,n}\",\"label\":\"Grundisolationszeit letzte Schicht\",\"unit\":\"min\"},{\"output_id\":\"tins_total\",\"method\":\"expr\",\"expr\":\"sum_tprot_before_last + last_tins\",\"name\":\"t_{ins}\",\"label\":\"Zeit bis zum Versagen der brandabschnittsbildenden Funktion\",\"unit\":\"min\"}]},\"style\":{\"width\":560,\"height\":650}},{\"id\":\"calc_result_tins\",\"type\":\"calc\",\"position\":{\"x\":1664.3793741010131,\"y\":447.01160140425276},\"data\":{\"kind\":\"calc\",\"name\":\"t_{ins,Nachweis}\",\"label\":\"Zeit bis zum Versagen\",\"unit\":\"min\",\"latex\":\"\",\"expr\":\"t_ins\"},\"style\":{\"width\":260,\"height\":180}},{\"id\":\"check_brandabschnitt\",\"type\":\"check\",\"position\":{\"x\":2181.8502233711306,\"y\":228.89791033068332},\"data\":{\"kind\":\"check\",\"label\":\"Nachweis brandabschnittsbildende Funktion\",\"latex\":\"t_{ins} \\\\geq t_{erf}\",\"expr\":\"t_ins >= t_erf ? 1 : 0\",\"unit\":\"min\"},\"style\":{\"width\":300,\"height\":140}},{\"id\":\"comment_hollow_spaces\",\"type\":\"comment\",\"position\":{\"x\":1050,\"y\":520},\"data\":{\"kind\":\"comment\",\"text\":\"Tab. 236-1 Hohlraeume: k_h = 1 ohne wirksamen Hohlraum. Bei Hohlraum >= 40 mm den passenden Einfluss als k_h bzw. Delta t je Schicht eintragen. Wenn du das automatisch per Auswahl willst, braucht der Loopblock noch eine Hohlraum-Option.\",\"extra\":\"none\"},\"style\":{\"width\":340,\"height\":150}},{\"id\":\"loopblock_mqcvxse2_1\",\"type\":\"loopblock\",\"position\":{\"x\":858.7253059782594,\"y\":782.9504930433984},\"data\":{\"kind\":\"loopblock\",\"label\":\"Brandschutz Schichten\",\"count_label\":\"Anzahl Schichten n\",\"max_count\":8,\"dropdown_label\":\"Material / Schicht i\",\"vars\":[{\"id\":\"v_d\",\"name\":\"d\",\"label\":\"Schichtdicke\",\"unit\":\"mm\",\"default_value\":\"15\"},{\"id\":\"v_rho\",\"name\":\"\\\\rho\",\"label\":\"Rohdichte (Mineralwolle)\",\"unit\":\"kg/m³\",\"default_value\":\"26\"}],\"outputs\":[{\"id\":\"tprot\",\"name\":\"t_{prot,0,i}\",\"label\":\"Brandschutzzeit\",\"unit\":\"min\"},{\"id\":\"tins\",\"name\":\"t_{ins,0,n}\",\"label\":\"Isolationszeit n\",\"unit\":\"min\"}],\"options\":[{\"id\":\"mw_high\",\"label\":\"Mineralwolle (ρ ≥ 26 kg/m³, Schmp. ≥ 1000°C)\",\"formulas\":{\"tprot\":\"0.3 * Math.pow(d, 0.75 * Math.log10(rho) - rho/400)\",\"tins\":\"(0.01 * Math.pow(rho, 0.224) - 0.02) * d * d\"}},{\"id\":\"mw_low\",\"label\":\"Mineralwolle (ρ ≥ 15 kg/m³, Schmp. < 1000°C)\",\"formulas\":{\"tprot\":\"0\",\"tins\":\"(0.01 * Math.pow(rho, 0.224) - 0.02) * d * d\"}},{\"id\":\"hfp\",\"label\":\"Holzfaserplatte hart (ρ ≥ 250 kg/m³)\",\"formulas\":{\"tprot\":\"0.07 * Math.pow(d, 1.5)\",\"tins\":\"0.019 * d * d\"}},{\"id\":\"osb\",\"label\":\"OSB-Platte / Spanplatte (ρ ≥ 550 kg/m³)\",\"formulas\":{\"tprot\":\"d >= 10 ? 2.8 * d - 14 : 0\",\"tins\":\"0.012 * d * d\"}},{\"id\":\"gkb\",\"label\":\"Gipskartonplatte GKB (d ≥ 8 mm)\",\"formulas\":{\"tprot\":\"d >= 8 ? 2.8 * d - 14 : 0\",\"tins\":\"0.015 * d * d\"}},{\"id\":\"gkf\",\"label\":\"Gipskartonplatte GKF / Feuerschutz (d ≥ 8 mm)\",\"formulas\":{\"tprot\":\"d >= 8 ? 3.0 * d - 14 : 0\",\"tins\":\"0.015 * d * d\"}},{\"id\":\"fermacell\",\"label\":\"Gipsfaserplatte Fermacell (d ≥ 10 mm)\",\"formulas\":{\"tprot\":\"d >= 10 ? 2.8 * d - 14 : 0\",\"tins\":\"0.015 * d * d\"}},{\"id\":\"holz_nf\",\"label\":\"Holzschalung Nut+Feder (ρ ≥ 450 kg/m³, d ≥ 15 mm)\",\"formulas\":{\"tprot\":\"d >= 15 ? 0.1 * Math.pow(d, 1.5) : 0\",\"tins\":\"0.019 * d * d\"}}],\"aggregations\":[{\"output_id\":\"tprot\",\"method\":\"sum\",\"name\":\"t_{prot,0}\",\"label\":\"Σ Brandschutzzeit\",\"unit\":\"min\"},{\"output_id\":\"tins\",\"method\":\"last\",\"name\":\"t_{ins,0,n}\",\"label\":\"t_ins letzte Schicht\",\"unit\":\"min\"}]}}],\"edges\":[{\"id\":\"e_title_comment\",\"source\":\"title_bauteile_verbindungen\",\"target\":\"comment_norm_basis\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_comment_loop\",\"source\":\"comment_norm_basis\",\"target\":\"layers_fire_resistance\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_required_check\",\"source\":\"t_erf_required\",\"target\":\"check_brandabschnitt\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_loop_result\",\"source\":\"layers_fire_resistance\",\"target\":\"calc_result_tins\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_result_check\",\"source\":\"calc_result_tins\",\"target\":\"check_brandabschnitt\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_loop_check_direct\",\"source\":\"layers_fire_resistance\",\"target\":\"check_brandabschnitt\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_hollow_loop\",\"source\":\"comment_hollow_spaces\",\"target\":\"layers_fire_resistance\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}}],\"display_order\":[\"title_bauteile_verbindungen\",\"comment_norm_basis\",\"t_erf_required\",\"layers_fire_resistance\",\"calc_result_tins\",\"check_brandabschnitt\",\"comment_hollow_spaces\",\"loopblock_mqcvxse2_1\"]}",
+    "notes": "Automatisch erzeugter Nachweis aus den Kapiteln 2.2 bis 2.4 fuer Bauteile und Verbindungen."
+  },
+  "chapter": {
+    "id": "lignum_brandschutz_3_1_mqcm5nsl",
+    "norm_id": "lignum_brandschutz",
+    "parent_id": null,
+    "number": "3.1",
+    "title": "Bauteile und Verbindungen",
+    "sort_order": 1
+  },
+  "variables": [],
+  "tables": [],
+  "graph": {
+    "version": 1,
+    "nodes": [
+      {
+        "id": "title_bauteile_verbindungen",
+        "type": "title",
+        "position": {
+          "x": -20.346191444421606,
+          "y": -148.54968012859712
+        },
+        "data": {
+          "kind": "title",
+          "label": "Bauteile und Verbindungen - Schichtnachweis",
+          "color": "#c2410c"
+        },
+        "style": {
+          "width": 420,
+          "height": 54
+        }
+      },
+      {
+        "id": "comment_norm_basis",
+        "type": "comment",
+        "position": {
+          "x": -80,
+          "y": 80
+        },
+        "data": {
+          "kind": "comment",
+          "text": "Nachweis nach den Bildern/Kap. 2.2 bis 2.4: Schutzzeiten der vor der letzten Schicht liegenden Schichten plus Grundisolationszeit der letzten Schicht. Hohlraeume, Fugen, Delta t und k_pos,unexp koennen je Schicht eingegeben werden.",
+          "extra": "none"
+        },
+        "style": {
+          "width": 420,
+          "height": 130
+        }
+      },
+      {
+        "id": "t_erf_required",
+        "type": "variable",
+        "position": {
+          "x": -80,
+          "y": 250
+        },
+        "data": {
+          "kind": "variable",
+          "name": "t_{erf}",
+          "label": "erforderliche Feuerwiderstandsdauer",
+          "unit": "min",
+          "default_value": "30",
+          "inputKind": "number",
+          "options": []
+        },
+        "style": {
+          "width": 250,
+          "height": 140
+        }
+      },
+      {
+        "id": "layers_fire_resistance",
+        "type": "loopblock",
+        "position": {
+          "x": 420,
+          "y": 40
+        },
+        "data": {
+          "kind": "loopblock",
+          "label": "Mehrschichtiger Bauteilaufbau",
+          "count_label": "Anzahl Schichten n",
+          "max_count": 16,
+          "dropdown_label": "Material Schicht i bzw. n",
+          "vars": [
+            {
+              "id": "v_d",
+              "name": "d",
+              "label": "Schichtdicke d_i",
+              "unit": "mm",
+              "default_value": "15",
+              "scope": "layer"
+            },
+            {
+              "id": "v_rho",
+              "name": "rho",
+              "label": "Rohdichte rho_i",
+              "unit": "kg/m^3",
+              "default_value": "26"
+            },
+            {
+              "id": "v_beta0",
+              "name": "\\beta_{0}",
+              "label": "Abbrandrate beta_0",
+              "unit": "mm/min",
+              "default_value": "0.65"
+            },
+            {
+              "id": "v_kpos_unexp",
+              "name": "k_{pos,unexp}",
+              "label": "k_pos,unexp",
+              "unit": "-",
+              "default_value": "1"
+            },
+            {
+              "id": "v_delta_t",
+              "name": "\\delta_{t}",
+              "label": "Zeitdifferenz Delta t_i",
+              "unit": "min",
+              "default_value": "0"
+            },
+            {
+              "id": "v_kj",
+              "name": "k_{j}",
+              "label": "Fugenbeiwert k_j",
+              "unit": "-",
+              "default_value": "1"
+            },
+            {
+              "id": "v_kh",
+              "name": "k_{h}",
+              "label": "Hohlraum-/Sonderbeiwert",
+              "unit": "-",
+              "default_value": "1"
+            }
+          ],
+          "outputs": [
+            {
+              "id": "tprot",
+              "name": "t_{prot,i}",
+              "label": "Schutzzeit Schicht i",
+              "unit": "min"
+            },
+            {
+              "id": "tins",
+              "name": "t_{ins,n}",
+              "label": "Isolationsbeitrag letzte Schicht",
+              "unit": "min"
+            },
+            {
+              "id": "xdpzbd",
+              "name": "",
+              "label": "",
+              "unit": ""
+            }
+          ],
+          "options": [
+            {
+              "id": "massivholz",
+              "label": "Massivholzschalung / Massivholzplatte",
+              "formulas": {
+                "tprot": "((t_prot_0_i * k_pos_exp_i * k_pos_unexp * k_h) + delta_t) * k_j",
+                "tins": "((t_ins_0_i * k_pos_exp_n * k_h) + delta_t) * k_j"
+              },
+              "calcs": [
+                {
+                  "id": "massiv_tprot0",
+                  "name": "t_{prot,0,i}",
+                  "label": "Grundschutzzeit",
+                  "unit": "min",
+                  "formula": "Math.min(30 * Math.pow(d / 20, 1.1), d / beta_0)",
+                  "cond_expr": ""
+                },
+                {
+                  "id": "massiv_tins0",
+                  "name": "t_{ins,0,i}",
+                  "label": "Grundisolationszeit",
+                  "unit": "min",
+                  "formula": "19 * Math.pow(d / 20, 1.4)",
+                  "cond_expr": ""
+                },
+                {
+                  "id": "massiv_kpos_i_zero",
+                  "name": "k_{pos,exp,i}",
+                  "label": "Positionsbeiwert",
+                  "unit": "-",
+                  "formula": "1",
+                  "cond_expr": "t_prot_0_i <= 0"
+                },
+                {
+                  "id": "massiv_kpos_i_low",
+                  "name": "k_{pos,exp,i}",
+                  "label": "Positionsbeiwert",
+                  "unit": "-",
+                  "formula": "1 - 0.6 * sum_tprot_prev / t_prot_0_i",
+                  "cond_expr": "t_prot_0_i > 0 && sum_tprot_prev <= t_prot_0_i / 2"
+                },
+                {
+                  "id": "massiv_kpos_i_high",
+                  "name": "k_{pos,exp,i}",
+                  "label": "Positionsbeiwert",
+                  "unit": "-",
+                  "formula": "0.5 * Math.sqrt(t_prot_0_i / sum_tprot_prev)",
+                  "cond_expr": "t_prot_0_i > 0 && sum_tprot_prev > t_prot_0_i / 2"
+                },
+                {
+                  "id": "massiv_kpos_n_zero",
+                  "name": "k_{pos,exp,n}",
+                  "label": "Positionsbeiwert letzte Schicht",
+                  "unit": "-",
+                  "formula": "1",
+                  "cond_expr": "t_ins_0_i <= 0"
+                },
+                {
+                  "id": "massiv_kpos_n_low",
+                  "name": "k_{pos,exp,n}",
+                  "label": "Positionsbeiwert letzte Schicht",
+                  "unit": "-",
+                  "formula": "1 - 0.6 * sum_tprot_prev / t_ins_0_i",
+                  "cond_expr": "t_ins_0_i > 0 && sum_tprot_prev <= t_ins_0_i / 2"
+                },
+                {
+                  "id": "massiv_kpos_n_high",
+                  "name": "k_{pos,exp,n}",
+                  "label": "Positionsbeiwert letzte Schicht",
+                  "unit": "-",
+                  "formula": "0.5 * Math.sqrt(t_ins_0_i / sum_tprot_prev)",
+                  "cond_expr": "t_ins_0_i > 0 && sum_tprot_prev > t_ins_0_i / 2"
+                },
+                {
+                  "id": "60hwzs",
+                  "name": "",
+                  "label": "",
+                  "unit": "",
+                  "formula": ""
+                },
+                {
+                  "id": "ybnnr2",
+                  "name": "",
+                  "label": "",
+                  "unit": "",
+                  "formula": ""
+                }
+              ],
+              "formulaCases": {
+                "tprot": []
+              }
+            },
+            {
+              "id": "furnier_osb",
+              "label": "Furniersperrholz / Furnierschichtholz / OSB-Platte",
+              "formulas": {
+                "tprot": "((t_prot_0_i * k_pos_exp_i * k_pos_unexp * k_h) + delta_t) * k_j",
+                "tins": "((t_ins_0_i * k_pos_exp_n * k_h) + delta_t) * k_j"
+              },
+              "calcs": [
+                {
+                  "id": "furnier_tprot0",
+                  "name": "t_{prot,0,i}",
+                  "label": "Grundschutzzeit",
+                  "unit": "min",
+                  "formula": "Math.min(23 * Math.pow(d / 20, 1.1), d / beta_0)",
+                  "cond_expr": ""
+                },
+                {
+                  "id": "furnier_tins0",
+                  "name": "t_{ins,0,i}",
+                  "label": "Grundisolationszeit",
+                  "unit": "min",
+                  "formula": "16 * Math.pow(d / 20, 1.4)",
+                  "cond_expr": ""
+                },
+                {
+                  "id": "furnier_kpos_i_zero",
+                  "name": "k_{pos,exp,i}",
+                  "label": "Positionsbeiwert",
+                  "unit": "-",
+                  "formula": "1",
+                  "cond_expr": "t_prot_0_i <= 0"
+                },
+                {
+                  "id": "furnier_kpos_i_low",
+                  "name": "k_{pos,exp,i}",
+                  "label": "Positionsbeiwert",
+                  "unit": "-",
+                  "formula": "1 - 0.6 * sum_tprot_prev / t_prot_0_i",
+                  "cond_expr": "t_prot_0_i > 0 && sum_tprot_prev <= t_prot_0_i / 2"
+                },
+                {
+                  "id": "furnier_kpos_i_high",
+                  "name": "k_{pos,exp,i}",
+                  "label": "Positionsbeiwert",
+                  "unit": "-",
+                  "formula": "0.5 * Math.sqrt(t_prot_0_i / sum_tprot_prev)",
+                  "cond_expr": "t_prot_0_i > 0 && sum_tprot_prev > t_prot_0_i / 2"
+                },
+                {
+                  "id": "furnier_kpos_n_zero",
+                  "name": "k_{pos,exp,n}",
+                  "label": "Positionsbeiwert letzte Schicht",
+                  "unit": "-",
+                  "formula": "1",
+                  "cond_expr": "t_ins_0_i <= 0"
+                },
+                {
+                  "id": "furnier_kpos_n_low",
+                  "name": "k_{pos,exp,n}",
+                  "label": "Positionsbeiwert letzte Schicht",
+                  "unit": "-",
+                  "formula": "1 - 0.6 * sum_tprot_prev / t_ins_0_i",
+                  "cond_expr": "t_ins_0_i > 0 && sum_tprot_prev <= t_ins_0_i / 2"
+                },
+                {
+                  "id": "furnier_kpos_n_high",
+                  "name": "k_{pos,exp,n}",
+                  "label": "Positionsbeiwert letzte Schicht",
+                  "unit": "-",
+                  "formula": "0.5 * Math.sqrt(t_ins_0_i / sum_tprot_prev)",
+                  "cond_expr": "t_ins_0_i > 0 && sum_tprot_prev > t_ins_0_i / 2"
+                }
+              ]
+            },
+            {
+              "id": "span_faser",
+              "label": "Spanplatte / Faserplatte",
+              "formulas": {
+                "tprot": "((t_prot_0_i * k_pos_exp_i * k_pos_unexp * k_h) + delta_t) * k_j",
+                "tins": "((t_ins_0_i * k_pos_exp_n * k_h) + delta_t) * k_j"
+              },
+              "calcs": [
+                {
+                  "id": "span_tprot0",
+                  "name": "t_{prot,0,i}",
+                  "label": "Grundschutzzeit",
+                  "unit": "min",
+                  "formula": "Math.min(33 * Math.pow(d / 20, 1.1), d / beta_0)",
+                  "cond_expr": ""
+                },
+                {
+                  "id": "span_tins0",
+                  "name": "t_{ins,0,i}",
+                  "label": "Grundisolationszeit",
+                  "unit": "min",
+                  "formula": "22 * Math.pow(d / 20, 1.4)",
+                  "cond_expr": ""
+                },
+                {
+                  "id": "span_kpos_i_zero",
+                  "name": "k_{pos,exp,i}",
+                  "label": "Positionsbeiwert",
+                  "unit": "-",
+                  "formula": "1",
+                  "cond_expr": "t_prot_0_i <= 0"
+                },
+                {
+                  "id": "span_kpos_i_low",
+                  "name": "k_{pos,exp,i}",
+                  "label": "Positionsbeiwert",
+                  "unit": "-",
+                  "formula": "1 - 0.6 * sum_tprot_prev / t_prot_0_i",
+                  "cond_expr": "t_prot_0_i > 0 && sum_tprot_prev <= t_prot_0_i / 2"
+                },
+                {
+                  "id": "span_kpos_i_high",
+                  "name": "k_{pos,exp,i}",
+                  "label": "Positionsbeiwert",
+                  "unit": "-",
+                  "formula": "0.5 * Math.sqrt(t_prot_0_i / sum_tprot_prev)",
+                  "cond_expr": "t_prot_0_i > 0 && sum_tprot_prev > t_prot_0_i / 2"
+                },
+                {
+                  "id": "span_kpos_n_zero",
+                  "name": "k_{pos,exp,n}",
+                  "label": "Positionsbeiwert letzte Schicht",
+                  "unit": "-",
+                  "formula": "1",
+                  "cond_expr": "t_ins_0_i <= 0"
+                },
+                {
+                  "id": "span_kpos_n_low",
+                  "name": "k_{pos,exp,n}",
+                  "label": "Positionsbeiwert letzte Schicht",
+                  "unit": "-",
+                  "formula": "1 - 0.6 * sum_tprot_prev / t_ins_0_i",
+                  "cond_expr": "t_ins_0_i > 0 && sum_tprot_prev <= t_ins_0_i / 2"
+                },
+                {
+                  "id": "span_kpos_n_high",
+                  "name": "k_{pos,exp,n}",
+                  "label": "Positionsbeiwert letzte Schicht",
+                  "unit": "-",
+                  "formula": "0.5 * Math.sqrt(t_ins_0_i / sum_tprot_prev)",
+                  "cond_expr": "t_ins_0_i > 0 && sum_tprot_prev > t_ins_0_i / 2"
+                }
+              ]
+            },
+            {
+              "id": "gips",
+              "label": "Gipsplatte / Gipsfaserplatte",
+              "formulas": {
+                "tprot": "((t_prot_0_i * k_pos_exp_i * k_pos_unexp * k_h) + delta_t) * k_j",
+                "tins": "((t_ins_0_i * k_pos_exp_n * k_h) + delta_t) * k_j"
+              },
+              "calcs": [
+                {
+                  "id": "gips_tprot0",
+                  "name": "t_{prot,0,i}",
+                  "label": "Grundschutzzeit",
+                  "unit": "min",
+                  "formula": "30 * Math.pow(d / 15, 1.2)",
+                  "cond_expr": ""
+                },
+                {
+                  "id": "gips_tins0",
+                  "name": "t_{ins,0,i}",
+                  "label": "Grundisolationszeit",
+                  "unit": "min",
+                  "formula": "24 * Math.pow(d / 15, 1.4)",
+                  "cond_expr": ""
+                },
+                {
+                  "id": "gips_kpos_i_zero",
+                  "name": "k_{pos,exp,i}",
+                  "label": "Positionsbeiwert",
+                  "unit": "-",
+                  "formula": "1",
+                  "cond_expr": "t_prot_0_i <= 0"
+                },
+                {
+                  "id": "gips_kpos_i_low",
+                  "name": "k_{pos,exp,i}",
+                  "label": "Positionsbeiwert",
+                  "unit": "-",
+                  "formula": "1 - 0.6 * sum_tprot_prev / t_prot_0_i",
+                  "cond_expr": "t_prot_0_i > 0 && sum_tprot_prev <= t_prot_0_i / 2"
+                },
+                {
+                  "id": "gips_kpos_i_high",
+                  "name": "k_{pos,exp,i}",
+                  "label": "Positionsbeiwert",
+                  "unit": "-",
+                  "formula": "0.5 * Math.sqrt(t_prot_0_i / sum_tprot_prev)",
+                  "cond_expr": "t_prot_0_i > 0 && sum_tprot_prev > t_prot_0_i / 2"
+                },
+                {
+                  "id": "gips_kpos_n_zero",
+                  "name": "k_{pos,exp,n}",
+                  "label": "Positionsbeiwert letzte Schicht",
+                  "unit": "-",
+                  "formula": "1",
+                  "cond_expr": "t_ins_0_i <= 0"
+                },
+                {
+                  "id": "gips_kpos_n_low",
+                  "name": "k_{pos,exp,n}",
+                  "label": "Positionsbeiwert letzte Schicht",
+                  "unit": "-",
+                  "formula": "1 - 0.6 * sum_tprot_prev / t_ins_0_i",
+                  "cond_expr": "t_ins_0_i > 0 && sum_tprot_prev <= t_ins_0_i / 2"
+                },
+                {
+                  "id": "gips_kpos_n_high",
+                  "name": "k_{pos,exp,n}",
+                  "label": "Positionsbeiwert letzte Schicht",
+                  "unit": "-",
+                  "formula": "0.5 * Math.sqrt(t_ins_0_i / sum_tprot_prev)",
+                  "cond_expr": "t_ins_0_i > 0 && sum_tprot_prev > t_ins_0_i / 2"
+                }
+              ]
+            },
+            {
+              "id": "mineralwolle_ge_26",
+              "label": "Mineralwolle rho >= 26 kg/m3, Schmelzpunkt >= 1000 C",
+              "formulas": {
+                "tprot": "((t_prot_0_i * k_pos_exp_i * k_pos_unexp * k_h) + delta_t) * k_j",
+                "tins": "((t_ins_0_i * k_pos_exp_n * k_h) + delta_t) * k_j"
+              },
+              "calcs": [
+                {
+                  "id": "mw_high_tprot0",
+                  "name": "t_{prot,0,i}",
+                  "label": "Grundschutzzeit",
+                  "unit": "min",
+                  "formula": "0.3 * Math.pow(d, 0.75 * Math.log10(rho) - rho / 400)",
+                  "cond_expr": ""
+                },
+                {
+                  "id": "mw_high_tins0",
+                  "name": "t_{ins,0,i}",
+                  "label": "Grundisolationszeit",
+                  "unit": "min",
+                  "formula": "(0.01 * Math.pow(rho, 0.224) - 0.02) * d * d",
+                  "cond_expr": ""
+                },
+                {
+                  "id": "mw_high_kpos_i_zero",
+                  "name": "k_{pos,exp,i}",
+                  "label": "Positionsbeiwert",
+                  "unit": "-",
+                  "formula": "1",
+                  "cond_expr": "t_prot_0_i <= 0"
+                },
+                {
+                  "id": "mw_high_kpos_i_low",
+                  "name": "k_{pos,exp,i}",
+                  "label": "Positionsbeiwert",
+                  "unit": "-",
+                  "formula": "1 - 0.6 * sum_tprot_prev / t_prot_0_i",
+                  "cond_expr": "t_prot_0_i > 0 && sum_tprot_prev <= t_prot_0_i / 2"
+                },
+                {
+                  "id": "mw_high_kpos_i_high",
+                  "name": "k_{pos,exp,i}",
+                  "label": "Positionsbeiwert",
+                  "unit": "-",
+                  "formula": "0.5 * Math.sqrt(t_prot_0_i / sum_tprot_prev)",
+                  "cond_expr": "t_prot_0_i > 0 && sum_tprot_prev > t_prot_0_i / 2"
+                },
+                {
+                  "id": "mw_high_kpos_n_zero",
+                  "name": "k_{pos,exp,n}",
+                  "label": "Positionsbeiwert letzte Schicht",
+                  "unit": "-",
+                  "formula": "1",
+                  "cond_expr": "t_ins_0_i <= 0"
+                },
+                {
+                  "id": "mw_high_kpos_n_low",
+                  "name": "k_{pos,exp,n}",
+                  "label": "Positionsbeiwert letzte Schicht",
+                  "unit": "-",
+                  "formula": "1 - 0.6 * sum_tprot_prev / t_ins_0_i",
+                  "cond_expr": "t_ins_0_i > 0 && sum_tprot_prev <= t_ins_0_i / 2"
+                },
+                {
+                  "id": "mw_high_kpos_n_high",
+                  "name": "k_{pos,exp,n}",
+                  "label": "Positionsbeiwert letzte Schicht",
+                  "unit": "-",
+                  "formula": "0.5 * Math.sqrt(t_ins_0_i / sum_tprot_prev)",
+                  "cond_expr": "t_ins_0_i > 0 && sum_tprot_prev > t_ins_0_i / 2"
+                }
+              ]
+            },
+            {
+              "id": "mineralwolle_ge_15",
+              "label": "Mineralwolle rho >= 15 kg/m3, Schmelzpunkt < 1000 C, d_i >= 40 mm",
+              "formulas": {
+                "tprot": "((t_prot_0_i * k_pos_exp_i * k_pos_unexp * k_h) + delta_t) * k_j",
+                "tins": "((t_ins_0_i * k_pos_exp_n * k_h) + delta_t) * k_j"
+              },
+              "calcs": [
+                {
+                  "id": "mw_low_tprot0",
+                  "name": "t_{prot,0,i}",
+                  "label": "Grundschutzzeit",
+                  "unit": "min",
+                  "formula": "d < 40 ? 0 : Math.min((0.0007 * rho + 0.046) * d + 13, 30)",
+                  "cond_expr": ""
+                },
+                {
+                  "id": "mw_low_tins0",
+                  "name": "t_{ins,0,i}",
+                  "label": "Grundisolationszeit",
+                  "unit": "min",
+                  "formula": "0",
+                  "cond_expr": ""
+                },
+                {
+                  "id": "mw_low_kpos_i_zero",
+                  "name": "k_{pos,exp,i}",
+                  "label": "Positionsbeiwert",
+                  "unit": "-",
+                  "formula": "1",
+                  "cond_expr": "t_prot_0_i <= 0"
+                },
+                {
+                  "id": "mw_low_kpos_i_low",
+                  "name": "k_{pos,exp,i}",
+                  "label": "Positionsbeiwert",
+                  "unit": "-",
+                  "formula": "1 - 0.8 * sum_tprot_prev / t_prot_0_i",
+                  "cond_expr": "t_prot_0_i > 0 && sum_tprot_prev <= t_prot_0_i / 4"
+                },
+                {
+                  "id": "mw_low_kpos_i_high",
+                  "name": "k_{pos,exp,i}",
+                  "label": "Positionsbeiwert",
+                  "unit": "-",
+                  "formula": "(0.001 * rho + 0.27) * Math.pow(t_prot_0_i / sum_tprot_prev, 0.75 - 0.002 * rho)",
+                  "cond_expr": "t_prot_0_i > 0 && sum_tprot_prev > t_prot_0_i / 4"
+                },
+                {
+                  "id": "mw_low_kpos_n_zero",
+                  "name": "k_{pos,exp,n}",
+                  "label": "Positionsbeiwert letzte Schicht",
+                  "unit": "-",
+                  "formula": "1",
+                  "cond_expr": "t_ins_0_i <= 0"
+                },
+                {
+                  "id": "mw_low_kpos_n_low",
+                  "name": "k_{pos,exp,n}",
+                  "label": "Positionsbeiwert letzte Schicht",
+                  "unit": "-",
+                  "formula": "1 - 0.6 * sum_tprot_prev / t_ins_0_i",
+                  "cond_expr": "t_ins_0_i > 0 && sum_tprot_prev <= t_ins_0_i / 2"
+                },
+                {
+                  "id": "mw_low_kpos_n_high",
+                  "name": "k_{pos,exp,n}",
+                  "label": "Positionsbeiwert letzte Schicht",
+                  "unit": "-",
+                  "formula": "0.5 * Math.sqrt(t_ins_0_i / sum_tprot_prev)",
+                  "cond_expr": "t_ins_0_i > 0 && sum_tprot_prev > t_ins_0_i / 2"
+                }
+              ]
+            }
+          ],
+          "aggregations": [
+            {
+              "output_id": "sum_tprot_before_last",
+              "method": "expr",
+              "expr": "sum_tprot_before_last",
+              "name": "\\sum t_{prot,i}",
+              "label": "Summe Schutzzeiten vor letzter Schicht",
+              "unit": "min"
+            },
+            {
+              "output_id": "last_tins_value",
+              "method": "expr",
+              "expr": "last_tins",
+              "name": "t_{ins,n}",
+              "label": "Grundisolationszeit letzte Schicht",
+              "unit": "min"
+            },
+            {
+              "output_id": "tins_total",
+              "method": "expr",
+              "expr": "sum_tprot_before_last + last_tins",
+              "name": "t_{ins}",
+              "label": "Zeit bis zum Versagen der brandabschnittsbildenden Funktion",
+              "unit": "min"
+            }
+          ]
+        },
+        "style": {
+          "width": 560,
+          "height": 650
+        }
+      },
+      {
+        "id": "calc_result_tins",
+        "type": "calc",
+        "position": {
+          "x": 1664.3793741010131,
+          "y": 447.01160140425276
+        },
+        "data": {
+          "kind": "calc",
+          "name": "t_{ins,Nachweis}",
+          "label": "Zeit bis zum Versagen",
+          "unit": "min",
+          "latex": "",
+          "expr": "t_ins"
+        },
+        "style": {
+          "width": 260,
+          "height": 180
+        }
+      },
+      {
+        "id": "check_brandabschnitt",
+        "type": "check",
+        "position": {
+          "x": 2181.8502233711306,
+          "y": 228.89791033068332
+        },
+        "data": {
+          "kind": "check",
+          "label": "Nachweis brandabschnittsbildende Funktion",
+          "latex": "t_{ins} \\geq t_{erf}",
+          "expr": "t_ins >= t_erf ? 1 : 0",
+          "unit": "min"
+        },
+        "style": {
+          "width": 300,
+          "height": 140
+        }
+      },
+      {
+        "id": "comment_hollow_spaces",
+        "type": "comment",
+        "position": {
+          "x": 1050,
+          "y": 520
+        },
+        "data": {
+          "kind": "comment",
+          "text": "Tab. 236-1 Hohlraeume: k_h = 1 ohne wirksamen Hohlraum. Bei Hohlraum >= 40 mm den passenden Einfluss als k_h bzw. Delta t je Schicht eintragen. Wenn du das automatisch per Auswahl willst, braucht der Loopblock noch eine Hohlraum-Option.",
+          "extra": "none"
+        },
+        "style": {
+          "width": 340,
+          "height": 150
+        }
+      },
+      {
+        "id": "loopblock_mqcvxse2_1",
+        "type": "loopblock",
+        "position": {
+          "x": 858.7253059782594,
+          "y": 782.9504930433984
+        },
+        "data": {
+          "kind": "loopblock",
+          "label": "Brandschutz Schichten",
+          "count_label": "Anzahl Schichten n",
+          "max_count": 8,
+          "dropdown_label": "Material / Schicht i",
+          "vars": [
+            {
+              "id": "v_d",
+              "name": "d",
+              "label": "Schichtdicke",
+              "unit": "mm",
+              "default_value": "15"
+            },
+            {
+              "id": "v_rho",
+              "name": "\\rho",
+              "label": "Rohdichte (Mineralwolle)",
+              "unit": "kg/m³",
+              "default_value": "26"
+            }
+          ],
+          "outputs": [
+            {
+              "id": "tprot",
+              "name": "t_{prot,0,i}",
+              "label": "Brandschutzzeit",
+              "unit": "min"
+            },
+            {
+              "id": "tins",
+              "name": "t_{ins,0,n}",
+              "label": "Isolationszeit n",
+              "unit": "min"
+            }
+          ],
+          "options": [
+            {
+              "id": "mw_high",
+              "label": "Mineralwolle (ρ ≥ 26 kg/m³, Schmp. ≥ 1000°C)",
+              "formulas": {
+                "tprot": "0.3 * Math.pow(d, 0.75 * Math.log10(rho) - rho/400)",
+                "tins": "(0.01 * Math.pow(rho, 0.224) - 0.02) * d * d"
+              }
+            },
+            {
+              "id": "mw_low",
+              "label": "Mineralwolle (ρ ≥ 15 kg/m³, Schmp. < 1000°C)",
+              "formulas": {
+                "tprot": "0",
+                "tins": "(0.01 * Math.pow(rho, 0.224) - 0.02) * d * d"
+              }
+            },
+            {
+              "id": "hfp",
+              "label": "Holzfaserplatte hart (ρ ≥ 250 kg/m³)",
+              "formulas": {
+                "tprot": "0.07 * Math.pow(d, 1.5)",
+                "tins": "0.019 * d * d"
+              }
+            },
+            {
+              "id": "osb",
+              "label": "OSB-Platte / Spanplatte (ρ ≥ 550 kg/m³)",
+              "formulas": {
+                "tprot": "d >= 10 ? 2.8 * d - 14 : 0",
+                "tins": "0.012 * d * d"
+              }
+            },
+            {
+              "id": "gkb",
+              "label": "Gipskartonplatte GKB (d ≥ 8 mm)",
+              "formulas": {
+                "tprot": "d >= 8 ? 2.8 * d - 14 : 0",
+                "tins": "0.015 * d * d"
+              }
+            },
+            {
+              "id": "gkf",
+              "label": "Gipskartonplatte GKF / Feuerschutz (d ≥ 8 mm)",
+              "formulas": {
+                "tprot": "d >= 8 ? 3.0 * d - 14 : 0",
+                "tins": "0.015 * d * d"
+              }
+            },
+            {
+              "id": "fermacell",
+              "label": "Gipsfaserplatte Fermacell (d ≥ 10 mm)",
+              "formulas": {
+                "tprot": "d >= 10 ? 2.8 * d - 14 : 0",
+                "tins": "0.015 * d * d"
+              }
+            },
+            {
+              "id": "holz_nf",
+              "label": "Holzschalung Nut+Feder (ρ ≥ 450 kg/m³, d ≥ 15 mm)",
+              "formulas": {
+                "tprot": "d >= 15 ? 0.1 * Math.pow(d, 1.5) : 0",
+                "tins": "0.019 * d * d"
+              }
+            }
+          ],
+          "aggregations": [
+            {
+              "output_id": "tprot",
+              "method": "sum",
+              "name": "t_{prot,0}",
+              "label": "Σ Brandschutzzeit",
+              "unit": "min"
+            },
+            {
+              "output_id": "tins",
+              "method": "last",
+              "name": "t_{ins,0,n}",
+              "label": "t_ins letzte Schicht",
+              "unit": "min"
+            }
+          ]
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e_title_comment",
+        "source": "title_bauteile_verbindungen",
+        "target": "comment_norm_basis",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_comment_loop",
+        "source": "comment_norm_basis",
+        "target": "layers_fire_resistance",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_required_check",
+        "source": "t_erf_required",
+        "target": "check_brandabschnitt",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_loop_result",
+        "source": "layers_fire_resistance",
+        "target": "calc_result_tins",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_result_check",
+        "source": "calc_result_tins",
+        "target": "check_brandabschnitt",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_loop_check_direct",
+        "source": "layers_fire_resistance",
+        "target": "check_brandabschnitt",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_hollow_loop",
+        "source": "comment_hollow_spaces",
+        "target": "layers_fire_resistance",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      }
+    ],
+    "display_order": [
+      "title_bauteile_verbindungen",
+      "comment_norm_basis",
+      "t_erf_required",
+      "layers_fire_resistance",
+      "calc_result_tins",
+      "check_brandabschnitt",
+      "comment_hollow_spaces",
+      "loopblock_mqcvxse2_1"
+    ]
+  }
+}

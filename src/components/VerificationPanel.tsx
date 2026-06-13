@@ -1,10 +1,28 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
 import GraphVerificationView from './GraphVerificationView';
+
+const scrollKey = (verificationId: string) => `sia-verification-scroll:${verificationId}`;
 
 export default function VerificationPanel() {
   const { verifications, activeVerificationId, updateComment, addVerificationToPrint, printItems, graphInputsByVerif, restoreNonce } = useStore() as any;
   const verification = verifications.find((v: any) => v.id === activeVerificationId);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!verification) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const saved = Number(localStorage.getItem(scrollKey(verification.id)) || '0');
+    requestAnimationFrame(() => {
+      el.scrollTop = Number.isFinite(saved) ? saved : 0;
+    });
+  }, [verification?.id, restoreNonce]);
+
+  const handleScroll = () => {
+    if (!verification || !scrollRef.current) return;
+    localStorage.setItem(scrollKey(verification.id), String(scrollRef.current.scrollTop));
+  };
 
   if (!verification) {
     return (
@@ -20,7 +38,7 @@ export default function VerificationPanel() {
   const printCount = printItems.filter((item: any) => item.snapshot.id === verification.id).length;
 
   return (
-    <div style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
+    <div ref={scrollRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <h2 style={{ margin: 0, fontSize: 16, color: '#1e40af', fontWeight: 600 }}>{verification.title}</h2>
         <button
