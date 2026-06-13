@@ -33,6 +33,8 @@ export const api = {
   createVerification:  (data: object) => post('/verifications', data),
   updateVerification:  (id: string, data: object) => put(`/verifications/${id}`, data),
   deleteVerification:  (id: string) => del(`/verifications/${id}`),
+  importVerification:  (data: object) => post('/verifications/import', data),
+  exportVerification:  (id: string) => get(`/verification-export/${id}`),
 
   // Variablen
   getVariables:    (vid: string) => get(`/verifications/${vid}/variables`),

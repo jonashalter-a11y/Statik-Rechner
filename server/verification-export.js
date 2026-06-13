@@ -63,6 +63,17 @@ function loadTables(db, tableIds) {
     }));
 }
 
+function exportFilePathFor(payload) {
+  const normDir = path.join(EXPORT_ROOT, slugify(payload.verification.norm_id));
+  return path.join(normDir, `${slugify(payload.verification.id)}.json`);
+}
+
+function deleteExportFile(normId, verificationId) {
+  if (!normId || !verificationId) return;
+  const filePath = path.join(EXPORT_ROOT, slugify(normId), `${slugify(verificationId)}.json`);
+  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+}
+
 function buildVerificationExport(db, verificationId) {
   const verification = db.prepare('SELECT * FROM verifications WHERE id=?').get(verificationId);
   if (!verification) return null;
@@ -99,12 +110,151 @@ function exportVerificationById(db, verificationId) {
   const normDir = path.join(EXPORT_ROOT, slugify(payload.verification.norm_id));
   fs.mkdirSync(normDir, { recursive: true });
 
-  const filePath = path.join(
-    normDir,
-    `${slugify(payload.verification.title)}__${slugify(payload.verification.id)}.json`,
-  );
+  const stableId = slugify(payload.verification.id);
+  const filePath = exportFilePathFor(payload);
   fs.writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`);
+
+  for (const file of fs.readdirSync(normDir)) {
+    if (file !== path.basename(filePath) && file.endsWith(`__${stableId}.json`)) {
+      fs.unlinkSync(path.join(normDir, file));
+    }
+  }
   return filePath;
+}
+
+function upsertChapter(db, chapter, normId) {
+  if (!chapter?.id) return null;
+  db.prepare(`
+    INSERT INTO chapters (id, norm_id, parent_id, number, title, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      norm_id=excluded.norm_id,
+      parent_id=excluded.parent_id,
+      number=excluded.number,
+      title=excluded.title,
+      sort_order=excluded.sort_order
+  `).run(
+    chapter.id,
+    normId,
+    chapter.parent_id || null,
+    chapter.number || '',
+    chapter.title || '',
+    Number(chapter.sort_order || 0),
+  );
+  return chapter.id;
+}
+
+function fallbackChapterId(db, normId) {
+  const chapter = db.prepare('SELECT id FROM chapters WHERE norm_id=? ORDER BY sort_order LIMIT 1').get(normId);
+  return chapter?.id || null;
+}
+
+function importVerificationExport(db, payload, overrides = {}) {
+  if (!payload || typeof payload !== 'object') throw new Error('Ungültige JSON-Datei');
+
+  const sourceVerification = payload.verification || payload;
+  if (!sourceVerification?.id) throw new Error('Nachweis-ID fehlt in der JSON-Datei');
+
+  const normId = overrides.norm_id || sourceVerification.norm_id || payload.chapter?.norm_id || 'sia265';
+  const chapterId = upsertChapter(db, payload.chapter, normId)
+    || sourceVerification.chapter_id
+    || fallbackChapterId(db, normId);
+  if (!chapterId) throw new Error(`Kein Kapitel für Norm ${normId} gefunden`);
+
+  const graphJson = sourceVerification.graph_json
+    || (payload.graph ? JSON.stringify(payload.graph) : null);
+  const existing = db.prepare('SELECT sort_order FROM verifications WHERE id=?').get(sourceVerification.id);
+  const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM verifications WHERE norm_id=?').get(normId).m || 0;
+  const sortOrder = existing ? existing.sort_order : Number(sourceVerification.sort_order ?? maxOrder + 1);
+
+  const importTransaction = db.transaction(() => {
+    for (const table of payload.tables || []) {
+      if (!table?.id) continue;
+      db.prepare(`
+        INSERT INTO db_tables (id, norm_id, chapter_id, category, title, description, type, headers, rows, chart_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          norm_id=excluded.norm_id,
+          chapter_id=excluded.chapter_id,
+          category=excluded.category,
+          title=excluded.title,
+          description=excluded.description,
+          type=excluded.type,
+          headers=excluded.headers,
+          rows=excluded.rows,
+          chart_json=excluded.chart_json
+      `).run(
+        table.id,
+        normId,
+        table.chapter_id || null,
+        table.category || '',
+        table.title || table.id,
+        table.description || '',
+        table.type || 'table',
+        JSON.stringify(table.headers || []),
+        JSON.stringify(table.rows || []),
+        table.chart_json ? JSON.stringify(table.chart_json) : null,
+      );
+    }
+
+    db.prepare(`
+      INSERT INTO verifications (id, norm_id, chapter_id, title, formula_latex, formula_description, compute_expr, graph_json, notes, sort_order, active)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+      ON CONFLICT(id) DO UPDATE SET
+        norm_id=excluded.norm_id,
+        chapter_id=excluded.chapter_id,
+        title=excluded.title,
+        formula_latex=excluded.formula_latex,
+        formula_description=excluded.formula_description,
+        compute_expr=excluded.compute_expr,
+        graph_json=excluded.graph_json,
+        notes=excluded.notes,
+        sort_order=excluded.sort_order,
+        active=1
+    `).run(
+      sourceVerification.id,
+      normId,
+      chapterId,
+      sourceVerification.title || sourceVerification.id,
+      sourceVerification.formula_latex || '',
+      sourceVerification.formula_description || '',
+      sourceVerification.compute_expr || '',
+      graphJson,
+      sourceVerification.notes || '',
+      sortOrder,
+    );
+
+    db.prepare('DELETE FROM variable_options WHERE variable_id IN (SELECT id FROM variables WHERE verification_id=?)').run(sourceVerification.id);
+    db.prepare('DELETE FROM variables WHERE verification_id=?').run(sourceVerification.id);
+
+    for (const [index, variable] of (payload.variables || []).entries()) {
+      const variableId = variable.id || `${sourceVerification.id}__${variable.name || `var_${index + 1}`}`;
+      db.prepare(`
+        INSERT INTO variables (id, verification_id, name, label, unit, type, default_value, description, sort_order, table_ref, table_col)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        variableId,
+        sourceVerification.id,
+        variable.name || variableId,
+        variable.label || variable.name || variableId,
+        variable.unit || '',
+        variable.type || 'number',
+        String(variable.default_value ?? '0'),
+        variable.description || '',
+        Number(variable.sort_order ?? index),
+        variable.table_ref || null,
+        variable.table_col != null ? Number(variable.table_col) : null,
+      );
+      for (const [optionIndex, option] of (variable.options || []).entries()) {
+        db.prepare('INSERT INTO variable_options (variable_id, label, value, sort_order) VALUES (?, ?, ?, ?)')
+          .run(variableId, option.label || '', String(option.value ?? ''), Number(option.sort_order ?? optionIndex));
+      }
+    }
+  });
+
+  importTransaction();
+  const filePath = exportVerificationById(db, sourceVerification.id);
+  return { id: sourceVerification.id, file: filePath };
 }
 
 function exportVerificationsByNorm(db, normId) {
@@ -114,12 +264,27 @@ function exportVerificationsByNorm(db, normId) {
 
 function exportActiveVerifications(db) {
   const rows = db.prepare('SELECT id FROM verifications WHERE active=1 ORDER BY norm_id, sort_order').all();
-  return rows.map(row => exportVerificationById(db, row.id)).filter(Boolean);
+  const files = rows.map(row => exportVerificationById(db, row.id)).filter(Boolean);
+  const keep = new Set(files.map(file => path.resolve(file)));
+  if (fs.existsSync(EXPORT_ROOT)) {
+    for (const norm of fs.readdirSync(EXPORT_ROOT)) {
+      const normDir = path.join(EXPORT_ROOT, norm);
+      if (!fs.statSync(normDir).isDirectory()) continue;
+      for (const file of fs.readdirSync(normDir)) {
+        const fullPath = path.resolve(path.join(normDir, file));
+        if (file.endsWith('.json') && !keep.has(fullPath)) fs.unlinkSync(fullPath);
+      }
+    }
+  }
+  return files;
 }
 
 module.exports = {
   EXPORT_ROOT,
+  buildVerificationExport,
   exportActiveVerifications,
   exportVerificationById,
   exportVerificationsByNorm,
+  importVerificationExport,
+  deleteExportFile,
 };

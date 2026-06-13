@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const db = require('./db');
-const { exportVerificationById, exportVerificationsByNorm } = require('./verification-export');
+const { buildVerificationExport, exportVerificationById, exportVerificationsByNorm, importVerificationExport, deleteExportFile } = require('./verification-export');
 
 const app = express();
 app.use(cors());
@@ -22,6 +22,21 @@ function safeExportNorm(normId) {
   } catch (err) {
     console.error(`Nachweis-Export fehlgeschlagen (${normId}):`, err);
   }
+}
+
+function normalizeId(value) {
+  return String(value || '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 80);
+}
+
+function generatedVerificationId(title) {
+  const base = normalizeId(title).slice(0, 30) || 'nachweis';
+  return `${base}_${Date.now().toString(36)}`;
 }
 
 // ─── NORMEN ──────────────────────────────────────────────────────────────────
@@ -99,6 +114,12 @@ app.get('/api/verifications', (req, res) => {
   })));
 });
 
+app.get('/api/verification-export/:id', (req, res) => {
+  const payload = buildVerificationExport(db, req.params.id);
+  if (!payload) return res.status(404).json({ error: 'Not found' });
+  res.json(payload);
+});
+
 app.get('/api/verifications/:id', (req, res) => {
   const v = db.prepare('SELECT * FROM verifications WHERE id=?').get(req.params.id);
   if (!v) return res.status(404).json({ error: 'Not found' });
@@ -114,27 +135,81 @@ app.get('/api/verifications/:id', (req, res) => {
 });
 
 app.post('/api/verifications', (req, res) => {
-  const { norm_id='sia265', chapter_id, title, formula_latex='', formula_description='', compute_expr='', graph_json=null } = req.body;
-  const id = title.toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,30) + '_' + Date.now().toString(36);
-  const gj = graph_json == null ? null : (typeof graph_json === 'string' ? graph_json : JSON.stringify(graph_json));
-  db.prepare('INSERT INTO verifications (id, norm_id, chapter_id, title, formula_latex, formula_description, compute_expr, graph_json) VALUES (?,?,?,?,?,?,?,?)').run(id, norm_id, chapter_id, title, formula_latex, formula_description, compute_expr, gj);
-  safeExportVerification(id);
-  res.json({ id });
+  const { id: requestedId='', norm_id='sia265', chapter_id, title, formula_latex='', formula_description='', compute_expr='', graph_json=null, notes='' } = req.body;
+  const id = requestedId ? normalizeId(requestedId) : generatedVerificationId(title);
+  if (!id) return res.status(400).json({ error: 'ID ist ungültig' });
+  try {
+    const gj = graph_json == null ? null : (typeof graph_json === 'string' ? graph_json : JSON.stringify(graph_json));
+    db.prepare('INSERT INTO verifications (id, norm_id, chapter_id, title, formula_latex, formula_description, compute_expr, graph_json, notes) VALUES (?,?,?,?,?,?,?,?,?)').run(id, norm_id, chapter_id, title, formula_latex, formula_description, compute_expr, gj, notes || '');
+    safeExportVerification(id);
+    res.json({ id });
+  } catch (err) {
+    res.status(400).json({ error: String(err.message || err) });
+  }
 });
 app.put('/api/verifications/:id', (req, res) => {
-  const { title, chapter_id, formula_latex, formula_description, compute_expr, graph_json, notes } = req.body;
-  db.prepare('UPDATE verifications SET title=?, chapter_id=?, formula_latex=?, formula_description=?, compute_expr=?, notes=? WHERE id=?').run(title, chapter_id, formula_latex, formula_description, compute_expr||'', notes||'', req.params.id);
-  if (graph_json !== undefined) {
-    const gj = graph_json == null ? null : (typeof graph_json === 'string' ? graph_json : JSON.stringify(graph_json));
-    db.prepare('UPDATE verifications SET graph_json=? WHERE id=?').run(gj, req.params.id);
+  const { id: requestedId, new_id, title, chapter_id, formula_latex, formula_description, compute_expr, graph_json, notes } = req.body;
+  const oldId = req.params.id;
+  const nextId = normalizeId(new_id || requestedId || oldId);
+  if (!nextId) return res.status(400).json({ error: 'ID ist ungültig' });
+
+  try {
+    const updateTx = db.transaction(() => {
+      const existing = db.prepare('SELECT id, norm_id FROM verifications WHERE id=?').get(oldId);
+      if (!existing) throw new Error('Nachweis nicht gefunden');
+      if (nextId !== oldId) {
+        const conflict = db.prepare('SELECT id FROM verifications WHERE id=?').get(nextId);
+        if (conflict) throw new Error(`ID "${nextId}" existiert bereits`);
+      }
+
+      db.prepare('UPDATE verifications SET title=?, chapter_id=?, formula_latex=?, formula_description=?, compute_expr=?, notes=? WHERE id=?').run(title, chapter_id, formula_latex, formula_description, compute_expr||'', notes||'', oldId);
+      if (graph_json !== undefined) {
+        const gj = graph_json == null ? null : (typeof graph_json === 'string' ? graph_json : JSON.stringify(graph_json));
+        db.prepare('UPDATE verifications SET graph_json=? WHERE id=?').run(gj, oldId);
+      }
+      if (nextId !== oldId) {
+        const row = db.prepare('SELECT * FROM verifications WHERE id=?').get(oldId);
+        db.prepare(`
+          INSERT INTO verifications (id, norm_id, chapter_id, title, formula_latex, formula_description, compute_expr, sort_order, active, graph_json, notes)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          nextId,
+          row.norm_id,
+          row.chapter_id,
+          row.title,
+          row.formula_latex || '',
+          row.formula_description || '',
+          row.compute_expr || '',
+          row.sort_order || 0,
+          row.active == null ? 1 : row.active,
+          row.graph_json || null,
+          row.notes || '',
+        );
+        db.prepare('UPDATE variables SET verification_id=? WHERE verification_id=?').run(nextId, oldId);
+        db.prepare('DELETE FROM verifications WHERE id=?').run(oldId);
+        deleteExportFile(existing.norm_id, oldId);
+      }
+    });
+    updateTx();
+    safeExportVerification(nextId);
+    res.json({ ok: true, id: nextId });
+  } catch (err) {
+    res.status(400).json({ error: String(err.message || err) });
   }
-  safeExportVerification(req.params.id);
-  res.json({ ok: true });
 });
 app.delete('/api/verifications/:id', (req, res) => {
   db.prepare('UPDATE verifications SET active=0 WHERE id=?').run(req.params.id);
   safeExportVerification(req.params.id);
   res.json({ ok: true });
+});
+
+app.post('/api/verifications/import', (req, res) => {
+  try {
+    const result = importVerificationExport(db, req.body?.payload || req.body, { norm_id: req.body?.norm_id });
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(400).json({ error: String(err.message || err) });
+  }
 });
 
 // ─── VARIABLEN ───────────────────────────────────────────────────────────────

@@ -147,13 +147,14 @@ function serializeNotes(d: NotesData): string {
 
 const labelStyle: React.CSSProperties = { fontSize: 10, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 };
 
-function ChapterTreeNode({ node, depth, selectedId, expanded, hideEmpty, onToggle, onSelect, onNewIn, onEditChapter, onNewSubChapter }: {
+function ChapterTreeNode({ node, depth, selectedId, expanded, hideEmpty, canPaste, onToggle, onSelect, onNewIn, onEditChapter, onNewSubChapter, onPasteIn }: {
   node: ChapterNode; depth: number; selectedId: string | null;
-  expanded: Set<string>; hideEmpty: boolean; onToggle: (id: string) => void;
+  expanded: Set<string>; hideEmpty: boolean; canPaste: boolean; onToggle: (id: string) => void;
   onSelect: (v: Verification) => void;
   onNewIn: (chapterId: string) => void;
   onEditChapter: (c: Chapter) => void;
   onNewSubChapter: (parentId: string) => void;
+  onPasteIn: (chapterId: string) => void;
 }) {
   if (hideEmpty && node.totalCount === 0) return null;
   const isOpen = expanded.has(node.id);
@@ -169,10 +170,11 @@ function ChapterTreeNode({ node, depth, selectedId, expanded, hideEmpty, onToggl
         {node.totalCount > 0 && <span style={{ fontSize: 9, background: '#dbeafe', color: '#1e40af', padding: '1px 5px', borderRadius: 8, fontWeight: 600 }}>{node.totalCount}</span>}
         <button onClick={e => { e.stopPropagation(); onEditChapter(node); }} title="Kapitel umbenennen" style={btnStyle}>✎</button>
         <button onClick={e => { e.stopPropagation(); onNewSubChapter(node.id); }} title="Unterkapitel hinzufügen" style={btnStyle}>⊕</button>
+        {canPaste && <button onClick={e => { e.stopPropagation(); onPasteIn(node.id); }} title="Kopierten Nachweis in dieses Kapitel einfügen" style={btnStyle}>⧉</button>}
         <button onClick={e => { e.stopPropagation(); onNewIn(node.id); }} title="Neuen Nachweis in diesem Kapitel" style={{ ...btnStyle, fontSize: 14 }}>+</button>
       </div>
       {isOpen && node.children.map(child => (
-        <ChapterTreeNode key={child.id} node={child} depth={depth + 1} selectedId={selectedId} expanded={expanded} hideEmpty={hideEmpty} onToggle={onToggle} onSelect={onSelect} onNewIn={onNewIn} onEditChapter={onEditChapter} onNewSubChapter={onNewSubChapter} />
+        <ChapterTreeNode key={child.id} node={child} depth={depth + 1} selectedId={selectedId} expanded={expanded} hideEmpty={hideEmpty} canPaste={canPaste} onToggle={onToggle} onSelect={onSelect} onNewIn={onNewIn} onEditChapter={onEditChapter} onNewSubChapter={onNewSubChapter} onPasteIn={onPasteIn} />
       ))}
       {isOpen && node.verifications.map(v => (
         <div key={v.id} onClick={e => { e.stopPropagation(); onSelect(v); }}
@@ -186,12 +188,13 @@ function ChapterTreeNode({ node, depth, selectedId, expanded, hideEmpty, onToggl
   );
 }
 
-interface Editing { id: string; chapter_id: string; title: string; graph: VerificationGraph; notes: NotesData; }
+interface Editing { id: string; originalId?: string; chapter_id: string; title: string; graph: VerificationGraph; notes: NotesData; }
 
 function editingSnapshot(editing: Editing | null): string {
   if (!editing) return '';
   return JSON.stringify({
     id: editing.id,
+    originalId: editing.originalId || editing.id,
     chapter_id: editing.chapter_id,
     title: editing.title,
     graph: editing.graph,
@@ -336,9 +339,11 @@ export default function VerificationAdmin() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [chapterForm, setChapterForm] = useState<{ id: string; number: string; title: string; parent_id: string | null } | null | 'new'>(null);
   const [hideEmpty, setHideEmpty] = useState(false);
+  const [copied, setCopied] = useState<Editing | null>(null);
   const editingRef = useRef<Editing | null>(null);
   const savedSnapshotRef = useRef('');
   const savingRef = useRef(false);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => { editingRef.current = editing; }, [editing]);
   useEffect(() => { savingRef.current = saving; }, [saving]);
@@ -389,20 +394,20 @@ export default function VerificationAdmin() {
 
   const newInChapter = (chapter_id: string) => {
     setSelected(null);
-    setEditing({ id: '', chapter_id, title: 'Neuer Nachweis', graph: emptyGraph(), notes: { text: '', table: { headers: [], rows: [] } } });
+    setEditing({ id: '', originalId: '', chapter_id, title: 'Neuer Nachweis', graph: emptyGraph(), notes: { text: '', table: { headers: [], rows: [] } } });
     savedSnapshotRef.current = '';
     setMsg('');
     setExpanded(prev => new Set(prev).add(chapter_id));
   };
   const newVerification = () => {
     setSelected(null);
-    setEditing({ id: '', chapter_id: chapters[0]?.id || '', title: 'Neuer Nachweis', graph: emptyGraph(), notes: { text: '', table: { headers: [], rows: [] } } });
+    setEditing({ id: '', originalId: '', chapter_id: chapters[0]?.id || '', title: 'Neuer Nachweis', graph: emptyGraph(), notes: { text: '', table: { headers: [], rows: [] } } });
     savedSnapshotRef.current = '';
     setMsg('');
   };
 
   const selectVerification = (v: Verification) => {
-    const nextEditing = { id: v.id, chapter_id: v.chapter_id, title: v.title, graph: getGraph(v), notes: parseNotes(v.notes || '') };
+    const nextEditing = { id: v.id, originalId: v.id, chapter_id: v.chapter_id, title: v.title, graph: getGraph(v), notes: parseNotes(v.notes || '') };
     setSelected(v);
     setEditing(nextEditing);
     savedSnapshotRef.current = editingSnapshot(nextEditing);
@@ -413,6 +418,7 @@ export default function VerificationAdmin() {
     if (!editingToSave || savingRef.current) return;
     const snapshot = editingSnapshot(editingToSave);
     if (auto && snapshot === savedSnapshotRef.current) return;
+    if (auto && editingToSave.originalId && editingToSave.id !== editingToSave.originalId) return;
     setSaving(true);
     try {
       const graph_json = JSON.stringify(editingToSave.graph);
@@ -420,28 +426,34 @@ export default function VerificationAdmin() {
       const firstCalc = editingToSave.graph.nodes.find(n => n.type === 'calc' || n.type === 'stdcalc');
       const formula_latex = firstCalc ? (firstCalc.data as any).latex || '' : '';
       let id = editingToSave.id;
-      if (!id) {
-        const r = await api.createVerification({ norm_id: normId, chapter_id: editingToSave.chapter_id, title: editingToSave.title, formula_latex, formula_description: '', compute_expr: '', graph_json });
+      const originalId = editingToSave.originalId || editingToSave.id;
+      if (!originalId) {
+        const r = await api.createVerification({ id, norm_id: normId, chapter_id: editingToSave.chapter_id, title: editingToSave.title, formula_latex, formula_description: '', compute_expr: '', graph_json });
         id = r.id;
       } else {
-        await api.updateVerification(id, { title: editingToSave.title, chapter_id: editingToSave.chapter_id, formula_latex, formula_description: '', compute_expr: '', graph_json, notes: serializeNotes(editingToSave.notes) });
+        const r = await api.updateVerification(originalId, { id, title: editingToSave.title, chapter_id: editingToSave.chapter_id, formula_latex, formula_description: '', compute_expr: '', graph_json, notes: serializeNotes(editingToSave.notes) });
+        id = r.id || id;
       }
       const fresh = await api.getVerifications(normId);
       setVerifications(fresh);
       const updated = fresh.find((x: Verification) => x.id === id);
       if (updated) {
         setSelected(updated);
-        if (!editingToSave.id) {
+        if (!originalId) {
           // Neue Verifikation: ID vom Server übernehmen, Rest aus aktuellem State
-          const nextEditing = { ...editingRef.current!, id: updated.id };
+          const nextEditing = { ...editingRef.current!, id: updated.id, originalId: updated.id };
           setEditing(nextEditing);
           savedSnapshotRef.current = editingSnapshot(nextEditing);
         } else if (auto) {
           // Auto-Save: Editor-State NICHT überschreiben (User tippt gerade)
-          savedSnapshotRef.current = editingSnapshot(editingRef.current);
+          if (editingRef.current) {
+            const nextEditing = { ...editingRef.current, id: updated.id, originalId: updated.id };
+            setEditing(nextEditing);
+            savedSnapshotRef.current = editingSnapshot(nextEditing);
+          }
         } else {
           // Manuelles Speichern: vollständig vom Server neu laden
-          const nextEditing = { id: updated.id, chapter_id: updated.chapter_id, title: updated.title, graph: getGraph(updated), notes: parseNotes(updated.notes || '') };
+          const nextEditing = { id: updated.id, originalId: updated.id, chapter_id: updated.chapter_id, title: updated.title, graph: getGraph(updated), notes: parseNotes(updated.notes || '') };
           setEditing(nextEditing);
           savedSnapshotRef.current = editingSnapshot(nextEditing);
         }
@@ -449,8 +461,8 @@ export default function VerificationAdmin() {
         savedSnapshotRef.current = snapshot;
       }
       setMsg(auto ? '✓ Automatisch gespeichert' : '✓ Gespeichert');
-    } catch {
-      setMsg(auto ? '⚠ Auto-Speichern fehlgeschlagen' : '⚠ Fehler beim Speichern');
+    } catch (err: any) {
+      setMsg(auto ? `⚠ Auto-Speichern fehlgeschlagen: ${err?.message || err}` : `⚠ Fehler beim Speichern: ${err?.message || err}`);
     }
     setSaving(false);
   }, [normId]);
@@ -473,6 +485,92 @@ export default function VerificationAdmin() {
     setSelected(null); setEditing(null);
   };
 
+  const copyCurrent = () => {
+    const current = editingRef.current;
+    if (!current) return;
+    setCopied({
+      id: '',
+      originalId: '',
+      chapter_id: current.chapter_id,
+      title: `${current.title} Kopie`,
+      graph: JSON.parse(JSON.stringify(current.graph)),
+      notes: JSON.parse(JSON.stringify(current.notes)),
+    });
+    setMsg(`✓ Kopiert: ${current.title}`);
+  };
+
+  const pasteIntoChapter = async (chapterId: string) => {
+    if (!copied) return;
+    try {
+      const graph_json = JSON.stringify(copied.graph);
+      const firstCalc = copied.graph.nodes.find(n => n.type === 'calc' || n.type === 'stdcalc');
+      const formula_latex = firstCalc ? (firstCalc.data as any).latex || '' : '';
+      const created = await api.createVerification({
+        norm_id: normId,
+        chapter_id: chapterId,
+        title: copied.title,
+        formula_latex,
+        formula_description: '',
+        compute_expr: '',
+        graph_json,
+        notes: serializeNotes(copied.notes),
+      });
+      const fresh = await api.getVerifications(normId);
+      setVerifications(fresh);
+      const pasted = fresh.find((v: Verification) => v.id === created.id);
+      if (pasted) {
+        setExpanded(prev => new Set(prev).add(chapterId));
+        selectVerification(pasted);
+      }
+      setMsg(`✓ Eingefügt: ${pasted?.title || copied.title}`);
+    } catch (err: any) {
+      setMsg(`⚠ Einfügen fehlgeschlagen: ${err?.message || err}`);
+    }
+  };
+
+  const exportCurrentJson = async () => {
+    const current = editingRef.current;
+    const id = current?.originalId || current?.id;
+    if (!id) {
+      setMsg('⚠ Bitte zuerst speichern, dann exportieren');
+      return;
+    }
+    try {
+      const payload = await api.exportVerification(id);
+      const fileName = `${payload?.verification?.id || id}.json`;
+      const blob = new Blob([`${JSON.stringify(payload, null, 2)}\n`], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      setMsg(`✓ Exportiert: ${fileName}`);
+    } catch (err: any) {
+      setMsg(`⚠ Export fehlgeschlagen: ${err?.message || err}`);
+    }
+  };
+
+  const importJsonFile = async (file: File | null) => {
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const payload = JSON.parse(text);
+      const result = await api.importVerification({ payload, norm_id: normId });
+      const fresh = await api.getVerifications(normId);
+      setVerifications(fresh);
+      const imported = fresh.find((v: Verification) => v.id === result.id);
+      if (imported) selectVerification(imported);
+      setMsg(`✓ JSON importiert: ${imported?.title || result.id}`);
+    } catch (err: any) {
+      setMsg(`⚠ JSON-Import fehlgeschlagen: ${err?.message || err}`);
+    } finally {
+      if (importInputRef.current) importInputRef.current.value = '';
+    }
+  };
+
   const flatChapters = chapters.map(c => ({ ...c, display: `${c.number} ${c.title}` }));
   const tree = buildTree(chapters, verifications);
 
@@ -492,6 +590,20 @@ export default function VerificationAdmin() {
             </button>
             <button onClick={() => setChapterForm('new')} style={{ background: '#f1f5f9', color: '#374151', border: '1px solid #d1d5db', borderRadius: 5, padding: '4px 8px', cursor: 'pointer', fontSize: 11 }}>+ Kapitel</button>
             <button onClick={newVerification} title="Neuen Nachweis erstellen" style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>+ Nachweis</button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept="application/json,.json"
+              style={{ display: 'none' }}
+              onChange={e => importJsonFile(e.target.files?.[0] || null)}
+            />
+            <button
+              onClick={() => importInputRef.current?.click()}
+              title="Nachweis aus JSON importieren"
+              style={{ background: '#f1f5f9', color: '#374151', border: '1px solid #d1d5db', borderRadius: 5, padding: '4px 8px', cursor: 'pointer', fontSize: 11 }}
+            >
+              JSON
+            </button>
           </div>
         </div>
         <div style={{ flex: 1, overflowY: 'auto', padding: '6px 0' }}>
@@ -503,9 +615,10 @@ export default function VerificationAdmin() {
             </div>
           )}
           {tree.map(node => (
-            <ChapterTreeNode key={node.id} node={node} depth={0} selectedId={selected?.id || null} expanded={expanded} hideEmpty={hideEmpty} onToggle={toggleExpand} onSelect={selectVerification} onNewIn={newInChapter}
+            <ChapterTreeNode key={node.id} node={node} depth={0} selectedId={selected?.id || null} expanded={expanded} hideEmpty={hideEmpty} canPaste={!!copied} onToggle={toggleExpand} onSelect={selectVerification} onNewIn={newInChapter}
               onEditChapter={c => setChapterForm({ id: c.id, number: c.number, title: c.title, parent_id: c.parent_id })}
               onNewSubChapter={parentId => setChapterForm({ id: '', number: '', title: '', parent_id: parentId })}
+              onPasteIn={pasteIntoChapter}
             />
           ))}
         </div>
@@ -519,6 +632,12 @@ export default function VerificationAdmin() {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
           {/* Kopfzeile */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 14px', borderBottom: '1px solid #e5e7eb', background: '#fff', flexShrink: 0 }}>
+            <div style={{ width: 260 }}>
+              <div style={labelStyle}>ID</div>
+              <input value={editing.id} onChange={e => setEditing({ ...editing, id: e.target.value })}
+                placeholder="leer = automatisch"
+                style={{ border: '1px solid #d1d5db', borderRadius: 6, padding: '5px 10px', fontSize: 13, width: '100%', boxSizing: 'border-box', fontFamily: 'monospace' }} />
+            </div>
             <div style={{ flex: 1 }}>
               <div style={labelStyle}>Titel</div>
               <input value={editing.title} onChange={e => setEditing({ ...editing, title: e.target.value })}
@@ -532,6 +651,8 @@ export default function VerificationAdmin() {
               </select>
             </div>
             {msg && <span style={{ fontSize: 12, color: msg.startsWith('✓') ? '#15803d' : '#b91c1c', alignSelf: 'flex-end', paddingBottom: 6 }}>{msg}</span>}
+            <button onClick={copyCurrent} style={{ alignSelf: 'flex-end', background: '#f1f5f9', color: '#374151', border: '1px solid #d1d5db', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontSize: 12 }}>Kopieren</button>
+            <button onClick={exportCurrentJson} style={{ alignSelf: 'flex-end', background: '#f1f5f9', color: '#374151', border: '1px solid #d1d5db', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontSize: 12 }}>Export JSON</button>
             {editing.id && <button onClick={() => deleteV(editing.id)} style={{ alignSelf: 'flex-end', background: '#fee2e2', border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', color: '#b91c1c', fontSize: 12 }}>🗑</button>}
             <button onClick={save} disabled={saving} style={{ alignSelf: 'flex-end', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
               {saving ? 'Speichern…' : '💾 Speichern'}

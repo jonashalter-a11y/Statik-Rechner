@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "exported_at": "2026-06-13T16:25:02.153Z",
+  "verification": {
+    "id": "neuer_nachweis_mqckgbh6",
+    "norm_id": "sia261",
+    "chapter_id": "",
+    "title": "Neuer Nachweis",
+    "formula_latex": "",
+    "formula_description": "",
+    "compute_expr": "",
+    "sort_order": 0,
+    "active": 0,
+    "graph_json": "{\"version\":1,\"nodes\":[],\"edges\":[]}",
+    "notes": ""
+  },
+  "chapter": null,
+  "variables": [],
+  "tables": [],
+  "graph": {
+    "version": 1,
+    "nodes": [],
+    "edges": []
+  }
+}
