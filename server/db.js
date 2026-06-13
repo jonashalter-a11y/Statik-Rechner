@@ -7,6 +7,7 @@ const lignumBrandschutz = require('./seed-lignum-brandschutz');
 const lignumErdbeben = require('./seed-lignum-erdbeben');
 const baustatik = require('./seed-baustatik');
 const { importActiveVerificationExports } = require('./verification-export');
+const { ensureStaticDataFiles, importStaticData } = require('./json-store');
 
 const db = new Database(path.join(__dirname, 'sia265.db'));
 db.pragma('journal_mode = WAL');
@@ -352,11 +353,21 @@ if (chapCount === 0) {
   console.log(`  Baustatik: ${baustatik.chapters.length} Kap., ${baustatik.verifications.length} Nachweise`);
 }
 
-const jsonSync = importActiveVerificationExports(db);
-if (jsonSync.files > 0) {
-  console.log(`✓ Nachweise aus JSON synchronisiert: ${jsonSync.imported}/${jsonSync.files}`);
-  if (jsonSync.errors.length) {
-    console.warn('⚠ JSON-Nachweise mit Fehlern:', jsonSync.errors);
+const staticExport = ensureStaticDataFiles(db);
+if (staticExport.created) {
+  console.log('✓ Stammdaten-JSON initial erstellt');
+}
+
+const staticSync = importStaticData(db);
+if (!staticSync.skipped) {
+  console.log(`✓ Stammdaten aus JSON synchronisiert: ${staticSync.norms} Normen, ${staticSync.chapters} Kapitel, ${staticSync.tables} Tabellen`);
+}
+
+const verificationJsonSync = importActiveVerificationExports(db);
+if (verificationJsonSync.files > 0) {
+  console.log(`✓ Nachweise aus JSON synchronisiert: ${verificationJsonSync.imported}/${verificationJsonSync.files}`);
+  if (verificationJsonSync.errors.length) {
+    console.warn('⚠ JSON-Nachweise mit Fehlern:', verificationJsonSync.errors);
   }
 }
 

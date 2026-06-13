@@ -9,6 +9,13 @@ const {
   deleteExportFile,
   trashVerificationExport,
 } = require('./verification-export');
+const {
+  exportChapters,
+  exportNorms,
+  exportTables,
+  exportUnits,
+  exportWood,
+} = require('./json-store');
 
 const app = express();
 app.use(cors());
@@ -29,6 +36,36 @@ function safeExportNorm(normId) {
   } catch (err) {
     console.error(`Nachweis-Export fehlgeschlagen (${normId}):`, err);
   }
+}
+
+function safeExportStatic(name, fn) {
+  try {
+    fn();
+  } catch (err) {
+    console.error(`${name}-JSON-Export fehlgeschlagen:`, err);
+  }
+}
+
+function safeExportChapters(normId) {
+  if (!normId) return;
+  safeExportStatic(`Kapitel (${normId})`, () => exportChapters(db, normId));
+}
+
+function safeExportTables(normId) {
+  if (!normId) return;
+  safeExportStatic(`Tabellen (${normId})`, () => exportTables(db, normId));
+}
+
+function safeExportNorms() {
+  safeExportStatic('Normen', () => exportNorms(db));
+}
+
+function safeExportUnits() {
+  safeExportStatic('Einheiten', () => exportUnits(db));
+}
+
+function safeExportWood() {
+  safeExportStatic('Holz', () => exportWood(db));
 }
 
 function normalizeId(value) {
@@ -56,6 +93,7 @@ app.post('/api/norms', (req, res) => {
   try {
     db.prepare('INSERT INTO norms (id, name, label, year, description) VALUES (?, ?, ?, ?, ?)')
       .run(String(id).trim(), String(name).trim(), String(label).trim(), Number(year), String(description || '').trim());
+    safeExportNorms();
     res.json({ id: String(id).trim() });
   } catch (err) {
     res.status(400).json({ error: String(err.message || err) });
@@ -71,6 +109,7 @@ app.post('/api/chapters', (req, res) => {
   const { id, norm_id, parent_id, number, title } = req.body;
   const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM chapters WHERE norm_id=?').get(norm_id).m || 0;
   db.prepare('INSERT INTO chapters (id, norm_id, parent_id, number, title, sort_order) VALUES (?, ?, ?, ?, ?, ?)').run(id, norm_id, parent_id||null, number, title, maxOrder+1);
+  safeExportChapters(norm_id);
   safeExportNorm(norm_id);
   res.json({ ok: true });
 });
@@ -78,13 +117,19 @@ app.put('/api/chapters/:id', (req, res) => {
   const { number, title } = req.body;
   const existing = db.prepare('SELECT norm_id FROM chapters WHERE id=?').get(req.params.id);
   db.prepare('UPDATE chapters SET number=?, title=? WHERE id=?').run(number, title, req.params.id);
-  if (existing) safeExportNorm(existing.norm_id);
+  if (existing) {
+    safeExportChapters(existing.norm_id);
+    safeExportNorm(existing.norm_id);
+  }
   res.json({ ok: true });
 });
 app.delete('/api/chapters/:id', (req, res) => {
   const existing = db.prepare('SELECT norm_id FROM chapters WHERE id=?').get(req.params.id);
   db.prepare('DELETE FROM chapters WHERE id=?').run(req.params.id);
-  if (existing) safeExportNorm(existing.norm_id);
+  if (existing) {
+    safeExportChapters(existing.norm_id);
+    safeExportNorm(existing.norm_id);
+  }
   res.json({ ok: true });
 });
 
@@ -217,6 +262,11 @@ app.delete('/api/verifications/:id', (req, res) => {
 app.post('/api/verifications/import', (req, res) => {
   try {
     const result = importVerificationExport(db, req.body?.payload || req.body, { norm_id: req.body?.norm_id });
+    const imported = db.prepare('SELECT norm_id FROM verifications WHERE id=?').get(result.id);
+    if (imported) {
+      safeExportChapters(imported.norm_id);
+      safeExportTables(imported.norm_id);
+    }
     res.json({ ok: true, ...result });
   } catch (err) {
     res.status(400).json({ error: String(err.message || err) });
@@ -264,14 +314,17 @@ app.post('/api/wood-types', (req, res) => {
   const { name, label } = req.body;
   const id = name.toLowerCase().replace(/\s+/g,'_');
   db.prepare('INSERT INTO wood_types (id, name, label, sort_order) VALUES (?,?,?,99)').run(id, name, label);
+  safeExportWood();
   res.json({ id });
 });
 app.put('/api/wood-types/:id', (req, res) => {
   db.prepare('UPDATE wood_types SET name=?, label=? WHERE id=?').run(req.body.name, req.body.label, req.params.id);
+  safeExportWood();
   res.json({ ok: true });
 });
 app.delete('/api/wood-types/:id', (req, res) => {
   db.prepare('DELETE FROM wood_types WHERE id=?').run(req.params.id);
+  safeExportWood();
   res.json({ ok: true });
 });
 
@@ -285,6 +338,7 @@ app.post('/api/wood-classes', (req, res) => {
   const id = name.toUpperCase().replace(/\s+/g,'_');
   db.prepare('INSERT INTO wood_classes (id, wood_type_id, name, label, sort_order) VALUES (?,?,?,?,99)').run(id, wood_type_id, name, label);
   properties.forEach(p => db.prepare('INSERT INTO wood_class_properties (wood_class_id, key, label, value, unit) VALUES (?,?,?,?,?)').run(id, p.key, p.label, p.value, p.unit||''));
+  safeExportWood();
   res.json({ id });
 });
 app.put('/api/wood-classes/:id', (req, res) => {
@@ -292,10 +346,12 @@ app.put('/api/wood-classes/:id', (req, res) => {
   db.prepare('UPDATE wood_classes SET name=?, label=? WHERE id=?').run(name, label, req.params.id);
   db.prepare('DELETE FROM wood_class_properties WHERE wood_class_id=?').run(req.params.id);
   properties.forEach(p => db.prepare('INSERT INTO wood_class_properties (wood_class_id, key, label, value, unit) VALUES (?,?,?,?,?)').run(req.params.id, p.key, p.label, p.value, p.unit||''));
+  safeExportWood();
   res.json({ ok: true });
 });
 app.delete('/api/wood-classes/:id', (req, res) => {
   db.prepare('DELETE FROM wood_classes WHERE id=?').run(req.params.id);
+  safeExportWood();
   res.json({ ok: true });
 });
 
@@ -319,6 +375,7 @@ app.post('/api/db-tables', (req, res) => {
   const { norm_id='sia265', chapter_id=null, title, description='', type='table', headers=[], rows=[], chart_json=null } = req.body;
   const id = title.toLowerCase().replace(/[^a-z0-9]/g,'_') + '_' + Date.now().toString(36);
   db.prepare('INSERT INTO db_tables (id, norm_id, chapter_id, title, description, type, headers, rows, chart_json) VALUES (?,?,?,?,?,?,?,?,?)').run(id, norm_id, chapter_id, title, description, type, JSON.stringify(headers), JSON.stringify(rows), chart_json ? JSON.stringify(chart_json) : null);
+  safeExportTables(norm_id);
   safeExportNorm(norm_id);
   res.json({ id });
 });
@@ -326,14 +383,21 @@ app.put('/api/db-tables/:id', (req, res) => {
   const { norm_id, chapter_id=null, title, description, type='table', headers=[], rows=[], chart_json=null } = req.body;
   const existing = db.prepare('SELECT norm_id FROM db_tables WHERE id=?').get(req.params.id);
   db.prepare('UPDATE db_tables SET norm_id=?, chapter_id=?, title=?, description=?, type=?, headers=?, rows=?, chart_json=? WHERE id=?').run(norm_id, chapter_id, title, description||'', type, JSON.stringify(headers), JSON.stringify(rows), chart_json ? JSON.stringify(chart_json) : null, req.params.id);
-  if (existing) safeExportNorm(existing.norm_id);
+  if (existing) {
+    safeExportTables(existing.norm_id);
+    safeExportNorm(existing.norm_id);
+  }
+  safeExportTables(norm_id);
   safeExportNorm(norm_id);
   res.json({ ok: true });
 });
 app.delete('/api/db-tables/:id', (req, res) => {
   const existing = db.prepare('SELECT norm_id FROM db_tables WHERE id=?').get(req.params.id);
   db.prepare('DELETE FROM db_tables WHERE id=?').run(req.params.id);
-  if (existing) safeExportNorm(existing.norm_id);
+  if (existing) {
+    safeExportTables(existing.norm_id);
+    safeExportNorm(existing.norm_id);
+  }
   res.json({ ok: true });
 });
 
@@ -344,16 +408,19 @@ app.post('/api/units', (req, res) => {
   if (!latex) return res.status(400).json({ error: 'latex fehlt' });
   try {
     const r = db.prepare('INSERT INTO units (latex, sort_order) VALUES (?, ?)').run(String(latex).trim(), Number(sort_order));
+    safeExportUnits();
     res.json({ id: r.lastInsertRowid, latex: String(latex).trim(), sort_order: Number(sort_order) });
   } catch (e) { res.status(409).json({ error: 'Einheit existiert bereits' }); }
 });
 app.put('/api/units/:id', (req, res) => {
   const { latex, sort_order = 0 } = req.body;
   db.prepare('UPDATE units SET latex = ?, sort_order = ? WHERE id = ?').run(String(latex).trim(), Number(sort_order), req.params.id);
+  safeExportUnits();
   res.json({ ok: true });
 });
 app.delete('/api/units/:id', (req, res) => {
   db.prepare('DELETE FROM units WHERE id = ?').run(req.params.id);
+  safeExportUnits();
   res.json({ ok: true });
 });
 

@@ -1,0 +1,59 @@
+[
+  {
+    "id": "neue_tabelle_mq50vcse",
+    "norm_id": "lignum_erdbeben",
+    "category": "",
+    "title": "Plattenart",
+    "description": "",
+    "headers": [
+      "Plattenart",
+      "f_v_k",
+      "Einheit"
+    ],
+    "rows": [
+      [
+        "OSB 3",
+        "6.8",
+        "N/mm^2"
+      ],
+      [
+        "Fermacell 10mm",
+        "2.5",
+        "N/mm^2"
+      ],
+      [
+        "Fermacell 12.5mm",
+        "2.4",
+        "N/mm^2"
+      ],
+      [
+        "Fermacell 15mm",
+        "2.4",
+        "N/mm^2"
+      ],
+      [
+        "Fermacell 18mm",
+        "2.3",
+        "N/mm^2"
+      ],
+      [
+        "Fermacell 22mm",
+        "2.2",
+        "N/mm^2"
+      ],
+      [
+        "Fermacell 25mm",
+        "2.2",
+        "N/mm^2"
+      ],
+      [
+        "Fermacell 38mm",
+        "1.8",
+        "N/mm^2"
+      ]
+    ],
+    "chapter_id": "lignum_erdbeben_1_1_mq4ywo6u",
+    "type": "table",
+    "chart_json": null
+  }
+]

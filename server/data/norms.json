@@ -1,0 +1,37 @@
+[
+  {
+    "id": "baustatik",
+    "name": "Baustatik",
+    "label": "Baustatik",
+    "year": 2021,
+    "description": "Allgemeine statische Nachweise"
+  },
+  {
+    "id": "lignum_brandschutz",
+    "name": "Lignum Brandschutz",
+    "label": "Lignum Brandschutz",
+    "year": 2026,
+    "description": ""
+  },
+  {
+    "id": "lignum_erdbeben",
+    "name": "Lignum Erdbeben",
+    "label": "Lignum Erdbeben",
+    "year": 2026,
+    "description": ""
+  },
+  {
+    "id": "sia261",
+    "name": "SIA 261",
+    "label": "SIA 261 – Einwirkungen",
+    "year": 2020,
+    "description": "Einwirkungen auf Tragwerke nach schweizerischer Norm"
+  },
+  {
+    "id": "sia265",
+    "name": "SIA 265",
+    "label": "SIA 265 – Holzbau",
+    "year": 2021,
+    "description": "Bemessung von Holztragwerken nach schweizerischer Norm"
+  }
+]

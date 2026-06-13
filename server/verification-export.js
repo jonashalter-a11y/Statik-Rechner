@@ -146,15 +146,12 @@ function trashVerificationExport(db, verificationId) {
 
 function upsertChapter(db, chapter, normId) {
   if (!chapter?.id) return null;
+  const existing = db.prepare('SELECT id FROM chapters WHERE id=?').get(chapter.id);
+  if (existing) return chapter.id;
+
   db.prepare(`
     INSERT INTO chapters (id, norm_id, parent_id, number, title, sort_order)
     VALUES (?, ?, ?, ?, ?, ?)
-    ON CONFLICT(id) DO UPDATE SET
-      norm_id=excluded.norm_id,
-      parent_id=excluded.parent_id,
-      number=excluded.number,
-      title=excluded.title,
-      sort_order=excluded.sort_order
   `).run(
     chapter.id,
     normId,
