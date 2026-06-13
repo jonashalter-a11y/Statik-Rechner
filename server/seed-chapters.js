@@ -1,161 +1,836 @@
-// Komplette Kapitelstruktur der SIA 265:2021
-// [id, parent_id, number, title]
 module.exports = [
-  // Kapitel 0
-  ['0', null, '0', 'Geltungsbereich'],
-  ['0.1', '0', '0.1', 'Abgrenzung'],
-  ['0.2', '0', '0.2', 'Allgemeine Bedingungen Bau'],
-  ['0.3', '0', '0.3', 'Normative Verweisungen'],
-  ['0.4', '0', '0.4', 'Abweichungen'],
-
-  // Kapitel 1
-  ['1', null, '1', 'Verständigung'],
-  ['1.1', '1', '1.1', 'Fachausdrücke'],
-  ['1.2', '1', '1.2', 'Bezeichnungen'],
-  ['1.3', '1', '1.3', 'Abkürzungen'],
-
-  // Kapitel 2
-  ['2', null, '2', 'Grundsätze'],
-  ['2.1', '2', '2.1', 'Allgemeines'],
-  ['2.2', '2', '2.2', 'Tragsicherheit'],
-  ['2.3', '2', '2.3', 'Gebrauchstauglichkeit'],
-  ['2.3.1', '2.3', '2.3.1', 'Verformungen'],
-  ['2.3.2', '2.3', '2.3.2', 'Schwingungen'],
-  ['2.4', '2', '2.4', 'Robustheit'],
-  ['2.5', '2', '2.5', 'Dauerhaftigkeit'],
-
-  // Kapitel 3 - Baustoffe
-  ['3', null, '3', 'Baustoffe'],
-  ['3.1', '3', '3.1', 'Allgemeines'],
-  ['3.1.1', '3.1', '3.1.1', 'Charakteristische Werte'],
-  ['3.1.2', '3.1', '3.1.2', 'Stoffgesetze'],
-  ['3.2', '3', '3.2', 'Einfluss von Holzfeuchte, Einwirkungsdauer und Temperatur'],
-  ['3.2.1', '3.2', '3.2.1', 'Holzfeuchte und Feuchteklassen'],
-  ['3.2.2', '3.2', '3.2.2', 'Einfluss der Einwirkungsdauer'],
-  ['3.2.3', '3.2', '3.2.3', 'Einfluss der Temperatur'],
-  ['3.3', '3', '3.3', 'Vollholz, keilgezinktes Vollholz und Balkenschichtholz'],
-  ['3.3.1', '3.3', '3.3.1', 'Allgemeines'],
-  ['3.3.2', '3.3', '3.3.2', 'Kennzeichnende Eigenschaften und Bemessungswerte'],
-  ['3.3.3', '3.3', '3.3.3', 'Geometrische Grössen'],
-  ['3.4', '3', '3.4', 'Brettschichtholz'],
-  ['3.4.1', '3.4', '3.4.1', 'Allgemeines'],
-  ['3.4.2', '3.4', '3.4.2', 'Kennzeichnende Eigenschaften und Bemessungswerte'],
-  ['3.4.3', '3.4', '3.4.3', 'Geometrische Grössen'],
-  ['3.5', '3', '3.5', 'Holzwerkstoffe'],
-  ['3.6', '3', '3.6', 'Physikalisch-technische Eigenschaften'],
-  ['3.6.1', '3.6', '3.6.1', 'Ausgleichsfeuchte'],
-  ['3.6.2', '3.6', '3.6.2', 'Schwind- und Quellmasse'],
-  ['3.6.3', '3.6', '3.6.3', 'Temperaturausdehnungskoeffizienten'],
-
-  // Kapitel 4 - Tragwerksanalyse und Bemessung (HAUPTBERECHNUNGEN)
-  ['4', null, '4', 'Tragwerksanalyse und Bemessung'],
-  ['4.1', '4', '4.1', 'Allgemeines'],
-  ['4.2', '4', '4.2', 'Nachweis der Tragsicherheit'],
-  ['4.2.1', '4.2', '4.2.1', 'Zug'],
-  ['4.2.2', '4.2', '4.2.2', 'Druck'],
-  ['4.2.3', '4.2', '4.2.3', 'Biegung'],
-  ['4.2.4', '4.2', '4.2.4', 'Biegung mit Normalkraft'],
-  ['4.2.5', '4.2', '4.2.5', 'Schub und Torsion'],
-  ['4.2.6', '4.2', '4.2.6', 'Abscheren'],
-  ['4.2.7', '4.2', '4.2.7', 'Schub und Normalkraft rechtwinklig zur Faserrichtung'],
-  ['4.2.8', '4.2', '4.2.8', 'Stabilität von Druckstäben (Knicken)'],
-  ['4.2.9', '4.2', '4.2.9', 'Stabilität von Biegeträgern (Kippen)'],
-  ['4.3', '4', '4.3', 'Nachweis der Gebrauchstauglichkeit'],
-  ['4.3.1', '4.3', '4.3.1', 'Verformungen'],
-  ['4.3.2', '4.3', '4.3.2', 'Einfluss der Einwirkungsdauer auf Verformungen'],
-  ['4.3.3', '4.3', '4.3.3', 'Schwingungen'],
-  ['4.4', '4', '4.4', 'Ermüdung'],
-  ['4.5', '4', '4.5', 'Bemessungssituation Brand'],
-  ['4.6', '4', '4.6', 'Bemessungssituation Erdbeben'],
-
-  // Kapitel 5 - Bauteile und Strukturen
-  ['5', null, '5', 'Bauteile und Strukturen'],
-  ['5.1', '5', '5.1', 'Träger veränderlicher Höhe und gekrümmte Träger'],
-  ['5.2', '5', '5.2', 'Ausklinkungen, Einschnitte, Durchbrüche'],
-  ['5.2.1', '5.2', '5.2.1', 'Allgemeines'],
-  ['5.2.2', '5.2', '5.2.2', 'Ausklinkungen'],
-  ['5.2.3', '5.2', '5.2.3', 'Einschnitte'],
-  ['5.2.4', '5.2', '5.2.4', 'Durchbrüche'],
-  ['5.3', '5', '5.3', 'Zusammengesetzte Bauteile'],
-  ['5.3.1', '5.3', '5.3.1', 'Mittragende Breiten'],
-  ['5.3.2', '5.3', '5.3.2', 'Kontinuierlich verbundene Träger'],
-  ['5.3.3', '5.3', '5.3.3', 'Verdübelte Balken'],
-  ['5.3.4', '5.3', '5.3.4', 'Stegträger'],
-  ['5.3.5', '5.3', '5.3.5', 'Tafelelemente (Biegeelemente)'],
-  ['5.3.6', '5.3', '5.3.6', 'Fachwerkträger'],
-  ['5.3.7', '5.3', '5.3.7', 'Zusammengesetzte Druckstäbe'],
-  ['5.4', '5', '5.4', 'Scheiben'],
-  ['5.4.1', '5.4', '5.4.1', 'Dach- und Deckenscheiben'],
-  ['5.4.2', '5.4', '5.4.2', 'Wandscheiben'],
-  ['5.5', '5', '5.5', 'Platten'],
-  ['5.5.1', '5.5', '5.5.1', 'Allgemeines'],
-  ['5.5.2', '5.5', '5.5.2', 'Unarmierte Holzplatten'],
-  ['5.5.3', '5.5', '5.5.3', 'Querarmierte Holzplatten'],
-  ['5.6', '5', '5.6', 'Verbundbauteile'],
-  ['5.7', '5', '5.7', 'Systemwirkung'],
-  ['5.7.1', '5.7', '5.7.1', 'Bauteile mit Ausgleichsystem'],
-  ['5.7.2', '5.7', '5.7.2', 'Kontinuierlich verbundene Bauteile'],
-  ['5.8', '5', '5.8', 'Räumliche Stabilisierung und Verbände'],
-  ['5.8.1', '5.8', '5.8.1', 'Gesamtstabilität von Tragwerken'],
-  ['5.8.2', '5.8', '5.8.2', 'Stabilisierung durch Einzelabstützungen'],
-  ['5.8.3', '5.8', '5.8.3', 'Ebene Rahmen und Bogen'],
-  ['5.8.4', '5.8', '5.8.4', 'Stabilisierung durch Träger, Verbände, Beplankungen'],
-
-  // Kapitel 6 - Verbindungen
-  ['6', null, '6', 'Verbindungen'],
-  ['6.1', '6', '6.1', 'Grundlagen'],
-  ['6.1.1', '6.1', '6.1.1', 'Allgemeines'],
-  ['6.1.2', '6.1', '6.1.2', 'Tragverhalten der Verbindungen'],
-  ['6.1.3', '6.1', '6.1.3', 'Steifigkeit der Verbindungen'],
-  ['6.1.4', '6.1', '6.1.4', 'Tragmodell für Scherverbindungen'],
-  ['6.2', '6', '6.2', 'Stabdübelverbindungen'],
-  ['6.2.1', '6.2', '6.2.1', 'Beanspruchung rechtwinklig zur Schaftrichtung'],
-  ['6.3', '6', '6.3', 'Bolzenverbindungen'],
-  ['6.3.1', '6.3', '6.3.1', 'Beanspruchung rechtwinklig zur Schaftrichtung'],
-  ['6.3.2', '6.3', '6.3.2', 'Beanspruchung in Schaftrichtung'],
-  ['6.4', '6', '6.4', 'Nagelverbindungen'],
-  ['6.4.1', '6.4', '6.4.1', 'Allgemeines'],
-  ['6.4.2', '6.4', '6.4.2', 'Nagelverbindungen ohne Vorbohrung'],
-  ['6.4.3', '6.4', '6.4.3', 'Nagelverbindungen mit Vorbohrung'],
-  ['6.5', '6', '6.5', 'Schraubenverbindungen'],
-  ['6.5.1', '6.5', '6.5.1', 'Allgemeines'],
-  ['6.5.2', '6.5', '6.5.2', 'Beanspruchung rechtwinklig zur Schaftrichtung'],
-  ['6.5.3', '6.5', '6.5.3', 'Beanspruchung in Schaftrichtung'],
-  ['6.5.4', '6.5', '6.5.4', 'Kombinierte Beanspruchung'],
-  ['6.6', '6', '6.6', 'Klammerverbindungen'],
-  ['6.7', '6', '6.7', 'Nagelplattenverbindungen'],
-  ['6.8', '6', '6.8', 'Einpress- und Einlassdübelverbindungen'],
-  ['6.9', '6', '6.9', 'Holzverbindungen'],
-  ['6.9.1', '6.9', '6.9.1', 'Gerader und schiefer Stoss'],
-  ['6.9.2', '6.9', '6.9.2', 'Versatz'],
-  ['6.10', '6', '6.10', 'Eingeklebte profilierte Stäbe'],
-  ['6.11', '6', '6.11', 'Klebungen'],
-
-  // Kapitel 7
-  ['7', null, '7', 'Dauerhaftigkeit'],
-  ['7.1', '7', '7.1', 'Allgemeines'],
-  ['7.2', '7', '7.2', 'Konstruktive Massnahmen'],
-  ['7.3', '7', '7.3', 'Resistenz gegen Einflüsse'],
-  ['7.4', '7', '7.4', 'Klebungen'],
-  ['7.5', '7', '7.5', 'Metallische Verbindungen'],
-  ['7.6', '7', '7.6', 'Verarbeitungstechnische Massnahmen'],
-  ['7.7', '7', '7.7', 'Überwachung und Instandhaltung'],
-
-  // Kapitel 8
-  ['8', null, '8', 'Ausführung'],
-  ['8.1', '8', '8.1', 'Allgemeines'],
-  ['8.2', '8', '8.2', 'Baustoffe'],
-  ['8.3', '8', '8.3', 'Klebungen'],
-  ['8.4', '8', '8.4', 'Holz-Holz-Verbindungen'],
-  ['8.5', '8', '8.5', 'Mechanische Verbindungsmittel'],
-  ['8.6', '8', '8.6', 'Blechformteile und Verbindungssysteme'],
-  ['8.7', '8', '8.7', 'Toleranzen'],
-  ['8.8', '8', '8.8', 'Transport und Montage'],
-  ['8.9', '8', '8.9', 'Kontrolle der Abmessungen'],
-
-  // Anhänge
-  ['A', null, 'A', 'Anhang A: Tragwiderstand von Verbindungen'],
-  ['B', null, 'B', 'Anhang B: Druckfestigkeit und E-Modul'],
-  ['C', null, 'C', 'Anhang C: Druck rechtwinklig zur Faserrichtung'],
-  ['D', null, 'D', 'Anhang D: Queranschlüsse'],
+  [
+    "0",
+    null,
+    "0",
+    "Geltungsbereich"
+  ],
+  [
+    "0.1",
+    "0",
+    "0.1",
+    "Abgrenzung"
+  ],
+  [
+    "0.2",
+    "0",
+    "0.2",
+    "Allgemeine Bedingungen Bau"
+  ],
+  [
+    "0.3",
+    "0",
+    "0.3",
+    "Normative Verweisungen"
+  ],
+  [
+    "0.4",
+    "0",
+    "0.4",
+    "Abweichungen"
+  ],
+  [
+    "1",
+    null,
+    "1",
+    "Verständigung"
+  ],
+  [
+    "1.1",
+    "1",
+    "1.1",
+    "Fachausdrücke"
+  ],
+  [
+    "1.2",
+    "1",
+    "1.2",
+    "Bezeichnungen"
+  ],
+  [
+    "1.3",
+    "1",
+    "1.3",
+    "Abkürzungen"
+  ],
+  [
+    "2",
+    null,
+    "2",
+    "Grundsätze"
+  ],
+  [
+    "2.1",
+    "2",
+    "2.1",
+    "Allgemeines"
+  ],
+  [
+    "2.2",
+    "2",
+    "2.2",
+    "Tragsicherheit"
+  ],
+  [
+    "2.3",
+    "2",
+    "2.3",
+    "Gebrauchstauglichkeit"
+  ],
+  [
+    "2.3.1",
+    "2.3",
+    "2.3.1",
+    "Verformungen"
+  ],
+  [
+    "2.3.2",
+    "2.3",
+    "2.3.2",
+    "Schwingungen"
+  ],
+  [
+    "2.4",
+    "2",
+    "2.4",
+    "Robustheit"
+  ],
+  [
+    "2.5",
+    "2",
+    "2.5",
+    "Dauerhaftigkeit"
+  ],
+  [
+    "3",
+    null,
+    "3",
+    "Baustoffe"
+  ],
+  [
+    "3.1",
+    "3",
+    "3.1",
+    "Allgemeines"
+  ],
+  [
+    "3.1.1",
+    "3.1",
+    "3.1.1",
+    "Charakteristische Werte"
+  ],
+  [
+    "3.1.2",
+    "3.1",
+    "3.1.2",
+    "Stoffgesetze"
+  ],
+  [
+    "3.2",
+    "3",
+    "3.2",
+    "Einfluss von Holzfeuchte, Einwirkungsdauer und Temperatur"
+  ],
+  [
+    "3.2.1",
+    "3.2",
+    "3.2.1",
+    "Holzfeuchte und Feuchteklassen"
+  ],
+  [
+    "3.2.2",
+    "3.2",
+    "3.2.2",
+    "Einfluss der Einwirkungsdauer"
+  ],
+  [
+    "3.2.3",
+    "3.2",
+    "3.2.3",
+    "Einfluss der Temperatur"
+  ],
+  [
+    "3.3",
+    "3",
+    "3.3",
+    "Vollholz, keilgezinktes Vollholz und Balkenschichtholz"
+  ],
+  [
+    "3.3.1",
+    "3.3",
+    "3.3.1",
+    "Allgemeines"
+  ],
+  [
+    "3.3.2",
+    "3.3",
+    "3.3.2",
+    "Kennzeichnende Eigenschaften und Bemessungswerte"
+  ],
+  [
+    "3.3.3",
+    "3.3",
+    "3.3.3",
+    "Geometrische Grössen"
+  ],
+  [
+    "3.4",
+    "3",
+    "3.4",
+    "Brettschichtholz"
+  ],
+  [
+    "3.4.1",
+    "3.4",
+    "3.4.1",
+    "Allgemeines"
+  ],
+  [
+    "3.4.2",
+    "3.4",
+    "3.4.2",
+    "Kennzeichnende Eigenschaften und Bemessungswerte"
+  ],
+  [
+    "3.4.3",
+    "3.4",
+    "3.4.3",
+    "Geometrische Grössen"
+  ],
+  [
+    "3.5",
+    "3",
+    "3.5",
+    "Holzwerkstoffe"
+  ],
+  [
+    "3.6",
+    "3",
+    "3.6",
+    "Physikalisch-technische Eigenschaften"
+  ],
+  [
+    "3.6.1",
+    "3.6",
+    "3.6.1",
+    "Ausgleichsfeuchte"
+  ],
+  [
+    "3.6.2",
+    "3.6",
+    "3.6.2",
+    "Schwind- und Quellmasse"
+  ],
+  [
+    "3.6.3",
+    "3.6",
+    "3.6.3",
+    "Temperaturausdehnungskoeffizienten"
+  ],
+  [
+    "4",
+    null,
+    "4",
+    "Tragwerksanalyse und Bemessung"
+  ],
+  [
+    "4.1",
+    "4",
+    "4.1",
+    "Allgemeines"
+  ],
+  [
+    "4.2",
+    "4",
+    "4.2",
+    "Nachweis der Tragsicherheit"
+  ],
+  [
+    "4.2.1",
+    "4.2",
+    "4.2.1",
+    "Zug"
+  ],
+  [
+    "4.2.2",
+    "4.2",
+    "4.2.2",
+    "Druck"
+  ],
+  [
+    "4.2.3",
+    "4.2",
+    "4.2.3",
+    "Biegung"
+  ],
+  [
+    "4.2.4",
+    "4.2",
+    "4.2.4",
+    "Biegung mit Normalkraft"
+  ],
+  [
+    "4.2.5",
+    "4.2",
+    "4.2.5",
+    "Schub und Torsion"
+  ],
+  [
+    "4.2.6",
+    "4.2",
+    "4.2.6",
+    "Abscheren"
+  ],
+  [
+    "4.2.7",
+    "4.2",
+    "4.2.7",
+    "Schub und Normalkraft rechtwinklig zur Faserrichtung"
+  ],
+  [
+    "4.2.8",
+    "4.2",
+    "4.2.8",
+    "Stabilität von Druckstäben (Knicken)"
+  ],
+  [
+    "4.2.9",
+    "4.2",
+    "4.2.9",
+    "Stabilität von Biegeträgern (Kippen)"
+  ],
+  [
+    "4.3",
+    "4",
+    "4.3",
+    "Nachweis der Gebrauchstauglichkeit"
+  ],
+  [
+    "4.3.1",
+    "4.3",
+    "4.3.1",
+    "Verformungen"
+  ],
+  [
+    "4.3.2",
+    "4.3",
+    "4.3.2",
+    "Einfluss der Einwirkungsdauer auf Verformungen"
+  ],
+  [
+    "4.3.3",
+    "4.3",
+    "4.3.3",
+    "Schwingungen"
+  ],
+  [
+    "4.4",
+    "4",
+    "4.4",
+    "Ermüdung"
+  ],
+  [
+    "4.5",
+    "4",
+    "4.5",
+    "Bemessungssituation Brand"
+  ],
+  [
+    "4.6",
+    "4",
+    "4.6",
+    "Bemessungssituation Erdbeben"
+  ],
+  [
+    "5",
+    null,
+    "5",
+    "Bauteile und Strukturen"
+  ],
+  [
+    "5.1",
+    "5",
+    "5.1",
+    "Träger veränderlicher Höhe und gekrümmte Träger"
+  ],
+  [
+    "5.2",
+    "5",
+    "5.2",
+    "Ausklinkungen, Einschnitte, Durchbrüche"
+  ],
+  [
+    "5.2.1",
+    "5.2",
+    "5.2.1",
+    "Allgemeines"
+  ],
+  [
+    "5.2.2",
+    "5.2",
+    "5.2.2",
+    "Ausklinkungen"
+  ],
+  [
+    "5.2.3",
+    "5.2",
+    "5.2.3",
+    "Einschnitte"
+  ],
+  [
+    "5.2.4",
+    "5.2",
+    "5.2.4",
+    "Durchbrüche"
+  ],
+  [
+    "5.3",
+    "5",
+    "5.3",
+    "Zusammengesetzte Bauteile"
+  ],
+  [
+    "5.3.1",
+    "5.3",
+    "5.3.1",
+    "Mittragende Breiten"
+  ],
+  [
+    "5.3.2",
+    "5.3",
+    "5.3.2",
+    "Kontinuierlich verbundene Träger"
+  ],
+  [
+    "5.3.3",
+    "5.3",
+    "5.3.3",
+    "Verdübelte Balken"
+  ],
+  [
+    "5.3.4",
+    "5.3",
+    "5.3.4",
+    "Stegträger"
+  ],
+  [
+    "5.3.5",
+    "5.3",
+    "5.3.5",
+    "Tafelelemente (Biegeelemente)"
+  ],
+  [
+    "5.3.6",
+    "5.3",
+    "5.3.6",
+    "Fachwerkträger"
+  ],
+  [
+    "5.3.7",
+    "5.3",
+    "5.3.7",
+    "Zusammengesetzte Druckstäbe"
+  ],
+  [
+    "5.4",
+    "5",
+    "5.4",
+    "Scheiben"
+  ],
+  [
+    "5.4.1",
+    "5.4",
+    "5.4.1",
+    "Dach- und Deckenscheiben"
+  ],
+  [
+    "5.4.2",
+    "5.4",
+    "5.4.2",
+    "Wandscheiben"
+  ],
+  [
+    "5.5",
+    "5",
+    "5.5",
+    "Platten"
+  ],
+  [
+    "5.5.1",
+    "5.5",
+    "5.5.1",
+    "Allgemeines"
+  ],
+  [
+    "5.5.2",
+    "5.5",
+    "5.5.2",
+    "Unarmierte Holzplatten"
+  ],
+  [
+    "5.5.3",
+    "5.5",
+    "5.5.3",
+    "Querarmierte Holzplatten"
+  ],
+  [
+    "5.6",
+    "5",
+    "5.6",
+    "Verbundbauteile"
+  ],
+  [
+    "5.7",
+    "5",
+    "5.7",
+    "Systemwirkung"
+  ],
+  [
+    "5.7.1",
+    "5.7",
+    "5.7.1",
+    "Bauteile mit Ausgleichsystem"
+  ],
+  [
+    "5.7.2",
+    "5.7",
+    "5.7.2",
+    "Kontinuierlich verbundene Bauteile"
+  ],
+  [
+    "5.8",
+    "5",
+    "5.8",
+    "Räumliche Stabilisierung und Verbände"
+  ],
+  [
+    "5.8.1",
+    "5.8",
+    "5.8.1",
+    "Gesamtstabilität von Tragwerken"
+  ],
+  [
+    "5.8.2",
+    "5.8",
+    "5.8.2",
+    "Stabilisierung durch Einzelabstützungen"
+  ],
+  [
+    "5.8.3",
+    "5.8",
+    "5.8.3",
+    "Ebene Rahmen und Bogen"
+  ],
+  [
+    "5.8.4",
+    "5.8",
+    "5.8.4",
+    "Stabilisierung durch Träger, Verbände, Beplankungen"
+  ],
+  [
+    "6",
+    null,
+    "6",
+    "Verbindungen"
+  ],
+  [
+    "6.1",
+    "6",
+    "6.1",
+    "Grundlagen"
+  ],
+  [
+    "6.1.1",
+    "6.1",
+    "6.1.1",
+    "Allgemeines"
+  ],
+  [
+    "6.1.2",
+    "6.1",
+    "6.1.2",
+    "Tragverhalten der Verbindungen"
+  ],
+  [
+    "6.1.3",
+    "6.1",
+    "6.1.3",
+    "Steifigkeit der Verbindungen"
+  ],
+  [
+    "6.1.4",
+    "6.1",
+    "6.1.4",
+    "Tragmodell für Scherverbindungen"
+  ],
+  [
+    "6.2",
+    "6",
+    "6.2",
+    "Stabdübelverbindungen"
+  ],
+  [
+    "6.2.1",
+    "6.2",
+    "6.2.1",
+    "Beanspruchung rechtwinklig zur Schaftrichtung"
+  ],
+  [
+    "6.3",
+    "6",
+    "6.3",
+    "Bolzenverbindungen"
+  ],
+  [
+    "6.3.1",
+    "6.3",
+    "6.3.1",
+    "Beanspruchung rechtwinklig zur Schaftrichtung"
+  ],
+  [
+    "6.3.2",
+    "6.3",
+    "6.3.2",
+    "Beanspruchung in Schaftrichtung"
+  ],
+  [
+    "6.4",
+    "6",
+    "6.4",
+    "Nagelverbindungen"
+  ],
+  [
+    "6.4.1",
+    "6.4",
+    "6.4.1",
+    "Allgemeines"
+  ],
+  [
+    "6.4.2",
+    "6.4",
+    "6.4.2",
+    "Nagelverbindungen ohne Vorbohrung"
+  ],
+  [
+    "6.4.3",
+    "6.4",
+    "6.4.3",
+    "Nagelverbindungen mit Vorbohrung"
+  ],
+  [
+    "6.5",
+    "6",
+    "6.5",
+    "Schraubenverbindungen"
+  ],
+  [
+    "6.5.1",
+    "6.5",
+    "6.5.1",
+    "Allgemeines"
+  ],
+  [
+    "6.5.2",
+    "6.5",
+    "6.5.2",
+    "Beanspruchung rechtwinklig zur Schaftrichtung"
+  ],
+  [
+    "6.5.3",
+    "6.5",
+    "6.5.3",
+    "Beanspruchung in Schaftrichtung"
+  ],
+  [
+    "6.5.4",
+    "6.5",
+    "6.5.4",
+    "Kombinierte Beanspruchung"
+  ],
+  [
+    "6.6",
+    "6",
+    "6.6",
+    "Klammerverbindungen"
+  ],
+  [
+    "6.7",
+    "6",
+    "6.7",
+    "Nagelplattenverbindungen"
+  ],
+  [
+    "6.8",
+    "6",
+    "6.8",
+    "Einpress- und Einlassdübelverbindungen"
+  ],
+  [
+    "6.9",
+    "6",
+    "6.9",
+    "Holzverbindungen"
+  ],
+  [
+    "6.9.1",
+    "6.9",
+    "6.9.1",
+    "Gerader und schiefer Stoss"
+  ],
+  [
+    "6.9.2",
+    "6.9",
+    "6.9.2",
+    "Versatz"
+  ],
+  [
+    "6.10",
+    "6",
+    "6.10",
+    "Eingeklebte profilierte Stäbe"
+  ],
+  [
+    "6.11",
+    "6",
+    "6.11",
+    "Klebungen"
+  ],
+  [
+    "7",
+    null,
+    "7",
+    "Dauerhaftigkeit"
+  ],
+  [
+    "7.1",
+    "7",
+    "7.1",
+    "Allgemeines"
+  ],
+  [
+    "7.2",
+    "7",
+    "7.2",
+    "Konstruktive Massnahmen"
+  ],
+  [
+    "7.3",
+    "7",
+    "7.3",
+    "Resistenz gegen Einflüsse"
+  ],
+  [
+    "7.4",
+    "7",
+    "7.4",
+    "Klebungen"
+  ],
+  [
+    "7.5",
+    "7",
+    "7.5",
+    "Metallische Verbindungen"
+  ],
+  [
+    "7.6",
+    "7",
+    "7.6",
+    "Verarbeitungstechnische Massnahmen"
+  ],
+  [
+    "7.7",
+    "7",
+    "7.7",
+    "Überwachung und Instandhaltung"
+  ],
+  [
+    "8",
+    null,
+    "8",
+    "Ausführung"
+  ],
+  [
+    "8.1",
+    "8",
+    "8.1",
+    "Allgemeines"
+  ],
+  [
+    "8.2",
+    "8",
+    "8.2",
+    "Baustoffe"
+  ],
+  [
+    "8.3",
+    "8",
+    "8.3",
+    "Klebungen"
+  ],
+  [
+    "8.4",
+    "8",
+    "8.4",
+    "Holz-Holz-Verbindungen"
+  ],
+  [
+    "8.5",
+    "8",
+    "8.5",
+    "Mechanische Verbindungsmittel"
+  ],
+  [
+    "8.6",
+    "8",
+    "8.6",
+    "Blechformteile und Verbindungssysteme"
+  ],
+  [
+    "8.7",
+    "8",
+    "8.7",
+    "Toleranzen"
+  ],
+  [
+    "8.8",
+    "8",
+    "8.8",
+    "Transport und Montage"
+  ],
+  [
+    "8.9",
+    "8",
+    "8.9",
+    "Kontrolle der Abmessungen"
+  ],
+  [
+    "A",
+    null,
+    "A",
+    "Anhang A: Tragwiderstand von Verbindungen"
+  ],
+  [
+    "B",
+    null,
+    "B",
+    "Anhang B: Druckfestigkeit und E-Modul"
+  ],
+  [
+    "C",
+    null,
+    "C",
+    "Anhang C: Druck rechtwinklig zur Faserrichtung"
+  ],
+  [
+    "D",
+    null,
+    "D",
+    "Anhang D: Queranschlüsse"
+  ],
+  [
+    "fire_2_berechnungsverfahren",
+    null,
+    "2",
+    "Berechnungsverfahren für brandabschnittsbildende Bauteile"
+  ]
 ];

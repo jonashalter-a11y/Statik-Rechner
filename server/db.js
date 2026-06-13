@@ -3,6 +3,9 @@ const path = require('path');
 const seedChapters = require('./seed-chapters');
 const seedVerifications = require('./seed-verifications');
 const sia261 = require('./seed-sia261');
+const lignumBrandschutz = require('./seed-lignum-brandschutz');
+const lignumErdbeben = require('./seed-lignum-erdbeben');
+const baustatik = require('./seed-baustatik');
 
 const db = new Database(path.join(__dirname, 'sia265.db'));
 db.pragma('journal_mode = WAL');
@@ -112,6 +115,9 @@ if (normCount === 0) {
   const insertNorm = db.prepare('INSERT INTO norms (id, name, label, year, description) VALUES (?, ?, ?, ?, ?)');
   insertNorm.run('sia265', 'SIA 265', 'SIA 265 – Holzbau', 2021, 'Bemessung von Holztragwerken nach schweizerischer Norm');
   insertNorm.run('sia261', 'SIA 261', 'SIA 261 – Einwirkungen', 2020, 'Einwirkungen auf Tragwerke nach schweizerischer Norm');
+  insertNorm.run('lignum_brandschutz', 'Lignum Brandschutz', 'Lignum Brandschutz', 2026, '');
+  insertNorm.run('lignum_erdbeben', 'Lignum Erdbeben', 'Lignum Erdbeben', 2026, '');
+  insertNorm.run('baustatik', 'Baustatik', 'Baustatik', 2021, 'Allgemeine statische Nachweise');
 }
 
 const woodTypeCount = db.prepare('SELECT COUNT(*) as n FROM wood_types').get().n;
@@ -148,7 +154,7 @@ if (woodTypeCount === 0) {
 const chapCount = db.prepare("SELECT COUNT(*) as n FROM chapters").get().n;
 if (chapCount === 0) {
   const iC = db.prepare('INSERT INTO chapters (id, norm_id, parent_id, number, title, sort_order) VALUES (?, ?, ?, ?, ?, ?)');
-  const iV = db.prepare('INSERT INTO verifications (id, norm_id, chapter_id, title, formula_latex, formula_description, compute_expr, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+  const iV = db.prepare('INSERT INTO verifications (id, norm_id, chapter_id, title, formula_latex, formula_description, compute_expr, graph_json, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
   const iVr= db.prepare('INSERT INTO variables (id, verification_id, name, label, unit, type, default_value, description, sort_order, table_ref, table_col) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
   const iO = db.prepare('INSERT INTO variable_options (variable_id, label, value, sort_order) VALUES (?, ?, ?, ?)');
 
@@ -158,7 +164,7 @@ if (chapCount === 0) {
 
   // SIA 265 Nachweise
   seedVerifications.forEach((v, i) => {
-    iV.run(v.id, 'sia265', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, i);
+    iV.run(v.id, 'sia265', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, v.graph_json || null, i);
     v.variables.forEach((vr, j) => {
       const vid = v.id + '__' + vr.name;
       iVr.run(vid, v.id, vr.name, vr.label, vr.unit||'', vr.type||'number', vr.default_value, vr.description||'', j, vr.table_ref||null, vr.table_col||null);
@@ -172,7 +178,49 @@ if (chapCount === 0) {
 
   // SIA 261 Nachweise
   sia261.verifications.forEach((v, i) => {
-    iV.run(v.id, 'sia261', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, i);
+    iV.run(v.id, 'sia261', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, v.graph_json || null, i);
+    v.variables.forEach((vr, j) => {
+      const vid = v.id + '__' + vr.name;
+      iVr.run(vid, v.id, vr.name, vr.label, vr.unit||'', vr.type||'number', vr.default_value, vr.description||'', j, vr.table_ref||null, vr.table_col||null);
+      (vr.options||[]).forEach((o, k) => iO.run(vid, o.label, o.value, k));
+    });
+  });
+
+  // Lignum Erdbeben Kapitel
+  lignumErdbeben.chapters.forEach(([id, parent_id, number, title], i) =>
+    iC.run(id, 'lignum_erdbeben', parent_id, number, title, i));
+
+  // Lignum Erdbeben Nachweise
+  lignumErdbeben.verifications.forEach((v, i) => {
+    iV.run(v.id, 'lignum_erdbeben', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, v.graph_json || null, i);
+    v.variables.forEach((vr, j) => {
+      const vid = v.id + '__' + vr.name;
+      iVr.run(vid, v.id, vr.name, vr.label, vr.unit||'', vr.type||'number', vr.default_value, vr.description||'', j, vr.table_ref||null, vr.table_col||null);
+      (vr.options||[]).forEach((o, k) => iO.run(vid, o.label, o.value, k));
+    });
+  });
+
+  // Lignum Brandschutz Kapitel
+  lignumBrandschutz.chapters.forEach(([id, parent_id, number, title], i) =>
+    iC.run(id, 'lignum_brandschutz', parent_id, number, title, i));
+
+  // Lignum Brandschutz Nachweise
+  lignumBrandschutz.verifications.forEach((v, i) => {
+    iV.run(v.id, 'lignum_brandschutz', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, v.graph_json || null, i);
+    v.variables.forEach((vr, j) => {
+      const vid = v.id + '__' + vr.name;
+      iVr.run(vid, v.id, vr.name, vr.label, vr.unit||'', vr.type||'number', vr.default_value, vr.description||'', j, vr.table_ref||null, vr.table_col||null);
+      (vr.options||[]).forEach((o, k) => iO.run(vid, o.label, o.value, k));
+    });
+  });
+
+  // Baustatik Kapitel
+  baustatik.chapters.forEach(([id, parent_id, number, title], i) =>
+    iC.run(id, 'baustatik', parent_id, number, title, i));
+
+  // Baustatik Nachweise
+  baustatik.verifications.forEach((v, i) => {
+    iV.run(v.id, 'baustatik', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, v.graph_json || null, i);
     v.variables.forEach((vr, j) => {
       const vid = v.id + '__' + vr.name;
       iVr.run(vid, v.id, vr.name, vr.label, vr.unit||'', vr.type||'number', vr.default_value, vr.description||'', j, vr.table_ref||null, vr.table_col||null);
@@ -298,6 +346,9 @@ if (chapCount === 0) {
   console.log('✓ DB initialisiert:');
   console.log(`  SIA 265: ${seedChapters.length} Kap., ${seedVerifications.length} Nachweise`);
   console.log(`  SIA 261: ${sia261.chapters.length} Kap., ${sia261.verifications.length} Nachweise`);
+  console.log(`  Lignum Brandschutz: ${lignumBrandschutz.chapters.length} Kap., ${lignumBrandschutz.verifications.length} Nachweise`);
+  console.log(`  Lignum Erdbeben: ${lignumErdbeben.chapters.length} Kap., ${lignumErdbeben.verifications.length} Nachweise`);
+  console.log(`  Baustatik: ${baustatik.chapters.length} Kap., ${baustatik.verifications.length} Nachweise`);
 }
 
 module.exports = db;
