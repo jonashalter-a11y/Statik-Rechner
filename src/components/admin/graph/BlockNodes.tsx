@@ -1993,6 +1993,51 @@ function LoopBlockNode({ id, data, selected }: NodeProps) {
   const setOptFormula = (i: number, outId: string, formula: string) => {
     const a = [...(d.options || [])]; a[i] = { ...a[i], formulas: { ...a[i].formulas, [outId]: formula } }; set({ options: a });
   };
+  const addOptCalc = (i: number) => {
+    const a = [...(d.options || [])];
+    a[i] = { ...a[i], calcs: [...(a[i].calcs || []), { id: uid(), name: '', label: '', unit: '', formula: '' }] };
+    set({ options: a });
+  };
+  const setOptCalc = (i: number, ci: number, patch: Partial<NonNullable<GroupCalcOption['calcs']>[number]>) => {
+    const a = [...(d.options || [])];
+    const calcs = [...(a[i].calcs || [])];
+    calcs[ci] = { ...calcs[ci], ...patch };
+    a[i] = { ...a[i], calcs };
+    set({ options: a });
+  };
+  const delOptCalc = (i: number, ci: number) => {
+    const a = [...(d.options || [])];
+    a[i] = { ...a[i], calcs: (a[i].calcs || []).filter((_, j) => j !== ci) };
+    set({ options: a });
+  };
+  const addOptCase = (i: number, outId: string) => {
+    const a = [...(d.options || [])];
+    const cases = a[i].formulaCases || {};
+    a[i] = {
+      ...a[i],
+      formulaCases: {
+        ...cases,
+        [outId]: [...(cases[outId] || []), { id: uid(), cond_expr: '', formula: '' }],
+      },
+    };
+    set({ options: a });
+  };
+  const setOptCase = (i: number, outId: string, caseIdx: number, patch: Partial<NonNullable<GroupCalcOption['formulaCases']>[string][number]>) => {
+    const a = [...(d.options || [])];
+    const formulaCases = { ...(a[i].formulaCases || {}) };
+    const cases = [...(formulaCases[outId] || [])];
+    cases[caseIdx] = { ...cases[caseIdx], ...patch };
+    formulaCases[outId] = cases;
+    a[i] = { ...a[i], formulaCases };
+    set({ options: a });
+  };
+  const delOptCase = (i: number, outId: string, caseIdx: number) => {
+    const a = [...(d.options || [])];
+    const formulaCases = { ...(a[i].formulaCases || {}) };
+    formulaCases[outId] = (formulaCases[outId] || []).filter((_, j) => j !== caseIdx);
+    a[i] = { ...a[i], formulaCases };
+    set({ options: a });
+  };
   const delOpt = (i: number) => set({ options: (d.options || []).filter((_, j) => j !== i) });
   // Aggregations
   const addAggr = () => set({ aggregations: [...(d.aggregations || []), { output_id: '', method: 'sum', name: '', label: '', unit: '' }] });
@@ -2067,15 +2112,66 @@ function LoopBlockNode({ id, data, selected }: NodeProps) {
             <F value={opt.label} placeholder="Mineralwolle ≥ 26 kg/m³" onChange={e => setOptLabel(oi, e.target.value)} style={{ flex: 1 }} />
             <button className="nodrag" onClick={() => delOpt(oi)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 11, padding: '0 2px' }}>✕</button>
           </div>
+          <div style={{ fontSize: 7.5, color: '#9ca3af', marginBottom: 3 }}>
+            Verfügbare Symbole: i, n, Eingaben, vorherige Summen als sum_OUTPUT_prev (z.B. sum_tprot_prev), letztes Ergebnis als prev_OUTPUT.
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '3px 0' }}>
+            <div style={{ fontSize: 8, color: '#c2410c', fontWeight: 700 }}>Zusatzrechnungen je Schicht</div>
+            <button className="nodrag" onClick={() => addOptCalc(oi)} style={{ fontSize: 9, border: 'none', background: '#fed7aa', borderRadius: 3, padding: '1px 5px', cursor: 'pointer' }}>+</button>
+          </div>
+          {(opt.calcs || []).map((calc, ci) => (
+            <div key={calc.id} style={{ background: '#fff', border: '1px solid #fed7aa', borderRadius: 3, padding: 4, marginBottom: 4 }}>
+              <div style={{ display: 'flex', gap: 2, alignItems: 'center', marginBottom: 2 }}>
+                <F value={calc.name} placeholder="k_{pos,exp,i}" onChange={e => setOptCalc(oi, ci, { name: e.target.value })} style={{ flex: 1.4 }} />
+                <F value={calc.label} placeholder="Positionsbeiwert" onChange={e => setOptCalc(oi, ci, { label: e.target.value })} style={{ flex: 1.6 }} />
+                <F value={calc.unit} placeholder="-" onChange={e => setOptCalc(oi, ci, { unit: e.target.value })} style={{ flex: 0.6 }} />
+                <button className="nodrag" onClick={() => delOptCalc(oi, ci)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 11, padding: '0 2px' }}>✕</button>
+              </div>
+              <LatexArea
+                value={calc.cond_expr || ''}
+                onChange={v => setOptCalc(oi, ci, { cond_expr: v })}
+                placeholder="Bedingung optional, z.B. sum_tprot_prev <= tprot / 2"
+                style={{ ...inp, fontFamily: 'monospace', fontSize: 8.5, minHeight: 24, marginBottom: 2 }}
+              />
+              <LatexArea
+                value={calc.formula || ''}
+                onChange={v => setOptCalc(oi, ci, { formula: v })}
+                placeholder="Formel, z.B. 1 - 0.6 * sum_tprot_prev / tprot"
+                style={{ ...inp, fontFamily: 'monospace', fontSize: 8.5, minHeight: 28, background: '#ffffbf' }}
+              />
+            </div>
+          ))}
           {outputs.map(o => (
             <div key={o.id} style={{ marginBottom: 2 }}>
-              <div style={{ fontSize: 7.5, color: '#c2410c', fontWeight: 600, marginBottom: 1 }}>{o.name || o.label || o.id}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+                <div style={{ fontSize: 7.5, color: '#c2410c', fontWeight: 600, marginBottom: 1 }}>{o.name || o.label || o.id}</div>
+                <button className="nodrag" onClick={() => addOptCase(oi, o.id)} style={{ fontSize: 8.5, border: 'none', background: '#fed7aa', borderRadius: 3, padding: '1px 5px', cursor: 'pointer' }}>+ Bedingung</button>
+              </div>
               <LatexArea
                 value={opt.formulas?.[o.id] ?? ''}
                 onChange={v => setOptFormula(oi, o.id, v)}
-                placeholder="JS/LaTeX Formel (d, rho als Variablen)"
+                placeholder="Standard-Formel (Fallback, wenn keine Bedingung passt)"
                 style={{ ...inp, fontFamily: 'monospace', fontSize: 8.5, minHeight: 28 }}
               />
+              {(opt.formulaCases?.[o.id] || []).map((c, ci) => (
+                <div key={c.id} style={{ background: '#fff', border: '1px solid #fed7aa', borderRadius: 3, padding: 3, marginTop: 2 }}>
+                  <div style={{ display: 'flex', gap: 2, alignItems: 'center', marginBottom: 2 }}>
+                    <LatexArea
+                      value={c.cond_expr || ''}
+                      onChange={v => setOptCase(oi, o.id, ci, { cond_expr: v })}
+                      placeholder="Bedingung leer = sonst, z.B. sum_tprot_prev <= tprot / 2"
+                      style={{ ...inp, flex: 1, fontFamily: 'monospace', fontSize: 8.5, minHeight: 24 }}
+                    />
+                    <button className="nodrag" onClick={() => delOptCase(oi, o.id, ci)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 11, padding: '0 2px' }}>✕</button>
+                  </div>
+                  <LatexArea
+                    value={c.formula || ''}
+                    onChange={v => setOptCase(oi, o.id, ci, { formula: v })}
+                    placeholder="Formel für diesen Fall"
+                    style={{ ...inp, fontFamily: 'monospace', fontSize: 8.5, minHeight: 28, background: '#ffffbf' }}
+                  />
+                </div>
+              ))}
             </div>
           ))}
         </div>

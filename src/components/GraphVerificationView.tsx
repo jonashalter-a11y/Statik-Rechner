@@ -1560,6 +1560,9 @@ export default function GraphVerificationView({ verification, readOnly = false, 
 
           const res = ev?.results?.[n.id] as any;
           const perIterVals: Record<string, number[]> = res?.loopPerIter ?? {};
+          const perIterCalcVals: Record<string, number[]> = res?.loopCalcPerIter ?? {};
+          const perIterFormulas: Record<string, string[]> = res?.loopFormulas ?? {};
+          const perIterCalcFormulas: Record<string, string[]> = res?.loopCalcFormulas ?? {};
           const aggrVals: Record<string, number> = res?.matrixVals ?? {};
 
           return (
@@ -1631,8 +1634,76 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                   const num = parseFloat(raw);
                   if (isFinite(num)) varVals[normalizeVarName(v.name)] = num;
                 }
+                for (const out of (lb.outputs || [])) {
+                  const prevVals = (perIterVals[out.id] || []).slice(0, i).filter(isFinite);
+                  const prevSum = prevVals.reduce((a, b) => a + b, 0);
+                  const prevLast = prevVals.length ? prevVals[prevVals.length - 1] : NaN;
+                  varVals[`sum_${out.id}_prev`] = prevSum;
+                  varVals[`sum_${out.id}_before`] = prevSum;
+                  if (isFinite(prevLast)) varVals[`prev_${out.id}`] = prevLast;
+                  const currentVal = iterOutVals[out.id];
+                  if (isFinite(currentVal)) {
+                    varVals[out.id] = currentVal;
+                    if (out.name) varVals[normalizeVarName(out.name)] = currentVal;
+                  }
+                }
 
                 const isLatex = (s: string) => s.includes('\\') || s.includes('^{');
+
+                const indexLatexName = (name: string, idx: number | 'n') => {
+                  if (!name) return '';
+                  return name
+                    .replace(/_\{([^{}]*)\}/g, (_m, sub: string) => `_{${sub.replace(/(^|,)i(?=,|$)/g, `$1${idx}`)}}`)
+                    .replace(/_i\b/g, `_${idx}`);
+                };
+
+                const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const jsExprToLatex = (expr: string, replacements: Record<string, string>) => {
+                  let s = expr || '';
+                  for (const [key, value] of Object.entries(replacements).sort((a, b) => b[0].length - a[0].length)) {
+                    s = s.replace(new RegExp(`(?<![\\w$])${escapeRe(key)}(?![\\w$])`, 'g'), value);
+                  }
+                  return s
+                    .replace(/\bMath\.sqrt\s*\(([^()]*)\)/g, '\\sqrt{$1}')
+                    .replace(/\bMath\.pow\s*\(([^,()]+)\s*,\s*([^()]+)\)/g, '{$1}^{$2}')
+                    .replace(/\*/g, '\\cdot ')
+                    .replace(/<=/g, '\\le ')
+                    .replace(/>=/g, '\\ge ')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                };
+
+                const buildLoopFormulaLatex = (expr: string, mode: 'symbols' | 'values') => {
+                  const replacements: Record<string, string> = {};
+                  for (const v of globalVars) {
+                    const raw = stateGlobals[v.id] ?? stateGlobals[v.name] ?? v.default_value ?? '0';
+                    replacements[normalizeVarName(v.name)] = mode === 'values' ? formatNumber(parseFloat(raw)) : v.name;
+                  }
+                  for (const v of layerVars) {
+                    const raw = item[v.id] ?? item[v.name] ?? v.default_value ?? '0';
+                    replacements[normalizeVarName(v.name)] = mode === 'values' ? formatNumber(parseFloat(raw)) : indexLatexName(v.name, i + 1) || v.name;
+                  }
+                  for (const out of (lb.outputs || [])) {
+                    const prevVals = (perIterVals[out.id] || []).slice(0, i).filter(isFinite);
+                    const currentVal = iterOutVals[out.id];
+                    const prevSymbolTerms = prevVals.map((_, pi) => indexLatexName(out.name, pi + 1) || `${out.id}_{${pi + 1}}`);
+                    const prevValueTerms = prevVals.map(v => formatNumber(v));
+                    const sumText = mode === 'values'
+                      ? (prevValueTerms.length ? `(${prevValueTerms.join(' + ')})` : '0')
+                      : (prevSymbolTerms.length ? `(${prevSymbolTerms.join(' + ')})` : '0');
+                    replacements[`sum_${out.id}_prev`] = sumText;
+                    replacements[`sum_${out.id}_before`] = sumText;
+                    const prevLast = prevVals.length ? prevVals[prevVals.length - 1] : NaN;
+                    if (isFinite(prevLast)) replacements[`prev_${out.id}`] = mode === 'values' ? formatNumber(prevLast) : (prevSymbolTerms[prevSymbolTerms.length - 1] || `prev_${out.id}`);
+                    replacements[out.id] = mode === 'values'
+                      ? (isFinite(currentVal) ? formatNumber(currentVal) : '?')
+                      : (indexLatexName(out.name, i + 1) || `${out.id}_{${i + 1}}`);
+                    if (out.name) {
+                      replacements[normalizeVarName(out.name)] = replacements[out.id];
+                    }
+                  }
+                  return jsExprToLatex(expr, replacements);
+                };
 
                 // Substitution in LaTeX-Formel: Var-Namen durch Zahlenwerte ersetzen
                 // Probiert sowohl `d_i` als auch `d_{i}` Schreibweisen
@@ -1698,10 +1769,43 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                       </div>
                     )}
 
+                    {/* Zusatzrechnungen des Materials */}
+                    {selectedOpt && (selectedOpt.calcs || []).map(calc => {
+                      const val = perIterCalcVals[calc.id]?.[i] ?? NaN;
+                      const formula = perIterCalcFormulas[calc.id]?.[i] || calc.formula || '';
+                      if (!formula && !isFinite(val)) return null;
+                      if (calc.name && isFinite(val)) varVals[normalizeVarName(calc.name)] = val;
+                      const isLatexFormula = isLatex(formula);
+                      const subLatex = isLatexFormula ? substituteLatex(formula) : '';
+                      const jsFormula = isLatexFormula ? latexToJs(formula) : formula;
+                      const subJs = jsFormula ? substituteValues(jsFormula, varVals) : '';
+                      const symbolFormula = !isLatexFormula ? buildLoopFormulaLatex(jsFormula, 'symbols') : '';
+                      const valueFormula = !isLatexFormula ? buildLoopFormulaLatex(jsFormula, 'values') : '';
+                      return (
+                        <div key={calc.id} style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 2, padding: '4px 7px', marginTop: 4, overflowX: 'auto' }}>
+                          <div style={{ fontSize: 9, color: '#c2410c', fontWeight: 700, marginBottom: 1 }}>
+                            {calc.name && <MathDisplay latex={calc.name} />}
+                          </div>
+                          <div style={{ color: '#111827', fontSize: 13, fontWeight: 500 }}>
+                            {isLatexFormula
+                              ? <MathDisplay
+                                  latex={`${calc.label || ''}${calc.label ? ' = ' : ''}${subLatex || formula}${isFinite(val) ? ` = \\underline{${formatNumber(val)}${calc.unit ? `\\;\\mathrm{${calc.unit.replace(/\//g, '/')}}` : ''}}` : ''}`}
+                                  display
+                                />
+                              : <>
+                                  <MathDisplay latex={`${calc.label || ''}${calc.label ? ' = ' : ''}${symbolFormula}`} display />
+                                  <MathDisplay latex={`= ${valueFormula}${isFinite(val) ? ` = \\underline{${formatNumber(val)}${calc.unit ? `\\;\\mathrm{${calc.unit.replace(/\//g, '/')}}` : ''}}` : ''}`} display />
+                                </>
+                            }
+                          </div>
+                        </div>
+                      );
+                    })}
+
                     {/* Ausgaben dieser Iteration — mit Formelzeile */}
                     {selLabel && (lb.outputs || []).map(out => {
                       const val = iterOutVals[out.id];
-                      const formula = selectedOpt?.formulas?.[out.id] ?? '';
+                      const formula = perIterFormulas[out.id]?.[i] ?? selectedOpt?.formulas?.[out.id] ?? '';
                       const isLatexFormula = isLatex(formula);
                       // Substitution: LaTeX-Formel → Werte einsetzen
                       const subLatex = isLatexFormula ? substituteLatex(formula) : '';
@@ -1711,51 +1815,29 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                       const hasSubstitution = isLatexFormula
                         ? (subLatex !== formula && subLatex.trim() !== '')
                         : (subJs !== jsFormula && subJs.trim() !== '');
+                      const symbolFormula = !isLatexFormula ? buildLoopFormulaLatex(jsFormula, 'symbols') : '';
+                      const valueFormula = !isLatexFormula ? buildLoopFormulaLatex(jsFormula, 'values') : '';
                       return (
-                        <div key={out.id} style={{ borderTop: '1px solid #fed7aa', paddingTop: 5, marginTop: 5 }}>
-                          {/* Formel mit Variablennamen */}
-                          {formula && (
-                            <div style={{ color: '#9ca3af', marginBottom: 2 }}>
-                              {out.name && <><MathDisplay latex={out.name} />{' = '}</>}
-                              {isLatexFormula
-                                ? <MathDisplay latex={formula} display />
-                                : <span style={{ fontFamily: 'monospace', fontSize: 10.5 }}>{formula}</span>
-                              }
-                            </div>
-                          )}
-                          {/* Formel mit eingesetzten Werten + Ergebnis */}
-                          {formula && hasSubstitution && (
-                            <div style={{ color: '#78716c', marginBottom: 3 }}>
-                              {isLatexFormula
+                        <div key={out.id} style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 2, padding: '4px 7px', marginTop: 4, overflowX: 'auto' }}>
+                          <div style={{ fontSize: 9, color: '#c2410c', fontWeight: 700, marginBottom: 1 }}>
+                            {out.name && <MathDisplay latex={out.name} />}
+                          </div>
+                          <div style={{ color: '#111827', fontSize: 13, fontWeight: 500 }}>
+                            {formula
+                              ? isLatexFormula
                                 ? <MathDisplay
-                                    latex={isFinite(val)
-                                      ? `= ${subLatex} = ${formatNumber(val)}${out.unit ? `\\;\\mathrm{${out.unit.replace(/\//g, '/')}}` : ''}`
-                                      : `= ${subLatex}`}
+                                    latex={`${out.label || ''}${out.label ? ' = ' : ''}${hasSubstitution ? subLatex : formula}${isFinite(val) ? ` = \\underline{${formatNumber(val)}${out.unit ? `\\;\\mathrm{${out.unit.replace(/\//g, '/')}}` : ''}}` : ''}`}
                                     display
                                   />
-                                : <span style={{ fontFamily: 'monospace', fontSize: 10.5 }}>
-                                    {'= '}{subJs}
-                                    {isFinite(val) && <span style={{ color: '#c2410c', fontWeight: 700, marginLeft: 4 }}>= {formatNumber(val)}</span>}
-                                  </span>
-                              }
-                            </div>
-                          )}
-                          {/* Wenn keine Substitution möglich: nur das Ergebnis rechts */}
-                          {formula && !hasSubstitution && isFinite(val) && (
-                            <div style={{ fontSize: 11, color: '#c2410c', fontWeight: 700, marginBottom: 3 }}>
-                              = {formatNumber(val)} {out.unit && <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: 9 }}>[{out.unit}]</span>}
-                            </div>
-                          )}
-                          {/* Kompakt-Zeile: Label + Ergebnis */}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                            <span style={{ color: '#6b7280' }}>
-                              {out.label && <span style={{ marginRight: 4 }}>{out.label}</span>}
-                              {out.name && <MathDisplay latex={out.name} />}
-                            </span>
-                            <span style={{ fontWeight: 700, color: isFinite(val) ? '#c2410c' : '#9ca3af' }}>
-                              {isFinite(val) ? formatNumber(val) : '—'}
-                              {out.unit && <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: 10, marginLeft: 3 }}>[{out.unit}]</span>}
-                            </span>
+                                : <>
+                                    <MathDisplay latex={`${out.label || ''}${out.label ? ' = ' : ''}${symbolFormula}`} display />
+                                    <MathDisplay latex={`= ${valueFormula}${isFinite(val) ? ` = \\underline{${formatNumber(val)}${out.unit ? `\\;\\mathrm{${out.unit.replace(/\//g, '/')}}` : ''}}` : ''}`} display />
+                                  </>
+                              : <span style={{ color: isFinite(val) ? '#111827' : '#6b7280', fontWeight: 800 }}>
+                                  {out.label && <span style={{ marginRight: 4 }}>{out.label}</span>}
+                                  {isFinite(val) ? formatNumber(val) : '—'} {out.unit}
+                                </span>
+                            }
                           </div>
                         </div>
                       );

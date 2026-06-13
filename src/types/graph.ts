@@ -296,6 +296,21 @@ export interface GroupCalcOption {
   id: string;
   label: string;         // Auswahl-Text (z.B. "Mineralwolle ≥ 26 kg/m³")
   formulas: Record<string, string>; // output.id → LaTeX-Formel
+  formulaCases?: Record<string, Array<{
+    id: string;
+    cond_expr: string;      // JS-Bedingung, leer = sonst/Standard
+    cond_latex?: string;    // optionale Anzeige-Bedingung
+    formula: string;        // LaTeX- oder JS-Formel
+  }>>;
+  calcs?: Array<{
+    id: string;
+    name: string;           // Symbol, das danach in Formeln verfügbar ist
+    label: string;
+    unit: string;
+    formula: string;        // LaTeX- oder JS-Formel
+    cond_expr?: string;     // optional: nur rechnen, wenn Bedingung erfüllt
+    cond_latex?: string;
+  }>;
 }
 export interface GroupCalcOutput {
   id: string;

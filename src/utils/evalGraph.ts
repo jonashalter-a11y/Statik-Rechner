@@ -177,6 +177,32 @@ function substituteLatexValues(latex: string, symbols: Record<string, number>): 
   return result;
 }
 
+function evalBestEffortFormula(formula: string, vars: Record<string, number>): number {
+  if (!formula?.trim()) return NaN;
+  let val = NaN;
+  try { val = evalFormula(latexToJs(formula), vars) ?? NaN; } catch { val = NaN; }
+  if (!isFinite(val)) {
+    try { val = evalFormula(formula, vars) ?? NaN; } catch { val = NaN; }
+  }
+  return val;
+}
+
+function evalBestEffortCondition(expr: string, vars: Record<string, number>): boolean {
+  if (!expr?.trim()) return true;
+  try {
+    const js = latexCondToJs(expr);
+    if (js) return Boolean(evalFormula(js, vars));
+  } catch { /* try JS below */ }
+  return evalCondExpr(expr, vars);
+}
+
+function indexLoopLatexName(name: string, index: number | 'n') {
+  if (!name) return '';
+  return name
+    .replace(/_\{([^{}]*)\}/g, (_m, sub: string) => `_{${sub.replace(/(^|,)i(?=,|$)/g, `$1${index}`)}}`)
+    .replace(/_i\b/g, `_${index}`);
+}
+
 function extractMissingSymbols(expr: string, symbols: Record<string, number>): string[] {
   if (!expr) return [];
   const cleaned = expr.replace(/Math\.[A-Za-z_$][\w$]*/g, '');
@@ -579,11 +605,16 @@ export function evalGraph(
 
           const perIterVals: Record<string, number[]> = {};
           for (const out of (d.outputs || [])) perIterVals[out.id] = [];
+          const perIterCalcVals: Record<string, number[]> = {};
+          const perIterFormulas: Record<string, string[]> = {};
+          const perIterCalcFormulas: Record<string, string[]> = {};
 
           for (let i = 0; i < n; i++) {
             const item = items[i] ?? {};
             // Lokale Symbole: globale + Iter-Variablen
             const localSym = { ...symbols };
+            setSymbol(localSym, 'i', i + 1);
+            setSymbol(localSym, 'n', n);
             // Globale Vars nochmals sicherstellen (falls symbols zwischenzeitlich überschrieben)
             for (const [k, v2] of Object.entries(globalSymPatch)) setSymbol(localSym, k, v2);
             for (const v of (d.vars || [])) {
@@ -592,23 +623,71 @@ export function evalGraph(
               const num = parseNum(raw);
               if (isFinite(num)) setSymbol(localSym, v.name, num);
               // Indizierte Symbole: d_1, rho_1, …
-              const indexed = `${v.name}_${i + 1}`;
-              if (isFinite(num)) setSymbol(symbols, indexed, num);
+              if (isFinite(num)) {
+                setSymbol(symbols, indexLoopLatexName(v.name, i + 1) || `${v.name}_${i + 1}`, num);
+                if (i === n - 1) setSymbol(symbols, indexLoopLatexName(v.name, 'n') || `${v.name}_n`, num);
+              }
             }
             const selLabel = item['__sel__'] ?? '';
             const opt = (d.options || []).find((o: any) => o.id === selLabel || o.label === selLabel);
+
             for (const out of (d.outputs || [])) {
-              const formula = opt?.formulas?.[out.id] ?? '';
-              let val = NaN;
-              if (formula) {
-                try { val = evalFormula(latexToJs(formula), localSym) ?? NaN; } catch { val = NaN; }
-                if (!isFinite(val)) { try { val = evalFormula(formula, localSym) ?? NaN; } catch { val = NaN; } }
+              const prevVals = perIterVals[out.id] ?? [];
+              const finitePrev = prevVals.filter(isFinite);
+              const prevSum = finitePrev.reduce((a, b) => a + b, 0);
+              const prevLast = finitePrev.length ? finitePrev[finitePrev.length - 1] : NaN;
+              setSymbol(localSym, `sum_${out.id}_prev`, prevSum);
+              setSymbol(localSym, `sum_${out.id}_before`, prevSum);
+              setSymbol(localSym, `prev_${out.id}`, prevLast);
+            }
+
+            for (const calc of (opt?.calcs || [])) {
+              const enabled = evalBestEffortCondition(calc.cond_expr || calc.cond_latex || '', localSym);
+              const val = enabled ? evalBestEffortFormula(calc.formula || '', localSym) : NaN;
+              if (!perIterCalcVals[calc.id]) perIterCalcVals[calc.id] = [];
+              if (!perIterCalcFormulas[calc.id]) perIterCalcFormulas[calc.id] = [];
+              perIterCalcVals[calc.id].push(val);
+              perIterCalcFormulas[calc.id].push(enabled ? (calc.formula || '') : '');
+              if (calc.name && isFinite(val)) {
+                setSymbol(localSym, calc.name, val);
+                setSymbol(symbols, indexLoopLatexName(calc.name, i + 1) || `${calc.name}_${i + 1}`, val);
+                if (i === n - 1) setSymbol(symbols, indexLoopLatexName(calc.name, 'n') || `${calc.name}_n`, val);
+              }
+            }
+
+            for (const out of (d.outputs || [])) {
+              const cases = opt?.formulaCases?.[out.id] || [];
+              const activeCase = cases.find((c: any) => evalBestEffortCondition(c.cond_expr || c.cond_latex || '', localSym));
+              const formula = activeCase?.formula ?? opt?.formulas?.[out.id] ?? '';
+              const val = evalBestEffortFormula(formula, localSym);
+              if (out.id && isFinite(val)) {
+                setSymbol(localSym, out.id, val);
+                setSymbol(localSym, indexLoopLatexName(out.name, i + 1) || out.name, val);
               }
               perIterVals[out.id].push(val);
+              if (!perIterFormulas[out.id]) perIterFormulas[out.id] = [];
+              perIterFormulas[out.id].push(formula);
               // Indiziertes Ausgabe-Symbol: t_prot_1, t_prot_2, …
               if (out.name && isFinite(val)) {
-                const idxName = `${out.name}_${i + 1}`;
-                setSymbol(symbols, idxName, val);
+                setSymbol(symbols, indexLoopLatexName(out.name, i + 1) || `${out.name}_${i + 1}`, val);
+                if (i === n - 1) setSymbol(symbols, indexLoopLatexName(out.name, 'n') || `${out.name}_n`, val);
+              }
+            }
+
+            // Zweiter Durchlauf: Zusatzrechnungen dürfen auch die eben berechneten
+            // Ausgaben derselben Schicht verwenden (z.B. k_pos aus tprot und Summe vorheriger Schichten).
+            for (const calc of (opt?.calcs || [])) {
+              const enabled = evalBestEffortCondition(calc.cond_expr || calc.cond_latex || '', localSym);
+              const val = enabled ? evalBestEffortFormula(calc.formula || '', localSym) : NaN;
+              if (!isFinite(val)) continue;
+              if (!perIterCalcVals[calc.id]) perIterCalcVals[calc.id] = [];
+              if (!perIterCalcFormulas[calc.id]) perIterCalcFormulas[calc.id] = [];
+              perIterCalcVals[calc.id][i] = val;
+              perIterCalcFormulas[calc.id][i] = calc.formula || '';
+              if (calc.name) {
+                setSymbol(localSym, calc.name, val);
+                setSymbol(symbols, indexLoopLatexName(calc.name, i + 1) || `${calc.name}_${i + 1}`, val);
+                if (i === n - 1) setSymbol(symbols, indexLoopLatexName(calc.name, 'n') || `${calc.name}_n`, val);
               }
             }
           }
@@ -632,6 +711,9 @@ export function evalGraph(
             matrixLatex: aggrLatex,
             // Rohdaten für Frontend-Darstellung
             loopPerIter: perIterVals,
+            loopCalcPerIter: perIterCalcVals,
+            loopFormulas: perIterFormulas,
+            loopCalcFormulas: perIterCalcFormulas,
             loopN: n,
           } as any;
           break;
