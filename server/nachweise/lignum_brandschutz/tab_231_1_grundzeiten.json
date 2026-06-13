@@ -1,0 +1,255 @@
+{
+  "version": 1,
+  "exported_at": "2026-06-13T23:12:02.807Z",
+  "verification": {
+    "id": "tab_231_1_grundzeiten",
+    "norm_id": "lignum_brandschutz",
+    "chapter_id": "lignum_brandschutz_3_1_mqcm5nsl",
+    "title": "Tab. 231-1 Grundschutzzeit und Grundisolationszeit",
+    "formula_latex": "",
+    "formula_description": "",
+    "compute_expr": "",
+    "sort_order": 2,
+    "active": 1,
+    "graph_json": "{\"version\":1,\"nodes\":[{\"id\":\"loop_tab231_layers\",\"type\":\"loopblock\",\"position\":{\"x\":437.61878450278834,\"y\":-259.7553024112786},\"data\":{\"kind\":\"loopblock\",\"label\":\"Schichten nach Tab. 231-1\",\"count_label\":\"Anzahl Schichten n\",\"max_count\":16,\"dropdown_label\":\"Material Schicht i bzw. n\",\"vars\":[{\"id\":\"v_d\",\"name\":\"d_{i}\",\"label\":\"Dicke\",\"unit\":\"mm\",\"default_value\":\"\"},{\"id\":\"v_rho\",\"name\":\"\\\\rho_{i}\",\"label\":\"Rohdichte \",\"unit\":\"kg/m^3\",\"default_value\":\"\",\"scope\":\"layer\"},{\"id\":\"v_beta0\",\"name\":\"\\\\beta_0\",\"label\":\"Abbrandrate\",\"unit\":\"mm/min\",\"default_value\":\"0.65\",\"scope\":\"global\"},{\"id\":\"m5rbdz\",\"name\":\"\\\\rho_{n}\",\"label\":\"Rohdichten der letzten Schicht\",\"unit\":\"kg/m^3\",\"default_value\":\"0\",\"scope\":\"global\"},{\"id\":\"fa97jl\",\"name\":\"d_{n}\",\"label\":\"Dicke der letzten Schicht\",\"unit\":\"mm\",\"default_value\":\"0\",\"scope\":\"global\"}],\"outputs\":[{\"id\":\"tprot0\",\"name\":\"t_{prot,0,i}\",\"label\":\"Grundschutzzeit\",\"unit\":\"min\"},{\"id\":\"tins0\",\"name\":\"t_{ins,0,n}\",\"label\":\"Grundisolationszeit\",\"unit\":\"min\"}],\"options\":[{\"id\":\"massivholz\",\"label\":\"Massivholzschalung / Massivholzplatte \",\"formulas\":{\"tprot0\":\"30 \\\\cdot \\\\left(\\\\frac{d_i}{20}\\\\right)^{1,1} \\\\le \\\\frac{d_i}{\\\\beta_0}\",\"tins0\":\"19 \\\\cdot \\\\left(\\\\frac{d_n}{20}\\\\right)^{1,4}\"},\"formulaCases\":{\"tprot0\":[]},\"category\":\"Bekleidung\"},{\"id\":\"rn6r4x\",\"label\":\"Massivholzplatte RF2\",\"category\":\"Bekleidung\",\"formulas\":{\"tprot0\":\"1.1 \\\\left[30 \\\\cdot \\\\left(\\\\frac{d_i}{20}\\\\right)^{1,1}\\\\right] \\\\le \\\\frac{d_i}{\\\\beta_0}\",\"tins0\":\"1.1 \\\\left[19 \\\\cdot \\\\left(\\\\frac{d_n}{20}\\\\right)^{1,4}\\\\right]\"}},{\"id\":\"8inbkp\",\"label\":\"Dreischichtplatte\",\"category\":\"Bekleidung\",\"formulas\":{}},{\"id\":\"furnier_osb\",\"label\":\"Furniersperrholz / Furnierschichtholz / OSB-Platte RF3\",\"formulas\":{\"tprot0\":\"23 \\\\cdot \\\\left(\\\\frac{d_i}{20}\\\\right)^{1,1} \\\\le \\\\frac{d_i}{\\\\beta_0}\",\"tins0\":\"16 \\\\cdot \\\\left(\\\\frac{d_n}{20}\\\\right)^{1,4}\"},\"formulaCases\":{},\"category\":\"Bekleidung\"},{\"id\":\"s5f7af\",\"label\":\"Furniersperrholz / Furnierschichtholz / OSB-Platte RF2\",\"category\":\"Bekleidung\",\"formulas\":{\"tprot0\":\"1.1 \\\\left[23 \\\\cdot \\\\left(\\\\frac{d_i}{20}\\\\right)^{1,1}\\\\right] \\\\le \\\\frac{d_i}{\\\\beta_0} \",\"tins0\":\"1.1 \\\\left[16 \\\\cdot \\\\left(\\\\frac{d_n}{20}\\\\right)^{1,4}\\\\right]\"}},{\"id\":\"span_faser\",\"label\":\"Spanplatte / Faserplatte\",\"formulas\":{\"tprot0\":\"33 \\\\cdot \\\\left(\\\\frac{d_i}{20}\\\\right)^{1,1} \\\\le \\\\frac{d_i}{\\\\beta_0}\",\"tins0\":\"22 \\\\cdot \\\\left(\\\\frac{d_n}{20}\\\\right)^{1,4}\"},\"formulaCases\":{},\"category\":\"Bekleidung\"},{\"id\":\"857v99\",\"label\":\"Zementspanplatte / Faserplatte RF2\",\"category\":\"Bekleidung\",\"formulas\":{\"tprot0\":\"1.1 \\\\left[33 \\\\cdot \\\\left(\\\\frac{d_i}{20}\\\\right)^{1,1}\\\\right] \\\\le \\\\frac{d_i}{\\\\beta_0}\",\"tins0\":\"1.1 \\\\left[22 \\\\cdot \\\\left(\\\\frac{d_n}{20}\\\\right)^{1,4}\\\\right]\"}},{\"id\":\"gips\",\"label\":\"Gipsplatte / Gipsfaserplatte\",\"formulas\":{\"tprot0\":\"30 \\\\cdot \\\\left(\\\\frac{d_i}{15}\\\\right)^{1,2}\",\"tins0\":\"24 \\\\cdot \\\\left(\\\\frac{d_n}{15}\\\\right)^{1,4}\"},\"formulaCases\":{},\"category\":\"Bekleidung\"},{\"id\":\"mineralwolle_ge_26\",\"label\":\"Mineralwolle ρ >= 26 kg/m3, Schmelzpunkt >= 1000 °C\",\"formulas\":{\"tprot0\":\"0,3 \\\\cdot d_i^{0,75 \\\\cdot \\\\log(\\\\rho_i) - \\\\frac{\\\\rho_i}{400}}\",\"tins0\":\"(0,01 \\\\cdot \\\\rho_n^{0,224} - 0,02) \\\\cdot d_n^2\"},\"formulaCases\":{},\"category\":\"Dämmung\"},{\"id\":\"mineralwolle_ge_15\",\"label\":\"Mineralwolle ρ >= 15 kg/m3, Schmelzpunkt < 1000 °C\",\"formulas\":{\"tprot0\":\"(0,0007 \\\\cdot \\\\rho_i + 0,046) \\\\cdot d_i + 13 \\\\le 30\",\"tins0\":\"0\"},\"formulaCases\":{\"tprot0\":[{\"id\":\"mw_low_lt_40\",\"cond_expr\":\"d_{i} < 40\",\"formula\":\"0\"}]},\"category\":\"Dämmung\"},{\"id\":\"uewpqg\",\"label\":\"Hohlraum\",\"formulas\":{\"tprot0\":\"0\",\"tins0\":\"0\"},\"category\":\"Hohlraum\"}],\"aggregations\":[{\"output_id\":\"tprot0\",\"method\":\"last\",\"expr\":\"sum_tprot0_before_last\",\"name\":\"sum_tprot0_before_last\",\"label\":\"Summe Grundschutzzeiten vor letzter Schicht\",\"unit\":\"min\"},{\"output_id\":\"last_tins0\",\"method\":\"expr\",\"expr\":\"last_tins0\",\"name\":\"last_tins0\",\"label\":\"Grundisolationszeit letzte Schicht\",\"unit\":\"min\"},{\"output_id\":\"t_tab_231\",\"method\":\"expr\",\"expr\":\"sum_tprot0_before_last + last_tins0\",\"name\":\"t_tab_231\",\"label\":\"vereinfachte Zeit nach Tab. 231-1\",\"unit\":\"min\"}],\"option_categories\":[\"Bekleidung\",\"Dämmung\",\"Hohlraum\"]},\"style\":{\"width\":560,\"height\":620}}],\"edges\":[],\"display_order\":[\"loop_tab231_layers\"]}",
+    "notes": "Automatisch erzeugter Loopblock fuer Tabelle 231-1."
+  },
+  "chapter": {
+    "id": "lignum_brandschutz_3_1_mqcm5nsl",
+    "norm_id": "lignum_brandschutz",
+    "parent_id": null,
+    "number": "3.1",
+    "title": "Bauteile und Verbindungen",
+    "sort_order": 1
+  },
+  "variables": [],
+  "tables": [],
+  "graph": {
+    "version": 1,
+    "nodes": [
+      {
+        "id": "loop_tab231_layers",
+        "type": "loopblock",
+        "position": {
+          "x": 437.61878450278834,
+          "y": -259.7553024112786
+        },
+        "data": {
+          "kind": "loopblock",
+          "label": "Schichten nach Tab. 231-1",
+          "count_label": "Anzahl Schichten n",
+          "max_count": 16,
+          "dropdown_label": "Material Schicht i bzw. n",
+          "vars": [
+            {
+              "id": "v_d",
+              "name": "d_{i}",
+              "label": "Dicke",
+              "unit": "mm",
+              "default_value": ""
+            },
+            {
+              "id": "v_rho",
+              "name": "\\rho_{i}",
+              "label": "Rohdichte ",
+              "unit": "kg/m^3",
+              "default_value": "",
+              "scope": "layer"
+            },
+            {
+              "id": "v_beta0",
+              "name": "\\beta_0",
+              "label": "Abbrandrate",
+              "unit": "mm/min",
+              "default_value": "0.65",
+              "scope": "global"
+            },
+            {
+              "id": "m5rbdz",
+              "name": "\\rho_{n}",
+              "label": "Rohdichten der letzten Schicht",
+              "unit": "kg/m^3",
+              "default_value": "0",
+              "scope": "global"
+            },
+            {
+              "id": "fa97jl",
+              "name": "d_{n}",
+              "label": "Dicke der letzten Schicht",
+              "unit": "mm",
+              "default_value": "0",
+              "scope": "global"
+            }
+          ],
+          "outputs": [
+            {
+              "id": "tprot0",
+              "name": "t_{prot,0,i}",
+              "label": "Grundschutzzeit",
+              "unit": "min"
+            },
+            {
+              "id": "tins0",
+              "name": "t_{ins,0,n}",
+              "label": "Grundisolationszeit",
+              "unit": "min"
+            }
+          ],
+          "options": [
+            {
+              "id": "massivholz",
+              "label": "Massivholzschalung / Massivholzplatte ",
+              "formulas": {
+                "tprot0": "30 \\cdot \\left(\\frac{d_i}{20}\\right)^{1,1} \\le \\frac{d_i}{\\beta_0}",
+                "tins0": "19 \\cdot \\left(\\frac{d_n}{20}\\right)^{1,4}"
+              },
+              "formulaCases": {
+                "tprot0": []
+              },
+              "category": "Bekleidung"
+            },
+            {
+              "id": "rn6r4x",
+              "label": "Massivholzplatte RF2",
+              "category": "Bekleidung",
+              "formulas": {
+                "tprot0": "1.1 \\left[30 \\cdot \\left(\\frac{d_i}{20}\\right)^{1,1}\\right] \\le \\frac{d_i}{\\beta_0}",
+                "tins0": "1.1 \\left[19 \\cdot \\left(\\frac{d_n}{20}\\right)^{1,4}\\right]"
+              }
+            },
+            {
+              "id": "8inbkp",
+              "label": "Dreischichtplatte",
+              "category": "Bekleidung",
+              "formulas": {}
+            },
+            {
+              "id": "furnier_osb",
+              "label": "Furniersperrholz / Furnierschichtholz / OSB-Platte RF3",
+              "formulas": {
+                "tprot0": "23 \\cdot \\left(\\frac{d_i}{20}\\right)^{1,1} \\le \\frac{d_i}{\\beta_0}",
+                "tins0": "16 \\cdot \\left(\\frac{d_n}{20}\\right)^{1,4}"
+              },
+              "formulaCases": {},
+              "category": "Bekleidung"
+            },
+            {
+              "id": "s5f7af",
+              "label": "Furniersperrholz / Furnierschichtholz / OSB-Platte RF2",
+              "category": "Bekleidung",
+              "formulas": {
+                "tprot0": "1.1 \\left[23 \\cdot \\left(\\frac{d_i}{20}\\right)^{1,1}\\right] \\le \\frac{d_i}{\\beta_0} ",
+                "tins0": "1.1 \\left[16 \\cdot \\left(\\frac{d_n}{20}\\right)^{1,4}\\right]"
+              }
+            },
+            {
+              "id": "span_faser",
+              "label": "Spanplatte / Faserplatte",
+              "formulas": {
+                "tprot0": "33 \\cdot \\left(\\frac{d_i}{20}\\right)^{1,1} \\le \\frac{d_i}{\\beta_0}",
+                "tins0": "22 \\cdot \\left(\\frac{d_n}{20}\\right)^{1,4}"
+              },
+              "formulaCases": {},
+              "category": "Bekleidung"
+            },
+            {
+              "id": "857v99",
+              "label": "Zementspanplatte / Faserplatte RF2",
+              "category": "Bekleidung",
+              "formulas": {
+                "tprot0": "1.1 \\left[33 \\cdot \\left(\\frac{d_i}{20}\\right)^{1,1}\\right] \\le \\frac{d_i}{\\beta_0}",
+                "tins0": "1.1 \\left[22 \\cdot \\left(\\frac{d_n}{20}\\right)^{1,4}\\right]"
+              }
+            },
+            {
+              "id": "gips",
+              "label": "Gipsplatte / Gipsfaserplatte",
+              "formulas": {
+                "tprot0": "30 \\cdot \\left(\\frac{d_i}{15}\\right)^{1,2}",
+                "tins0": "24 \\cdot \\left(\\frac{d_n}{15}\\right)^{1,4}"
+              },
+              "formulaCases": {},
+              "category": "Bekleidung"
+            },
+            {
+              "id": "mineralwolle_ge_26",
+              "label": "Mineralwolle ρ >= 26 kg/m3, Schmelzpunkt >= 1000 °C",
+              "formulas": {
+                "tprot0": "0,3 \\cdot d_i^{0,75 \\cdot \\log(\\rho_i) - \\frac{\\rho_i}{400}}",
+                "tins0": "(0,01 \\cdot \\rho_n^{0,224} - 0,02) \\cdot d_n^2"
+              },
+              "formulaCases": {},
+              "category": "Dämmung"
+            },
+            {
+              "id": "mineralwolle_ge_15",
+              "label": "Mineralwolle ρ >= 15 kg/m3, Schmelzpunkt < 1000 °C",
+              "formulas": {
+                "tprot0": "(0,0007 \\cdot \\rho_i + 0,046) \\cdot d_i + 13 \\le 30",
+                "tins0": "0"
+              },
+              "formulaCases": {
+                "tprot0": [
+                  {
+                    "id": "mw_low_lt_40",
+                    "cond_expr": "d_{i} < 40",
+                    "formula": "0"
+                  }
+                ]
+              },
+              "category": "Dämmung"
+            },
+            {
+              "id": "uewpqg",
+              "label": "Hohlraum",
+              "formulas": {
+                "tprot0": "0",
+                "tins0": "0"
+              },
+              "category": "Hohlraum"
+            }
+          ],
+          "aggregations": [
+            {
+              "output_id": "tprot0",
+              "method": "last",
+              "expr": "sum_tprot0_before_last",
+              "name": "sum_tprot0_before_last",
+              "label": "Summe Grundschutzzeiten vor letzter Schicht",
+              "unit": "min"
+            },
+            {
+              "output_id": "last_tins0",
+              "method": "expr",
+              "expr": "last_tins0",
+              "name": "last_tins0",
+              "label": "Grundisolationszeit letzte Schicht",
+              "unit": "min"
+            },
+            {
+              "output_id": "t_tab_231",
+              "method": "expr",
+              "expr": "sum_tprot0_before_last + last_tins0",
+              "name": "t_tab_231",
+              "label": "vereinfachte Zeit nach Tab. 231-1",
+              "unit": "min"
+            }
+          ],
+          "option_categories": [
+            "Bekleidung",
+            "Dämmung",
+            "Hohlraum"
+          ]
+        },
+        "style": {
+          "width": 560,
+          "height": 620
+        }
+      }
+    ],
+    "edges": [],
+    "display_order": [
+      "loop_tab231_layers"
+    ]
+  }
+}

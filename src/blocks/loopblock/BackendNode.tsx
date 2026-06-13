@@ -22,7 +22,7 @@ import {
 export function LoopBlockNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as LoopBlockData;
   const { updateNodeData } = useGraphCtx();
-  const set = (p: Partial<LoopBlockData>) => updateNodeData(id, { ...d, ...p });
+  const set = (p: Partial<LoopBlockData>) => updateNodeData(id, p);
   const uid = () => Math.random().toString(36).slice(2, 8);
 
   // Vars
@@ -34,8 +34,9 @@ export function LoopBlockNode({ id, data, selected }: NodeProps) {
   const setOut = (i: number, p: Partial<GroupCalcOutput>) => { const a = [...(d.outputs || [])]; a[i] = { ...a[i], ...p }; set({ outputs: a }); };
   const delOut = (i: number) => set({ outputs: (d.outputs || []).filter((_, j) => j !== i) });
   // Options
-  const addOpt = () => set({ options: [...(d.options || []), { id: uid(), label: '', formulas: {} }] });
+  const addOpt = () => set({ options: [...(d.options || []), { id: uid(), label: '', category: (d.option_categories || [])[0] || '', formulas: {} }] });
   const setOptLabel = (i: number, label: string) => { const a = [...(d.options || [])]; a[i] = { ...a[i], label }; set({ options: a }); };
+  const setOptCategory = (i: number, category: string) => { const a = [...(d.options || [])]; a[i] = { ...a[i], category }; set({ options: a }); };
   const setOptFormula = (i: number, outId: string, formula: string) => {
     const a = [...(d.options || [])]; a[i] = { ...a[i], formulas: { ...a[i].formulas, [outId]: formula } }; set({ options: a });
   };
@@ -85,6 +86,32 @@ export function LoopBlockNode({ id, data, selected }: NodeProps) {
     set({ options: a });
   };
   const delOpt = (i: number) => set({ options: (d.options || []).filter((_, j) => j !== i) });
+  const moveOpt = (i: number, dir: -1 | 1) => {
+    const a = [...(d.options || [])];
+    const j = i + dir;
+    if (j < 0 || j >= a.length) return;
+    [a[i], a[j]] = [a[j], a[i]];
+    set({ options: a });
+  };
+  // Frei definierbare Material-Kategorien für das Dropdown je Material.
+  const addCategory = () => set({ option_categories: [...(d.option_categories || []), `Kategorie ${(d.option_categories || []).length + 1}`] });
+  const setCategory = (i: number, value: string) => {
+    const categories = [...(d.option_categories || [])];
+    const oldValue = categories[i];
+    categories[i] = value;
+    set({
+      option_categories: categories,
+      options: (d.options || []).map(opt => (opt.category === oldValue ? { ...opt, category: value } : opt)),
+    });
+  };
+  const delCategory = (i: number) => {
+    const categories = d.option_categories || [];
+    const deleted = categories[i];
+    set({
+      option_categories: categories.filter((_, j) => j !== i),
+      options: (d.options || []).map(opt => (opt.category === deleted ? { ...opt, category: '' } : opt)),
+    });
+  };
   // Aggregations
   const addAggr = () => set({ aggregations: [...(d.aggregations || []), { output_id: '', method: 'sum', name: '', label: '', unit: '' }] });
   const setAggr = (i: number, p: Partial<LoopBlockAggr>) => { const a = [...(d.aggregations || [])]; a[i] = { ...a[i], ...p }; set({ aggregations: a }); };
@@ -92,6 +119,7 @@ export function LoopBlockNode({ id, data, selected }: NodeProps) {
 
   const outputs = d.outputs || [];
   const options = d.options || [];
+  const categories = d.option_categories || [];
 
   return (
     <Shell id={id} type="loopblock" selected={selected}>
@@ -109,6 +137,18 @@ export function LoopBlockNode({ id, data, selected }: NodeProps) {
       </div>
       <div style={lbl}>Dropdown-Bezeichnung</div>
       <F value={d.dropdown_label || ''} placeholder="Material / Schicht" onChange={e => set({ dropdown_label: e.target.value })} />
+
+      {/* Material-Kategorien */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+        <div style={lbl}>Material-Kategorien</div>
+        <button className="nodrag" onClick={addCategory} style={{ fontSize: 10, border: 'none', background: '#fed7aa', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>+</button>
+      </div>
+      {categories.map((cat, i) => (
+        <div key={`category_${i}`} style={{ display: 'flex', gap: 2, alignItems: 'center', marginBottom: 2 }}>
+          <F value={cat} placeholder="Hohlraum" onChange={e => setCategory(i, e.target.value)} style={{ flex: 1 }} />
+          <button className="nodrag" onClick={() => delCategory(i)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 11, padding: '0 2px' }}>✕</button>
+        </div>
+      ))}
 
       {/* Variablen */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
@@ -156,6 +196,50 @@ export function LoopBlockNode({ id, data, selected }: NodeProps) {
         <div key={opt.id} style={{ background: '#fff7f0', border: '1px solid #fb923c', borderRadius: 4, padding: '4px 5px', marginBottom: 4 }}>
           <div style={{ display: 'flex', gap: 2, alignItems: 'center', marginBottom: 3 }}>
             <F value={opt.label} placeholder="Mineralwolle ≥ 26 kg/m³" onChange={e => setOptLabel(oi, e.target.value)} style={{ flex: 1 }} />
+            <select
+              className="nodrag"
+              value={opt.category || ''}
+              onChange={e => setOptCategory(oi, e.target.value)}
+              title="Material-Kategorie"
+              style={{ ...inp, flex: '0 0 110px', fontSize: 9, height: 23 }}
+            >
+              <option value="">Typ</option>
+              {categories.map((cat, i) => (
+                <option key={`category_option_${i}`} value={cat}>{cat}</option>
+              ))}
+            </select>
+            <button
+              className="nodrag"
+              disabled={oi === 0}
+              onClick={() => moveOpt(oi, -1)}
+              title="Material nach oben schieben"
+              style={{
+                border: '1px solid #fed7aa',
+                background: oi === 0 ? '#f3f4f6' : '#fff',
+                color: oi === 0 ? '#cbd5e1' : '#c2410c',
+                borderRadius: 4,
+                cursor: oi === 0 ? 'not-allowed' : 'pointer',
+                fontSize: 9,
+                padding: '2px 5px',
+                whiteSpace: 'nowrap',
+              }}
+            >Hoch</button>
+            <button
+              className="nodrag"
+              disabled={oi === options.length - 1}
+              onClick={() => moveOpt(oi, 1)}
+              title="Material nach unten schieben"
+              style={{
+                border: '1px solid #fed7aa',
+                background: oi === options.length - 1 ? '#f3f4f6' : '#fff',
+                color: oi === options.length - 1 ? '#cbd5e1' : '#c2410c',
+                borderRadius: 4,
+                cursor: oi === options.length - 1 ? 'not-allowed' : 'pointer',
+                fontSize: 9,
+                padding: '2px 5px',
+                whiteSpace: 'nowrap',
+              }}
+            >Runter</button>
             <button className="nodrag" onClick={() => delOpt(oi)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 11, padding: '0 2px' }}>✕</button>
           </div>
           <div style={{ fontSize: 7.5, color: '#9ca3af', marginBottom: 3 }}>

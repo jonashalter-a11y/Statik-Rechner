@@ -401,6 +401,7 @@ export interface LoopBlockData {
   max_count: number;         // Maximale Iterationen
   // Template pro Iteration (gleiche Struktur wie GroupCalcData)
   dropdown_label: string;
+  option_categories?: string[]; // frei definierbare Materialgruppen, z.B. "Hohlraum" / "Dämmung"
   vars: GroupCalcVar[];
   options: GroupCalcOption[];
   outputs: GroupCalcOutput[];
@@ -423,6 +424,7 @@ export interface GroupCalcVar {
 export interface GroupCalcOption {
   id: string;
   label: string;         // Auswahl-Text (z.B. "Mineralwolle ≥ 26 kg/m³")
+  category?: string;     // optionale Gruppe aus LoopBlockData.option_categories
   formulas: Record<string, string>; // output.id → LaTeX-Formel
   formulaCases?: Record<string, Array<{
     id: string;

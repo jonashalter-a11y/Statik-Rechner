@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "exported_at": "2026-06-13T22:41:00.866Z",
+  "verification": {
+    "id": "bauteile_verbindungen_schichtnachweis",
+    "norm_id": "lignum_brandschutz",
+    "chapter_id": "lignum_brandschutz_3_1_mqcm5nsl",
+    "title": "Bauteile und Verbindungen - Schichtnachweis",
+    "formula_latex": "",
+    "formula_description": "",
+    "compute_expr": "",
+    "sort_order": 1,
+    "active": 0,
+    "graph_json": "{\"version\":1,\"nodes\":[],\"edges\":[],\"display_order\":[],\"hidden_nodes\":[\"layers_fire_resistance\",\"comment_hollow_spaces\",\"check_brandabschnitt\",\"calc_result_tins\",\"comment_norm_basis\",\"t_erf_required\"]}",
+    "notes": "Automatisch erzeugter Nachweis aus den Kapiteln 2.2 bis 2.4 fuer Bauteile und Verbindungen."
+  },
+  "chapter": {
+    "id": "lignum_brandschutz_3_1_mqcm5nsl",
+    "norm_id": "lignum_brandschutz",
+    "parent_id": null,
+    "number": "3.1",
+    "title": "Bauteile und Verbindungen",
+    "sort_order": 1
+  },
+  "variables": [],
+  "tables": [],
+  "graph": {
+    "version": 1,
+    "nodes": [],
+    "edges": [],
+    "display_order": [],
+    "hidden_nodes": [
+      "layers_fire_resistance",
+      "comment_hollow_spaces",
+      "check_brandabschnitt",
+      "calc_result_tins",
+      "comment_norm_basis",
+      "t_erf_required"
+    ]
+  },
+  "deleted_at": "2026-06-13T22:41:00.881Z"
+}
