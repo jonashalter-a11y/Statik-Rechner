@@ -345,6 +345,17 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
       const isFormField = tag === 'input' || tag === 'textarea' || tag === 'select' || target?.isContentEditable;
       if (isFormField) return;
       const mod = event.metaKey || event.ctrlKey;
+
+      // Delete ausgewählte Blöcke (Delete oder Backspace)
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        event.preventDefault();
+        const selectedNodes = nodes.filter(n => n.selected);
+        const selectedEdges = edges.filter(e => e.selected);
+        selectedNodes.forEach(n => removeNode(n.id));
+        selectedEdges.forEach(e => setEdges(es => es.filter(x => x.id !== e.id)));
+        return;
+      }
+
       if (!mod) return;
       if (event.key.toLowerCase() === 'z') {
         event.preventDefault();
@@ -362,7 +373,7 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [copySelected, pasteCopied, undoGraph, redoGraph]);
+  }, [copySelected, pasteCopied, undoGraph, redoGraph, nodes, edges, removeNode, setEdges]);
 
   const ctxValue = useMemo(() => ({
     updateNodeData, removeNode, dbTables, loadTableFull,

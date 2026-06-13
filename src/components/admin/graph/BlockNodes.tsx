@@ -21,6 +21,7 @@ import { CommentNode } from '../../../blocks/comment/BackendNode';
 import { SectionNode } from '../../../blocks/section/BackendNode';
 import { GroupCalcNode } from '../../../blocks/groupcalc/BackendNode';
 import { LoopBlockNode } from '../../../blocks/loopblock/BackendNode';
+import { SummenblockNode } from '../../../blocks/summenblock/BackendNode';
 
 export const nodeTypes = {
   variable: VariableNode,
@@ -45,5 +46,6 @@ export const nodeTypes = {
   comment: CommentNode,
   groupcalc: GroupCalcNode,
   loopblock: LoopBlockNode,
+  summenblock: SummenblockNode,
   output: OutputNode,
 };

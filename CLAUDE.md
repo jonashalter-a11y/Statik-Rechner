@@ -150,6 +150,53 @@ var qp = ch * qp0;
 
 ---
 
+## Neue Block-Typen hinzufügen
+
+**Neue Blöcke werden automatisch registriert!**
+
+1. Erstelle einen Ordner in `src/blocks/myblock/` mit 5 Dateien:
+   ```
+   src/blocks/myblock/
+   ├── definition.ts      # Block-Definition (type, icon, label, color)
+   ├── defaults.ts        # Funktion: createDefaultData() → BlockData
+   ├── BackendNode.tsx    # React-Komponente für Admin-Editor UI
+   ├── evaluate.ts        # Funktion: evaluate(node, runtime) → void
+   └── index.ts           # Exports
+   ```
+
+2. Registriere den Block automatisch:
+   ```bash
+   npm run generate-blocks
+   ```
+   Das Script scannt `src/blocks/` und aktualisiert `index.ts` + `evaluators.ts` automatisch.
+
+3. Der Block ist sofort einsatzbereit! Keine manuelle Registrierung nötig.
+
+**Beispiel definition.ts:**
+```typescript
+import { BlockDefinition } from '../types';
+import { myblockDefaults } from './defaults';
+
+export const myblockBlock: BlockDefinition = {
+  type: 'myblock',
+  icon: '🟪',
+  label: 'Mein Block',
+  color: '#9333ea',
+  createDefaultData: myblockDefaults,
+};
+```
+
+**Beispiel defaults.ts:**
+```typescript
+import { BlockData } from '../../types/graph';
+
+export function myblockDefaults(): BlockData {
+  return { kind: 'myblock', name: '', label: '', value: 0 };
+}
+```
+
+---
+
 ## Debugging
 
 | Problem | Prüfen |

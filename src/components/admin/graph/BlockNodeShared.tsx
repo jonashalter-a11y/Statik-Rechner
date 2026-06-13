@@ -39,6 +39,7 @@ export const THEME: Record<string, { bg: string; border: string; icon: string; l
   comment:    { bg: '#fffbeb', border: '#d97706', icon: '💬', label: 'Kommentar' },
   groupcalc:  { bg: '#f0fdfa', border: '#0f766e', icon: '⚙', label: 'Gruppenberechnung' },
   loopblock:  { bg: '#fff7f0', border: '#c2410c', icon: '⟳', label: 'Schleifenblock' },
+  summenblock: { bg: '#f0fdf4', border: '#16a34a', icon: '➕', label: 'Summenblock' },
   output:     { bg: '#f9fafb', border: '#6b7280', icon: '⬜', label: 'PDF / Ausgabe' },
 };
 

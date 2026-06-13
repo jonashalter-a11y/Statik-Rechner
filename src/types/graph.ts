@@ -26,6 +26,7 @@ export type BlockType =
   | 'comment'      // 💬 Kommentar-Block mit optionalem Extra (Link, Bild, Diagramm, Tabelle)
   | 'groupcalc'    // ⚙ Gruppenberechnung: inline Variablen + Fallauswahl + mehrere Ausgaben
   | 'loopblock'    // ⟳ Schleifenblock: n Iterationen mit Aggregation (z.B. Brandschutz-Schichten)
+  | 'summenblock'  // ➕ Summen-Block: Summe von Variablen/Ausdrücken
   | 'output';      // ⬜ PDF/Ausgabe
 
 export type EdgeKind = 'workflow' | 'condition';
@@ -123,6 +124,14 @@ export interface CheckData {
   latex: string;          // Ungleichung als LaTeX, z.B. "\sigma_{m,d} \leq f_{m,d,eff}"
   expr: string;           // auto-abgeleitet: "(sigma_m_d) <= (f_m_d_eff) ? 1 : 0"
   unit?: string;          // Einheit der verglichenen Grösse, z.B. "N/mm^2"
+}
+
+export interface SummenblockData {
+  kind: 'summenblock';
+  name: string;           // Ausgabe-Variable (z.B. "sum")
+  label: string;          // Bezeichnung (z.B. "Summe")
+  unit: string;           // Einheit
+  expr: string;           // Formel (z.B. "a + b + c")
 }
 
 export interface OutputData {
@@ -332,7 +341,7 @@ export type BlockData =
   | VariableData | DropdownData | WoodClassData | TableValueData | CalcData
   | StdCalcData | TableCalcData | ChartLookupData | ConditionData | CheckData | MinMaxData | ImageBlockData
   | TitleData | FrameData | RefData | CasesData | MatrixData | BeamVisualData | SectionData | CommentData
-  | GroupCalcData | LoopBlockData | OutputData;
+  | GroupCalcData | LoopBlockData | SummenblockData | OutputData;
 
 // ── React-Flow-kompatible Node/Edge-Strukturen ──────────────────────────────
 export interface GraphNode {
