@@ -6,6 +6,7 @@ const sia261 = require('./seed-sia261');
 const lignumBrandschutz = require('./seed-lignum-brandschutz');
 const lignumErdbeben = require('./seed-lignum-erdbeben');
 const baustatik = require('./seed-baustatik');
+const { importActiveVerificationExports } = require('./verification-export');
 
 const db = new Database(path.join(__dirname, 'sia265.db'));
 db.pragma('journal_mode = WAL');
@@ -349,6 +350,14 @@ if (chapCount === 0) {
   console.log(`  Lignum Brandschutz: ${lignumBrandschutz.chapters.length} Kap., ${lignumBrandschutz.verifications.length} Nachweise`);
   console.log(`  Lignum Erdbeben: ${lignumErdbeben.chapters.length} Kap., ${lignumErdbeben.verifications.length} Nachweise`);
   console.log(`  Baustatik: ${baustatik.chapters.length} Kap., ${baustatik.verifications.length} Nachweise`);
+}
+
+const jsonSync = importActiveVerificationExports(db);
+if (jsonSync.files > 0) {
+  console.log(`✓ Nachweise aus JSON synchronisiert: ${jsonSync.imported}/${jsonSync.files}`);
+  if (jsonSync.errors.length) {
+    console.warn('⚠ JSON-Nachweise mit Fehlern:', jsonSync.errors);
+  }
 }
 
 module.exports = db;

@@ -275,8 +275,62 @@ function importVerificationExport(db, payload, overrides = {}) {
   });
 
   importTransaction();
-  const filePath = exportVerificationById(db, sourceVerification.id);
+  const filePath = overrides.skipExport ? exportFilePathFor({
+    verification: { ...sourceVerification, norm_id: normId },
+  }) : exportVerificationById(db, sourceVerification.id);
   return { id: sourceVerification.id, file: filePath };
+}
+
+function activeExportFiles() {
+  if (!fs.existsSync(EXPORT_ROOT)) return [];
+  const files = [];
+  for (const normDirName of fs.readdirSync(EXPORT_ROOT)) {
+    if (normDirName === path.basename(TRASH_ROOT)) continue;
+    const normDir = path.join(EXPORT_ROOT, normDirName);
+    if (!fs.statSync(normDir).isDirectory()) continue;
+    for (const fileName of fs.readdirSync(normDir)) {
+      if (!fileName.endsWith('.json')) continue;
+      files.push({
+        normDirName,
+        filePath: path.join(normDir, fileName),
+      });
+    }
+  }
+  return files.sort((a, b) => a.filePath.localeCompare(b.filePath));
+}
+
+function importActiveVerificationExports(db, options = {}) {
+  const files = activeExportFiles();
+  const importedIds = [];
+  const errors = [];
+
+  for (const file of files) {
+    try {
+      const payload = JSON.parse(fs.readFileSync(file.filePath, 'utf8'));
+      const result = importVerificationExport(db, payload, {
+        norm_id: payload?.verification?.norm_id || file.normDirName,
+        skipExport: true,
+      });
+      importedIds.push(result.id);
+    } catch (err) {
+      errors.push({ file: file.filePath, error: String(err.message || err) });
+    }
+  }
+
+  if (options.pruneMissing !== false && files.length > 0) {
+    const placeholders = importedIds.map(() => '?').join(',');
+    if (importedIds.length > 0) {
+      db.prepare(`UPDATE verifications SET active=0 WHERE active=1 AND id NOT IN (${placeholders})`).run(...importedIds);
+    } else {
+      db.prepare('UPDATE verifications SET active=0 WHERE active=1').run();
+    }
+  }
+
+  return {
+    imported: importedIds.length,
+    files: files.length,
+    errors,
+  };
 }
 
 function exportVerificationsByNorm(db, normId) {
@@ -309,6 +363,7 @@ module.exports = {
   exportActiveVerifications,
   exportVerificationById,
   exportVerificationsByNorm,
+  importActiveVerificationExports,
   importVerificationExport,
   deleteExportFile,
   trashVerificationExport,
