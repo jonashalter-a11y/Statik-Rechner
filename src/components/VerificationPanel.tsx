@@ -3,7 +3,7 @@ import { useStore } from '../store/useStore';
 import GraphVerificationView from './GraphVerificationView';
 
 export default function VerificationPanel() {
-  const { verifications, activeVerificationId, updateComment, addVerificationToPrint, printItems } = useStore() as any;
+  const { verifications, activeVerificationId, updateComment, addVerificationToPrint, printItems, graphInputsByVerif, restoreNonce } = useStore() as any;
   const verification = verifications.find((v: any) => v.id === activeVerificationId);
 
   if (!verification) {
@@ -31,7 +31,11 @@ export default function VerificationPanel() {
         </button>
       </div>
 
-      <GraphVerificationView verification={verification} />
+      <GraphVerificationView
+        key={`${verification.id}-${restoreNonce}`}
+        verification={verification}
+        initialInputs={graphInputsByVerif[verification.id]}
+      />
 
       {/* Kommentar */}
       <div style={{ marginTop: 16 }}>

@@ -23,6 +23,8 @@ interface AppState {
   printItems: Array<{ key: string; snapshot: Verification; graphInputs: Record<string, string> }>;
   // Graph-Eingaben je Nachweis (Node-ID → Wert); wird beim Snapshot mitkapturiert
   graphInputsByVerif: Record<string, Record<string, string>>;
+  // Hochgezählt bei jedem restoreFromPrint → erzwingt Re-mount von GraphVerificationView
+  restoreNonce: number;
 
   // Vom Backend geladene Holzdaten
   apiWoodTypes:    ApiWoodType[];
@@ -43,6 +45,8 @@ interface AppState {
   updateComment:   (verificationId: string, comment: string) => void;
   addVerificationToPrint:      (id: string) => void;  // fügt immer eine neue Instanz hinzu
   removeVerificationFromPrint: (key: string) => void; // entfernt genau diese Instanz
+  updatePrintItemInputs: (key: string, inputs: Record<string, string>) => void;
+  restoreFromPrint: (key: string) => void; // Werte aus Print-Item ins Frontend übernehmen
   setGraphInputs: (verifId: string, inputs: Record<string, string>) => void;
   addVerification: (v: Verification) => void;
   globalUnits: string[];             // LaTeX-Einheiten aus der DB
@@ -58,6 +62,14 @@ function toggleChapterInTree(chapters: Chapter[], id: string): Chapter[] {
   return chapters.map(c => {
     if (c.id === id) return { ...c, expanded: !c.expanded };
     if (c.children) return { ...c, children: toggleChapterInTree(c.children, id) };
+    return c;
+  });
+}
+
+function expandChapterInTree(chapters: Chapter[], id: string): Chapter[] {
+  return chapters.map(c => {
+    if (c.id === id) return { ...c, expanded: true };
+    if (c.children) return { ...c, children: expandChapterInTree(c.children, id) };
     return c;
   });
 }
@@ -134,6 +146,7 @@ export const useStore = create<AppState>((set, get) => ({
   verifications: defaultVerifications.map(v => computeVerification(v)),
   printItems: [],
   graphInputsByVerif: {},
+  restoreNonce: 0,
   apiWoodTypes:   [],
   apiWoodClasses: [],
   rawChapterData: [],
@@ -225,6 +238,30 @@ export const useStore = create<AppState>((set, get) => ({
 
   removeVerificationFromPrint: (key) =>
     set(state => ({ printItems: state.printItems.filter(item => item.key !== key) })),
+
+  updatePrintItemInputs: (key, inputs) =>
+    set(state => ({
+      printItems: state.printItems.map(item =>
+        item.key === key ? { ...item, graphInputs: inputs } : item
+      ),
+    })),
+
+  restoreFromPrint: (key) =>
+    set(state => {
+      const item = state.printItems.find(x => x.key === key);
+      if (!item) return state;
+      const chapterId = item.snapshot.chapterId ?? null;
+      const chapters = chapterId
+        ? expandChapterInTree(state.chapters, chapterId)
+        : state.chapters;
+      return {
+        activeVerificationId: item.snapshot.id,
+        activeChapterId: chapterId,
+        chapters,
+        graphInputsByVerif: { ...state.graphInputsByVerif, [item.snapshot.id]: item.graphInputs },
+        restoreNonce: state.restoreNonce + 1,
+      };
+    }),
 
   setGraphInputs: (verifId, inputs) =>
     set(state => ({ graphInputsByVerif: { ...state.graphInputsByVerif, [verifId]: inputs } })),

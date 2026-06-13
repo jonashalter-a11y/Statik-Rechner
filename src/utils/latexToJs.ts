@@ -178,15 +178,24 @@ export function latexToJs(tex: string): string {
   let s = tex;
   // rechte Seite der letzten Gleichung zuerst nehmen
   if (s.includes('=')) { const parts = s.split('='); s = parts[parts.length - 1]; }
-  // \geq minVal am Ende → Math.max(minVal, expr) merken, BEVOR wir den Schwanz entfernen
-  let wrapMin = '';
+  // \geq minExpr am Ende → Math.max(convert(minExpr), result) — Untergrenze (Mindestwert)
+  // \leq maxExpr am Ende → Math.min(convert(maxExpr), result) — Obergrenze (Kappung)
+  let geqLatex = '';
+  let leqLatex = '';
   {
-    const geqM = s.match(/\\(?:geq|geqslant|ge)\b\s*([\s\S]+?)(?:\\leq|\\geq|\\approx|\s*$)/);
-    if (geqM) {
-      let minTex = geqM[1].trim();
-      minTex = minTex.replace(/\\,|\\;|\\!/g, '').replace(/\{,\}/g, '.').replace(/,(?=\d)/g, '.');
-      minTex = minTex.replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '').trim();
-      if (/^[\d.]+$/.test(minTex)) wrapMin = minTex;
+    // Reihenfolge: erst \geq suchen (kann vor \leq stehen), dann \leq
+    const geqM = s.match(/\\(?:geq|geqslant|ge)\b\s*([\s\S]+?)(?=\\leq|\\leqslant|\\le\b|\\geq|\\approx|\s*$)/);
+    if (geqM) geqLatex = geqM[1].trim();
+    const leqM = s.match(/\\(?:leq|leqslant|le)\b\s*([\s\S]+?)(?=\\geq|\\geqslant|\\ge\b|\\approx|\s*$)/);
+    if (leqM) leqLatex = leqM[1].trim();
+    // Rückwärts-Kompatibilität: alte numerische \geq-Behandlung beibehalten
+    if (!geqLatex) {
+      const old = s.match(/\\(?:geq|geqslant|ge)\b\s*([\s\S]+?)(?:\\leq|\\geq|\\approx|\s*$)/);
+      if (old) {
+        let t = old[1].trim().replace(/\\,|\\;|\\!/g, '').replace(/\{,\}/g, '.').replace(/,(?=\d)/g, '.');
+        t = t.replace(/\\[a-zA-Z]+/g, '').replace(/[{}]/g, '').trim();
+        if (/^[\d.]+$/.test(t)) geqLatex = t;
+      }
     }
   }
   // Ungleichungs-Schwanz entfernen
@@ -223,7 +232,15 @@ export function latexToJs(tex: string): string {
        .replace(/Ä/g, 'Ae').replace(/Ö/g, 'Oe').replace(/Ü/g, 'Ue')
        .replace(/ß/g, 'ss');
   s = s.replace(/\s+/g, ' ').trim();
-  // \geq minVal → Math.max(minVal, result)
-  if (wrapMin) s = `Math.max(${wrapMin}, ${s})`;
+  // \geq → Math.max(minJs, result) — Untergrenze
+  if (geqLatex) {
+    const minJs = latexExprToJs(geqLatex);
+    if (minJs) s = `Math.max(${minJs}, ${s})`;
+  }
+  // \leq → Math.min(maxJs, result) — Obergrenze (Kappung)
+  if (leqLatex) {
+    const maxJs = latexExprToJs(leqLatex);
+    if (maxJs) s = `Math.min(${maxJs}, ${s})`;
+  }
   return s;
 }

@@ -20,6 +20,12 @@ export type BlockType =
   | 'frame'        // 🔲 Visueller Rahmen auf dem Canvas (nicht im Frontend gerendert)
   | 'ref'          // 🔗 Referenz auf einen anderen Block (nur Anzeige, kein neuer Eingabe)
   | 'cases'        // ⑂  Fallunterscheidung (piecewise): mehrere Formeln mit JS-Bedingungen
+  | 'matrix'       // ⊞  Materialtabelle: Zeilen = Materialien, Spalten = berechnete Variablen
+  | 'beamvisual'   // 🏗 Träger-Visualisierung (SVG)
+  | 'section'      // ⊕ Querschnitt-Flächenträgheitsmoment
+  | 'comment'      // 💬 Kommentar-Block mit optionalem Extra (Link, Bild, Diagramm, Tabelle)
+  | 'groupcalc'    // ⚙ Gruppenberechnung: inline Variablen + Fallauswahl + mehrere Ausgaben
+  | 'loopblock'    // ⟳ Schleifenblock: n Iterationen mit Aggregation (z.B. Brandschutz-Schichten)
   | 'output';      // ⬜ PDF/Ausgabe
 
 export type EdgeKind = 'workflow' | 'condition';
@@ -186,10 +192,131 @@ export interface CasesData {
   }>;
 }
 
+export interface MatrixData {
+  kind: 'matrix';
+  label: string;
+  row_label: string;   // Dropdown-Label (z.B. "Material / Schicht")
+  columns: Array<{
+    id: string;
+    name: string;      // JS-Variablenname (z.B. "t_prot")
+    header: string;    // Anzeigetext (LaTeX möglich)
+    unit: string;
+  }>;
+  rows: Array<{
+    id: string;
+    label: string;          // Zeilenname / Material (erscheint im Dropdown)
+    cells: string[];        // JS-Ausdruck pro Spalte (für Berechnung)
+    cells_latex?: string[]; // LaTeX-Formel pro Spalte (für Anzeige, optional)
+  }>;
+}
+
+export type SupportType = 'pin' | 'roller' | 'fixed' | 'free';
+
+export interface BeamLoad {
+  id: string;
+  kind: 'distributed' | 'point';
+  var_name: string;       // JS-Variablenname des Lastwertes
+  label: string;          // Anzeigetext (LaTeX möglich)
+  position?: number;      // 0–1 relative Position (nur bei point)
+  pos_var?: string;       // optional: Variablenname für Position
+  direction: 'down' | 'up';
+}
+
+export interface BeamVisualData {
+  kind: 'beamvisual';
+  label: string;
+  span_var: string;       // JS-Variablenname der Stützweite
+  span_unit: string;      // z.B. "m" oder "mm"
+  left_support: SupportType;
+  right_support: SupportType;
+  loads: BeamLoad[];
+}
+
+export interface SectionData {
+  kind: 'section';
+  label: string;
+}
+
+export type CommentExtra = 'none' | 'link' | 'image' | 'chart' | 'table';
+
+export interface CommentData {
+  kind: 'comment';
+  text: string;             // Kommentartext (Markdown-ähnlich, plain)
+  extra: CommentExtra;
+  // extra = 'link'
+  link_url?: string;
+  link_label?: string;
+  // extra = 'image'
+  image?: string;           // base64 Daten-URL
+  image_source?: string;
+  image_caption?: string;
+  // extra = 'chart' | 'table'
+  table_ref?: string;       // db_tables.id
+}
+
+// ── ⟳ Schleifenblock ────────────────────────────────────────────────────────
+// Iteriert n-mal über ein Template (Dropdown + Eingabe-Variablen + Ausgaben).
+// Jede Iteration bekommt indexierte Symbole (d_1, d_2, …, d_n) im globalen
+// Symbolraum. Aggregationen (sum/last/max/min) fassen die Schleifenergebnisse
+// zu einem Gesamtwert zusammen (z.B. Σ t_prot,0,i).
+export interface LoopBlockAggr {
+  output_id: string;         // ID des GroupCalcOutput, der aggregiert wird
+  method: 'sum' | 'last' | 'max' | 'min';
+  name: string;              // LaTeX-Symbol des Gesamtwerts (z.B. "t_{prot,0}")
+  label: string;             // Anzeigetext
+  unit: string;
+}
+export interface LoopBlockData {
+  kind: 'loopblock';
+  label: string;             // Block-Titel
+  count_label: string;       // Beschriftung des Anzahl-Inputs (z.B. "Anzahl Schichten n")
+  max_count: number;         // Maximale Iterationen
+  // Template pro Iteration (gleiche Struktur wie GroupCalcData)
+  dropdown_label: string;
+  vars: GroupCalcVar[];
+  options: GroupCalcOption[];
+  outputs: GroupCalcOutput[];
+  // Aggregationen
+  aggregations: LoopBlockAggr[];
+}
+
+// ── ⚙ Gruppenberechnung ─────────────────────────────────────────────────────
+// Selbst-enthaltener Block: definiert Eingabe-Variablen, eine Fallauswahl
+// und mehrere Ausgaben. Im Frontend werden Variablen-Inputs, Dropdown und
+// berechnete Ausgaben direkt gerendert — keine externen Variable-Blöcke nötig.
+export interface GroupCalcVar {
+  id: string;
+  name: string;          // LaTeX-Variablenname (z.B. "d_i")
+  label: string;         // Anzeigetext (z.B. "Schichtdicke")
+  unit: string;          // Einheit (z.B. "mm")
+  default_value: string; // Standardwert als String
+  scope?: 'layer' | 'global'; // 'layer' = pro Schicht (default), 'global' = einmal für alle
+}
+export interface GroupCalcOption {
+  id: string;
+  label: string;         // Auswahl-Text (z.B. "Mineralwolle ≥ 26 kg/m³")
+  formulas: Record<string, string>; // output.id → LaTeX-Formel
+}
+export interface GroupCalcOutput {
+  id: string;
+  name: string;  // LaTeX-Variablenname (z.B. "t_{prot,0,i}")
+  label: string; // Anzeigetext
+  unit: string;
+}
+export interface GroupCalcData {
+  kind: 'groupcalc';
+  label: string;          // Block-Titel
+  dropdown_label: string; // Dropdown-Beschriftung (z.B. "Material / Schicht")
+  vars: GroupCalcVar[];
+  options: GroupCalcOption[];
+  outputs: GroupCalcOutput[];
+}
+
 export type BlockData =
   | VariableData | DropdownData | WoodClassData | TableValueData | CalcData
   | StdCalcData | TableCalcData | ChartLookupData | ConditionData | CheckData | MinMaxData | ImageBlockData
-  | TitleData | FrameData | RefData | CasesData | OutputData;
+  | TitleData | FrameData | RefData | CasesData | MatrixData | BeamVisualData | SectionData | CommentData
+  | GroupCalcData | LoopBlockData | OutputData;
 
 // ── React-Flow-kompatible Node/Edge-Strukturen ──────────────────────────────
 export interface GraphNode {

@@ -22,6 +22,9 @@ export interface NodeResult {
   activeConditionId?: string;     // condition
   caseValues?: number[];          // minmax: Wert je Ausdruck
   activeCaseIndex?: number;       // minmax: Index des gewählten Ausdrucks
+  matrixVals?: Record<string, number>;   // matrix: berechnete Spaltenwerte
+  matrixLatex?: Record<string, string>;  // matrix: LaTeX-Formel pro Spalte (mit eingesetzten Werten)
+  selectedLabel?: string;         // matrix: gewählte Zeile
   passed?: boolean;               // check: Nachweis erfüllt (true) oder nicht (false)
   skipped?: boolean;              // inaktiver Bedingungszweig
   error?: string;
@@ -342,7 +345,16 @@ export function evalGraph(
             val = parseNum(materialProps[d.name] ?? materialProps[key]);
           } else if (sel?.tableId && sel.rowIndex != null && sel.rowIndex >= 0) {
             const tbl = tables[sel.tableId];
-            if (tbl) val = parseNum(tbl.rows[sel.rowIndex]?.[d.table_col]);
+            if (tbl) {
+              const cellRaw = tbl.rows[sel.rowIndex]?.[d.table_col];
+              const numVal = parseNum(cellRaw);
+              if (isFinite(numVal)) {
+                val = numVal;
+              } else if (typeof cellRaw === 'string' && cellRaw.trim()) {
+                // Cell contains a formula expression — evaluate with current symbols
+                try { val = evalFormula(latexToJs(cellRaw), symbols) ?? NaN; } catch { val = NaN; }
+              }
+            }
           }
           results[node.id] = { value: val };
           if (d.name) setSymbol(symbols, d.name, val);
@@ -499,12 +511,160 @@ export function evalGraph(
           if (d.name && isFinite(v)) setSymbol(symbols, d.name, v);
           break;
         }
+        case 'matrix': {
+          const selLabel = inputs[node.id] ?? '';
+          const rows: any[] = d.rows || [];
+          const cols: any[] = d.columns || [];
+          const row = rows.find(r => r.id === selLabel || r.label === selLabel) ?? rows[0];
+          const colVals: Record<string, number> = {};
+          const colLatex: Record<string, string> = {};
+          if (row) {
+            cols.forEach((col: any, ci: number) => {
+              let cellExpr = (row.cells?.[ci] ?? '').trim();
+              // Wenn cells[ci] LaTeX enthält (noch nicht migriert oder Anzeige-Formel), konvertieren
+              if (cellExpr && cellExpr.includes('\\')) {
+                cellExpr = latexToJs(cellExpr);
+              }
+              // Fallback: wenn leer, LaTeX aus cells_latex auto-konvertieren
+              if (!cellExpr) {
+                const cellLtx = (row.cells_latex?.[ci] ?? '').trim();
+                if (cellLtx) cellExpr = latexToJs(cellLtx);
+              }
+              if (!cellExpr) return;
+              const val = evalFormula(cellExpr, symbols);
+              if (col.name && val != null && isFinite(val)) {
+                setSymbol(symbols, col.name, val);
+                colVals[col.name] = val;
+              }
+              // LaTeX-Formel mit eingesetzten Werten für die Anzeige
+              const cellLatex = (row.cells_latex?.[ci] ?? '').trim();
+              if (cellLatex && col.name) {
+                colLatex[col.name] = substituteLatexValues(cellLatex, symbols);
+              }
+            });
+          }
+          results[node.id] = { matrixVals: colVals, matrixLatex: colLatex, selectedLabel: row?.label ?? '' };
+          break;
+        }
         case 'ref': {
           // Gezogene Kante hat Vorrang über gespeicherte source_id
           const wiredId = incomingFrom(node.id, 'workflow')[0];
           const srcId = wiredId || (d as any).source_id;
           const srcResult = srcId ? results[srcId] : undefined;
           results[node.id] = srcResult ? { ...srcResult } : { value: NaN };
+          break;
+        }
+        case 'beamvisual': {
+          results[node.id] = {};
+          break;
+        }
+        case 'loopblock': {
+          // Schleife über n Iterationen — jede hat eigene Eingaben und Ausgaben.
+          // Indexierte Symbole (d_1, rho_1, … d_n, rho_n) werden ins globale
+          // Symbols-Objekt geschrieben. Aggregationen (sum/last/…) fassen zusammen.
+          let state: { count?: string; items?: Record<string, string>[]; globals?: Record<string, string> } = {};
+          try { state = JSON.parse(inputs[node.id] as string ?? '{}'); } catch { /* */ }
+          const n = Math.max(1, Math.min(parseNum(state.count ?? '1') || 1, d.max_count || 10));
+          const items: Record<string, string>[] = Array.isArray(state.items) ? state.items : [];
+          const stateGlobals: Record<string, string> = state.globals ?? {};
+
+          // Globale Vars (scope='global') einmal auflösen und in symbols schreiben
+          const globalSymPatch: Record<string, number> = {};
+          for (const v of (d.vars || [])) {
+            if (v.scope !== 'global') continue;
+            const raw = stateGlobals[v.id] ?? stateGlobals[v.name] ?? v.default_value ?? '0';
+            const num = parseNum(raw);
+            if (isFinite(num)) { setSymbol(symbols, v.name, num); globalSymPatch[v.name] = num; }
+          }
+
+          const perIterVals: Record<string, number[]> = {};
+          for (const out of (d.outputs || [])) perIterVals[out.id] = [];
+
+          for (let i = 0; i < n; i++) {
+            const item = items[i] ?? {};
+            // Lokale Symbole: globale + Iter-Variablen
+            const localSym = { ...symbols };
+            // Globale Vars nochmals sicherstellen (falls symbols zwischenzeitlich überschrieben)
+            for (const [k, v2] of Object.entries(globalSymPatch)) setSymbol(localSym, k, v2);
+            for (const v of (d.vars || [])) {
+              if (v.scope === 'global') continue; // bereits in globalSymPatch
+              const raw = item[v.id] ?? item[v.name] ?? v.default_value ?? '0';
+              const num = parseNum(raw);
+              if (isFinite(num)) setSymbol(localSym, v.name, num);
+              // Indizierte Symbole: d_1, rho_1, …
+              const indexed = `${v.name}_${i + 1}`;
+              if (isFinite(num)) setSymbol(symbols, indexed, num);
+            }
+            const selLabel = item['__sel__'] ?? '';
+            const opt = (d.options || []).find((o: any) => o.id === selLabel || o.label === selLabel);
+            for (const out of (d.outputs || [])) {
+              const formula = opt?.formulas?.[out.id] ?? '';
+              let val = NaN;
+              if (formula) {
+                try { val = evalFormula(latexToJs(formula), localSym) ?? NaN; } catch { val = NaN; }
+                if (!isFinite(val)) { try { val = evalFormula(formula, localSym) ?? NaN; } catch { val = NaN; } }
+              }
+              perIterVals[out.id].push(val);
+              // Indiziertes Ausgabe-Symbol: t_prot_1, t_prot_2, …
+              if (out.name && isFinite(val)) {
+                const idxName = `${out.name}_${i + 1}`;
+                setSymbol(symbols, idxName, val);
+              }
+            }
+          }
+
+          // Aggregationen
+          const aggrVals: Record<string, number> = {};
+          const aggrLatex: Record<string, string> = {};
+          for (const ag of (d.aggregations || [])) {
+            const vals = perIterVals[ag.output_id] ?? [];
+            const finite = vals.filter(isFinite);
+            let agg = NaN;
+            if (ag.method === 'sum') agg = finite.reduce((a, b) => a + b, 0);
+            else if (ag.method === 'last') agg = finite.length ? finite[finite.length - 1] : NaN;
+            else if (ag.method === 'max') agg = finite.length ? Math.max(...finite) : NaN;
+            else if (ag.method === 'min') agg = finite.length ? Math.min(...finite) : NaN;
+            aggrVals[ag.output_id] = agg;
+            if (ag.name && isFinite(agg)) setSymbol(symbols, ag.name, agg);
+          }
+          results[node.id] = {
+            matrixVals: aggrVals,
+            matrixLatex: aggrLatex,
+            // Rohdaten für Frontend-Darstellung
+            loopPerIter: perIterVals,
+            loopN: n,
+          } as any;
+          break;
+        }
+        case 'section':
+        case 'comment': {
+          results[node.id] = {};
+          break;
+        }
+        case 'groupcalc': {
+          // Inline-Variablen + Fallauswahl + mehrere Ausgaben
+          let stateObj: Record<string, string> = {};
+          try { stateObj = JSON.parse(inputs[node.id] as string ?? '{}'); } catch { /* */ }
+          const localSym = { ...symbols };
+          for (const v of (d.vars || [])) {
+            const raw = stateObj[v.id] ?? stateObj[v.name] ?? v.default_value ?? '0';
+            const num = parseNum(raw);
+            if (isFinite(num)) setSymbol(localSym, v.name, num);
+          }
+          const selLabel = stateObj['__sel__'] ?? '';
+          const opt = (d.options || []).find((o: any) => o.id === selLabel || o.label === selLabel);
+          const outVals: Record<string, number> = {};
+          const outLatex: Record<string, string> = {};
+          for (const out of (d.outputs || [])) {
+            const latex = opt?.formulas?.[out.id] ?? '';
+            if (!latex) { outVals[out.id] = NaN; continue; }
+            const jsExpr = latexToJs(latex);
+            const v = evalFormula(jsExpr, localSym) ?? NaN;
+            outVals[out.id] = v;
+            outLatex[out.id] = substituteLatexValues(latex, localSym);
+            if (out.name && isFinite(v)) setSymbol(symbols, out.name, v);
+          }
+          results[node.id] = { matrixVals: outVals, matrixLatex: outLatex, selectedLabel: selLabel };
           break;
         }
         case 'image':

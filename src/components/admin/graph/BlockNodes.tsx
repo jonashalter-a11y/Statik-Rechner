@@ -10,7 +10,9 @@ import { useStore } from '../../../store/useStore';
 import {
   VariableData, DropdownData, WoodClassData, TableValueData, CalcData,
   StdCalcData, TableCalcData, ChartLookupData, ConditionData, CheckData, MinMaxData, ImageBlockData,
-  TitleData, FrameData, RefData, CasesData, OutputData,
+  TitleData, FrameData, RefData, CasesData, MatrixData, CommentData, CommentExtra, OutputData,
+  GroupCalcData, GroupCalcVar, GroupCalcOption, GroupCalcOutput,
+  LoopBlockData, LoopBlockAggr,
 } from '../../../types/graph';
 
 // ── Block-Stil je Typ ────────────────────────────────────────────────────────
@@ -31,6 +33,12 @@ const THEME: Record<string, { bg: string; border: string; icon: string; label: s
   frame:      { bg: '#f8fafc', border: '#94a3b8', icon: '🔲', label: 'Rahmen' },
   ref:        { bg: '#e0f2fe', border: '#0369a1', icon: '🔗', label: 'Referenz' },
   cases:      { bg: '#faf5ff', border: '#7c3aed', icon: '⑂',  label: 'Fallunterscheidung' },
+  matrix:     { bg: '#ecfeff', border: '#0891b2', icon: '⊞',  label: 'Materialtabelle' },
+  beamvisual: { bg: '#f0fdf4', border: '#15803d', icon: '🏗', label: 'Träger' },
+  section:    { bg: '#fdf4ff', border: '#9333ea', icon: '⊕', label: 'Querschnitt' },
+  comment:    { bg: '#fffbeb', border: '#d97706', icon: '💬', label: 'Kommentar' },
+  groupcalc:  { bg: '#f0fdfa', border: '#0f766e', icon: '⚙', label: 'Gruppenberechnung' },
+  loopblock:  { bg: '#fff7f0', border: '#c2410c', icon: '⟳', label: 'Schleifenblock' },
   output:     { bg: '#f9fafb', border: '#6b7280', icon: '⬜', label: 'PDF / Ausgabe' },
 };
 
@@ -60,7 +68,13 @@ function Shell({ id, type, children, extraHandles, selected }: { id: string; typ
         <span>{t.icon} {t.label}</span>
         <button className="nodrag" onClick={() => removeNode(id)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}>✕</button>
       </div>
-      <div style={{ padding: 4, flex: 1, overflow: 'auto' }}>{children}</div>
+      <div
+        className="nodrag nowheel nopan"
+        onWheelCapture={e => e.stopPropagation()}
+        style={{ padding: 4, flex: 1, overflow: 'auto', overscrollBehavior: 'contain' }}
+      >
+        {children}
+      </div>
       {extraHandles ?? <Handle type="source" position={Position.Right} style={{ background: t.border, width: 7, height: 7 }} />}
     </div>
   );
@@ -1398,6 +1412,702 @@ function CasesNode({ id, data, selected }: NodeProps) {
   );
 }
 
+// ── ⊞ Materialtabelle ────────────────────────────────────────────────────────
+function MatrixNode({ id, data, selected }: NodeProps) {
+  const d = data as unknown as MatrixData;
+  const { updateNodeData } = useGraphCtx();
+  const set = (p: Partial<MatrixData>) => updateNodeData(id, p as any);
+  const cols = d.columns || [];
+  const rows = d.rows || [];
+  const [showPreview, setShowPreview] = useState(false);
+
+  // Migration: altes cells[] hatte LaTeX → in cells_latex verschieben, cells leeren
+  useEffect(() => {
+    const needsMigration = rows.some(r =>
+      !r.cells_latex && r.cells?.some(c => c && (c.includes('\\') || c.includes('^') || c.includes('_')))
+    );
+    if (!needsMigration) return;
+    set({
+      rows: rows.map(r => ({
+        ...r,
+        cells_latex: r.cells_latex ?? r.cells.map(c =>
+          (c && (c.includes('\\') || c.includes('^') || c.includes('_'))) ? c : ''
+        ),
+        cells: r.cells.map(c =>
+          (c && (c.includes('\\') || c.includes('^') || c.includes('_'))) ? '' : c
+        ),
+      })),
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const addCol = () => set({ columns: [...cols, { id: 'c' + Date.now(), name: '', header: '', unit: '' }] });
+  const removeCol = (ci: number) => set({
+    columns: cols.filter((_, i) => i !== ci),
+    rows: rows.map(r => ({
+      ...r,
+      cells: (r.cells || []).filter((_, i) => i !== ci),
+      cells_latex: (r.cells_latex || []).filter((_, i) => i !== ci),
+    })),
+  });
+  const moveCol = (ci: number, dir: -1 | 1) => {
+    const ni = ci + dir;
+    if (ni < 0 || ni >= cols.length) return;
+    const nextCols = [...cols];
+    [nextCols[ci], nextCols[ni]] = [nextCols[ni], nextCols[ci]];
+    const nextRows = rows.map(r => {
+      const cells = [...(r.cells || [])];
+      const cells_latex = [...(r.cells_latex || [])];
+      [cells[ci], cells[ni]] = [cells[ni], cells[ci]];
+      [cells_latex[ci], cells_latex[ni]] = [cells_latex[ni], cells_latex[ci]];
+      return { ...r, cells, cells_latex };
+    });
+    set({ columns: nextCols, rows: nextRows });
+  };
+  const updCol = (ci: number, k: string, v: string) => {
+    const next = [...cols]; next[ci] = { ...next[ci], [k]: v }; set({ columns: next });
+  };
+  const addRow = () => set({ rows: [...rows, { id: 'r' + Date.now(), label: '', cells: cols.map(() => ''), cells_latex: cols.map(() => '') }] });
+  const removeRow = (ri: number) => set({ rows: rows.filter((_, i) => i !== ri) });
+  const moveRow = (ri: number, dir: -1 | 1) => {
+    const ni = ri + dir;
+    if (ni < 0 || ni >= rows.length) return;
+    const next = [...rows];
+    [next[ri], next[ni]] = [next[ni], next[ri]];
+    set({ rows: next });
+  };
+  const updRowLabel = (ri: number, v: string) => {
+    const next = [...rows]; next[ri] = { ...next[ri], label: v }; set({ rows: next });
+  };
+  const updCell = (ri: number, ci: number, v: string) => {
+    const next = [...rows];
+    const cells = [...(next[ri].cells || [])];
+    cells[ci] = v;
+    next[ri] = { ...next[ri], cells }; set({ rows: next });
+  };
+  const updCellLatex = (ri: number, ci: number, v: string) => {
+    const next = [...rows];
+    const cells_latex = [...(next[ri].cells_latex || [])];
+    cells_latex[ci] = v;
+    next[ri] = { ...next[ri], cells_latex }; set({ rows: next });
+  };
+
+  // LaTeX-Vorschau aufbauen (KaTeX: \begin{array}, kein \begin{tabular})
+  // Nutzt cells_latex (Anzeigeformel); falls leer, cells als Fallback
+  const latexPreview = (() => {
+    if (cols.length === 0 && rows.length === 0) return '';
+    const txt = (s: string) => `\\text{${s.replace(/[&%$#_{}~^]/g, '\\$&')}}`;
+    const colSpec = ['l', ...cols.map(() => 'l')].join('|');
+    const hdr = [txt(d.row_label || 'Material'), ...cols.map(c => c.header || txt(c.name || '?'))].join(' & ');
+    const bodyRows = rows.map(r =>
+      [txt(r.label || '?'), ...cols.map((_, ci) => {
+        const cell = (r.cells_latex?.[ci] || r.cells?.[ci] || '').trim();
+        return cell ? (cell.includes('\\') || cell.includes('^') || cell.includes('_') ? cell : txt(cell)) : txt('—');
+      })].join(' & ')
+    );
+    const lines = [
+      `\\begin{array}{|${colSpec}|}`,
+      '\\hline',
+      hdr + ' \\\\',
+      '\\hline',
+      ...bodyRows.map(r => r + ' \\\\'),
+      '\\hline',
+      '\\end{array}',
+    ];
+    return lines.join('\n');
+  })();
+
+  const minp: React.CSSProperties = { fontSize: 9, border: '1px solid #bae6fd', borderRadius: 2, padding: '2px 3px', background: '#fff', outline: 'none', minWidth: 0 };
+  const th: React.CSSProperties = { background: '#e0f2fe', color: '#0369a1', fontSize: 9, fontWeight: 700, padding: '3px 4px', border: '1px solid #7dd3fc', textAlign: 'center', whiteSpace: 'nowrap' };
+  const td: React.CSSProperties = { padding: '2px 3px', border: '1px solid #bae6fd', verticalAlign: 'top' };
+
+  return (
+    <Shell id={id} type="matrix" selected={selected}>
+      {/* Meta */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, marginBottom: 4 }}>
+        <div>
+          <div style={lbl}>Bezeichnung</div>
+          <F value={d.label || ''} placeholder="Beplankung" onChange={e => set({ label: e.target.value })} />
+        </div>
+        <div>
+          <div style={lbl}>Dropdown-Label</div>
+          <F value={d.row_label || ''} placeholder="Material" onChange={e => set({ row_label: e.target.value })} />
+        </div>
+      </div>
+
+      {/* Haupt-Grid */}
+      <div style={{ overflowX: 'auto', marginBottom: 4 }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+          <thead>
+            {/* Zeile 1: Spaltennamen (Var-Name + Header) */}
+            <tr>
+              <th style={{ ...th, background: '#0891b2', color: '#fff', minWidth: 80 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
+                  <span>{d.row_label || 'Material'}</span>
+                  <button className="nodrag" onClick={addRow} style={{ fontSize: 9, background: '#fff', color: '#0891b2', border: 'none', borderRadius: 2, padding: '0 3px', cursor: 'pointer', lineHeight: 1.4 }}>+ Zeile</button>
+                </div>
+              </th>
+              {cols.map((col, ci) => (
+                <th key={col.id} style={{ ...th, minWidth: 90 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                      {/* Spalte links/rechts verschieben */}
+                      <button className="nodrag" onClick={() => moveCol(ci, -1)} disabled={ci === 0}
+                        title="Spalte nach links" style={{ background: 'none', border: 'none', color: ci === 0 ? '#cbd5e1' : '#0369a1', cursor: ci === 0 ? 'default' : 'pointer', fontSize: 10, padding: 0, lineHeight: 1, flexShrink: 0 }}>◀</button>
+                      <F style={{ ...minp, flex: 1 }} value={col.name} placeholder="var_name" title="JS-Variablenname" onChange={e => updCol(ci, 'name', e.target.value)} />
+                      <button className="nodrag" onClick={() => moveCol(ci, 1)} disabled={ci === cols.length - 1}
+                        title="Spalte nach rechts" style={{ background: 'none', border: 'none', color: ci === cols.length - 1 ? '#cbd5e1' : '#0369a1', cursor: ci === cols.length - 1 ? 'default' : 'pointer', fontSize: 10, padding: 0, lineHeight: 1, flexShrink: 0 }}>▶</button>
+                      <button className="nodrag" onClick={() => removeCol(ci)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 11, padding: 0, lineHeight: 1, flexShrink: 0 }}>×</button>
+                    </div>
+                    <F style={{ ...minp, width: '100%' }} value={col.header} placeholder="LaTeX-Header" title="Anzeige-Header (LaTeX)" onChange={e => updCol(ci, 'header', e.target.value)} />
+                    <F style={{ ...minp, width: 40 }} value={col.unit} placeholder="Einheit" title="Einheit" onChange={e => updCol(ci, 'unit', e.target.value)} />
+                  </div>
+                </th>
+              ))}
+              <th style={{ ...th, minWidth: 22 }}>
+                <button className="nodrag" onClick={addCol} style={{ fontSize: 10, background: '#0891b2', color: '#fff', border: 'none', borderRadius: 2, padding: '1px 4px', cursor: 'pointer' }}>+</button>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, ri) => (
+              <tr key={row.id}>
+                <td style={{ ...td, background: '#f0f9ff' }}>
+                  <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flexShrink: 0 }}>
+                      <button className="nodrag" onClick={() => moveRow(ri, -1)} disabled={ri === 0}
+                        title="Zeile nach oben" style={{ background: 'none', border: 'none', color: ri === 0 ? '#cbd5e1' : '#0369a1', cursor: ri === 0 ? 'default' : 'pointer', fontSize: 9, padding: 0, lineHeight: 1 }}>▲</button>
+                      <button className="nodrag" onClick={() => moveRow(ri, 1)} disabled={ri === rows.length - 1}
+                        title="Zeile nach unten" style={{ background: 'none', border: 'none', color: ri === rows.length - 1 ? '#cbd5e1' : '#0369a1', cursor: ri === rows.length - 1 ? 'default' : 'pointer', fontSize: 9, padding: 0, lineHeight: 1 }}>▼</button>
+                    </div>
+                    <F style={{ ...minp, flex: 1 }} value={row.label} placeholder="Material…" onChange={e => updRowLabel(ri, e.target.value)} />
+                    <button className="nodrag" onClick={() => removeRow(ri)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 11, padding: 0, lineHeight: 1, flexShrink: 0 }}>×</button>
+                  </div>
+                </td>
+                {cols.map((col, ci) => (
+                  <td key={col.id} style={{ ...td, background: '#fffbeb' }}>
+                    <div style={{ fontSize: 7, color: '#6b7280', marginBottom: 1 }}>LaTeX (Anzeige)</div>
+                    <LatexArea
+                      value={row.cells_latex?.[ci] || ''}
+                      placeholder={`LaTeX${col.header ? ' für ' + col.header : ''}\nz.B. 30 \\cdot \\frac{d}{20}`}
+                      onChange={v => updCellLatex(ri, ci, v)}
+                      style={{ ...minp, width: '100%', fontFamily: 'monospace', fontSize: 8, resize: 'vertical', marginBottom: 3 }}
+                    />
+                    <div style={{ fontSize: 7, color: '#6b7280', marginBottom: 1 }}>JS (Berechnung)</div>
+                    <LatexArea
+                      value={row.cells?.[ci] || ''}
+                      placeholder={`JS${col.name ? ' für ' + col.name : ''}\nz.B. 30 * Math.pow(d/20, 1.1)`}
+                      onChange={v => updCell(ri, ci, v)}
+                      style={{ ...minp, width: '100%', fontFamily: 'monospace', fontSize: 8, resize: 'vertical', background: '#f0fdf4' }}
+                    />
+                  </td>
+                ))}
+                <td style={td} />
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr><td colSpan={cols.length + 2} style={{ ...td, textAlign: 'center', color: '#9ca3af', fontSize: 10, padding: 8 }}>+ Zeile hinzufügen</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* JS aus LaTeX generieren */}
+      <button className="nodrag" onClick={() => {
+        set({
+          rows: rows.map(r => ({
+            ...r,
+            cells: r.cells.map((c, ci) => c || latexToJs((r.cells_latex?.[ci] ?? '').trim())),
+          })),
+        });
+      }} style={{ fontSize: 9, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 3, padding: '2px 8px', cursor: 'pointer', color: '#15803d', width: '100%', marginBottom: 4 }}>
+        ⚙ JS aus LaTeX generieren (leere JS-Felder füllen)
+      </button>
+
+      {/* LaTeX-Vorschau Toggle */}
+      <button className="nodrag" onClick={() => setShowPreview(v => !v)}
+        style={{ fontSize: 9, background: showPreview ? '#e0f2fe' : '#f8fafc', border: '1px solid #bae6fd', borderRadius: 3, padding: '2px 8px', cursor: 'pointer', color: '#0369a1', width: '100%', marginBottom: showPreview ? 4 : 0 }}>
+        {showPreview ? '▲ LaTeX-Vorschau' : '▼ LaTeX-Vorschau'}
+      </button>
+      {showPreview && latexPreview && (
+        <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4, padding: '6px 8px', overflowX: 'auto' }}>
+          <MathDisplay latex={latexPreview} display />
+        </div>
+      )}
+    </Shell>
+  );
+}
+
+// ── 🏗 Träger-Visualisierung ──────────────────────────────────────────────────
+const SUPPORT_OPTS: { value: string; label: string }[] = [
+  { value: 'pin',    label: '△ Gelenk (Pin)' },
+  { value: 'roller', label: '○ Rolle (Roller)' },
+  { value: 'fixed',  label: '▐ Einspannung (Fixed)' },
+  { value: 'free',   label: '— Frei' },
+];
+
+function BeamVisualNode({ id, data, selected }: NodeProps) {
+  const d = data as unknown as import('../../../types/graph').BeamVisualData;
+  const { updateNodeData } = useGraphCtx();
+  const set = (p: Partial<import('../../../types/graph').BeamVisualData>) => updateNodeData(id, p as any);
+  const loads: import('../../../types/graph').BeamLoad[] = d.loads || [];
+
+  const addLoad = (kind: 'distributed' | 'point') => set({
+    loads: [...loads, { id: 'l' + Date.now(), kind, var_name: '', label: '', direction: 'down', position: 0.5 }],
+  });
+  const updLoad = (li: number, k: string, v: unknown) => {
+    const next = [...loads]; next[li] = { ...next[li], [k]: v }; set({ loads: next });
+  };
+  const removeLoad = (li: number) => set({ loads: loads.filter((_, i) => i !== li) });
+
+  const inp: React.CSSProperties = { fontSize: 9, border: '1px solid #d1d5db', borderRadius: 2, padding: '2px 3px', background: '#fff', outline: 'none', minWidth: 0, width: '100%' };
+  const sel2: React.CSSProperties = { ...inp, appearance: 'none', paddingRight: 12 };
+
+  return (
+    <Shell id={id} type="beamvisual" selected={selected}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, marginBottom: 6 }}>
+        <div>
+          <div style={lbl}>Bezeichnung</div>
+          <F value={d.label || ''} placeholder="Einfeldträger" onChange={e => set({ label: e.target.value })} />
+        </div>
+        <div>
+          <div style={lbl}>Stützweite (Var-Name)</div>
+          <F value={d.span_var || ''} placeholder="L" title="JS-Variablenname" onChange={e => set({ span_var: e.target.value })} />
+        </div>
+        <div>
+          <div style={lbl}>Einheit Stützweite</div>
+          <F value={d.span_unit || ''} placeholder="m" onChange={e => set({ span_unit: e.target.value })} />
+        </div>
+      </div>
+
+      {/* Auflager */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, marginBottom: 6 }}>
+        <div>
+          <div style={lbl}>Auflager links</div>
+          <select className="nodrag" style={sel2} value={d.left_support || 'pin'} onChange={e => set({ left_support: e.target.value as any })}>
+            {SUPPORT_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+        <div>
+          <div style={lbl}>Auflager rechts</div>
+          <select className="nodrag" style={sel2} value={d.right_support || 'roller'} onChange={e => set({ right_support: e.target.value as any })}>
+            {SUPPORT_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Lasten */}
+      <div style={{ marginBottom: 4 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          <span style={{ ...lbl, marginBottom: 0 }}>Lasten</span>
+          <div style={{ display: 'flex', gap: 3 }}>
+            <button className="nodrag" onClick={() => addLoad('distributed')} style={{ fontSize: 8, background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 2, padding: '1px 4px', cursor: 'pointer', color: '#92400e' }}>+ Streckenlast</button>
+            <button className="nodrag" onClick={() => addLoad('point')} style={{ fontSize: 8, background: '#ede9fe', border: '1px solid #c4b5fd', borderRadius: 2, padding: '1px 4px', cursor: 'pointer', color: '#5b21b6' }}>+ Einzellast</button>
+          </div>
+        </div>
+        {loads.map((load, li) => (
+          <div key={load.id} style={{ background: '#fafafa', border: '1px solid #e5e7eb', borderRadius: 3, padding: '4px 6px', marginBottom: 3 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+              <span style={{ fontSize: 8, color: '#6b7280', fontWeight: 600 }}>{load.kind === 'distributed' ? '≡ Streckenlast' : '↓ Einzellast'}</span>
+              <button className="nodrag" onClick={() => removeLoad(li)} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 11, padding: 0, lineHeight: 1 }}>×</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
+              <div>
+                <div style={lbl}>Var-Name</div>
+                <F value={load.var_name} placeholder="q_k" onChange={e => updLoad(li, 'var_name', e.target.value)} />
+              </div>
+              <div>
+                <div style={lbl}>Label (LaTeX)</div>
+                <F value={load.label} placeholder="q_k" onChange={e => updLoad(li, 'label', e.target.value)} />
+              </div>
+              <div>
+                <div style={lbl}>Richtung</div>
+                <select className="nodrag" style={sel2} value={load.direction} onChange={e => updLoad(li, 'direction', e.target.value)}>
+                  <option value="down">↓ nach unten</option>
+                  <option value="up">↑ nach oben</option>
+                </select>
+              </div>
+              {load.kind === 'point' && (
+                <div>
+                  <div style={lbl}>Position (0–1)</div>
+                  <F type="number" min={0} max={1} step={0.05} value={String(load.position ?? 0.5)} onChange={e => updLoad(li, 'position', parseFloat(e.target.value))} />
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </Shell>
+  );
+}
+
+function CommentNode({ id, data, selected }: NodeProps) {
+  const d = data as unknown as CommentData;
+  const { updateNodeData, dbTables } = useGraphCtx();
+  const set = (p: Partial<CommentData>) => updateNodeData(id, { ...d, ...p } as any);
+  const fileRef = React.useRef<HTMLInputElement>(null);
+
+  const readFile = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = ev => set({ image: ev.target?.result as string });
+    reader.readAsDataURL(file);
+  };
+
+  const EXTRA_LABELS: Record<CommentExtra, string> = {
+    none: '— kein Extra',
+    link: '🔗 Link',
+    image: '🖼 Foto / Bild',
+    chart: '📊 Diagramm (DB)',
+    table: '📋 Tabelle / CSV (DB)',
+  };
+
+  return (
+    <Shell id={id} type="comment" selected={selected}>
+      <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Right} />
+      <div style={{ padding: '4px 6px' }}>
+        <div style={lbl}>Kommentartext</div>
+        <LatexArea
+          value={d.text || ''}
+          onChange={v => set({ text: v })}
+          placeholder="Erläuterungstext…"
+          style={{ ...inp, resize: 'vertical', fontFamily: 'inherit', minHeight: 52 }}
+        />
+
+        <div style={lbl}>Extra-Inhalt</div>
+        <select
+          className="nodrag"
+          value={d.extra || 'none'}
+          onChange={e => set({ extra: e.target.value as CommentExtra })}
+          style={{ ...inp, cursor: 'pointer' }}
+        >
+          {(Object.keys(EXTRA_LABELS) as CommentExtra[]).map(k => (
+            <option key={k} value={k}>{EXTRA_LABELS[k]}</option>
+          ))}
+        </select>
+
+        {/* Link */}
+        {d.extra === 'link' && (
+          <>
+            <div style={lbl}>URL</div>
+            <F value={d.link_url || ''} onChange={e => set({ link_url: e.target.value })} placeholder="https://…" />
+            <div style={lbl}>Link-Text</div>
+            <F value={d.link_label || ''} onChange={e => set({ link_label: e.target.value })} placeholder="Anzeigetext" />
+          </>
+        )}
+
+        {/* Bild */}
+        {d.extra === 'image' && (
+          <>
+            <div style={{ display: 'flex', gap: 4, marginTop: 4, marginBottom: 4 }}>
+              <label className="nodrag" style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 3, padding: '2px 6px', fontSize: 9, cursor: 'pointer' }}>
+                📎 Datei
+                <input ref={fileRef} type="file" accept="image/*" className="nodrag" style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) readFile(f); }} />
+              </label>
+              <button className="nodrag" type="button"
+                onClick={() => pasteImageFromClipboard(img => set({ image: img }))}
+                style={{ background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 3, padding: '2px 6px', fontSize: 9, cursor: 'pointer' }}>
+                📋 Einfügen
+              </button>
+            </div>
+            {d.image
+              ? <div style={{ position: 'relative' }}>
+                  <img src={d.image} style={{ width: '100%', maxHeight: 100, objectFit: 'contain', borderRadius: 3, border: '1px solid #fcd34d' }} />
+                  <button className="nodrag" onClick={() => set({ image: undefined })}
+                    style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.5)', border: 'none', borderRadius: '50%', width: 16, height: 16, color: '#fff', fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                </div>
+              : <div style={{ border: '2px dashed #fcd34d', borderRadius: 3, padding: '8px', textAlign: 'center', fontSize: 9, color: '#d97706' }}>Bild ablegen / einfügen</div>
+            }
+            <div style={lbl}>Bildunterschrift</div>
+            <F value={d.image_caption || ''} onChange={e => set({ image_caption: e.target.value })} placeholder="Beschriftung" />
+            <div style={lbl}>Quelle</div>
+            <F value={d.image_source || ''} onChange={e => set({ image_source: e.target.value })} placeholder="z.B. SIA 265, Fig. 3" />
+          </>
+        )}
+
+        {/* Chart / Tabelle aus DB */}
+        {(d.extra === 'chart' || d.extra === 'table') && (
+          <>
+            <div style={lbl}>{d.extra === 'chart' ? 'Diagramm' : 'Tabelle'} aus DB</div>
+            <select
+              className="nodrag"
+              value={d.table_ref || ''}
+              onChange={e => set({ table_ref: e.target.value })}
+              style={{ ...inp, cursor: 'pointer' }}
+            >
+              <option value="">— Tabelle wählen —</option>
+              {dbTables
+                .filter(t => d.extra === 'chart' ? t.type === 'chart' : t.type !== 'chart')
+                .map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+            </select>
+          </>
+        )}
+      </div>
+    </Shell>
+  );
+}
+
+function SectionNode({ id, data, selected }: NodeProps) {
+  const d = data as unknown as import('../../../types/graph').SectionData;
+  const { updateNodeData } = useGraphCtx();
+  return (
+    <Shell id={id} type="section" selected={selected}>
+      <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Right} />
+      <div style={{ padding: '4px 6px' }}>
+        <div style={lbl}>Querschnitt-Label</div>
+        <F value={d.label} onChange={e => updateNodeData(id, { ...d, label: e.target.value })} />
+        <div style={{ fontSize: 8, color: '#6b7280', marginTop: 4 }}>
+          Formen und Positionen werden im Frontend definiert
+        </div>
+      </div>
+    </Shell>
+  );
+}
+
+// ── ⚙ Gruppenberechnung ─────────────────────────────────────────────────────
+function GroupCalcNode({ id, data, selected }: NodeProps) {
+  const d = data as unknown as GroupCalcData;
+  const { updateNodeData } = useGraphCtx();
+  const set = (p: Partial<GroupCalcData>) => updateNodeData(id, { ...d, ...p });
+
+  const uid = () => Math.random().toString(36).slice(2, 8);
+
+  // Vars
+  const addVar = () => set({ vars: [...(d.vars || []), { id: uid(), name: '', label: '', unit: '', default_value: '0' }] });
+  const setVar = (i: number, p: Partial<GroupCalcVar>) => {
+    const arr = [...(d.vars || [])]; arr[i] = { ...arr[i], ...p }; set({ vars: arr });
+  };
+  const delVar = (i: number) => set({ vars: (d.vars || []).filter((_, j) => j !== i) });
+
+  // Outputs
+  const addOut = () => set({ outputs: [...(d.outputs || []), { id: uid(), name: '', label: '', unit: '' }] });
+  const setOut = (i: number, p: Partial<GroupCalcOutput>) => {
+    const arr = [...(d.outputs || [])]; arr[i] = { ...arr[i], ...p }; set({ outputs: arr });
+  };
+  const delOut = (i: number) => set({ outputs: (d.outputs || []).filter((_, j) => j !== i) });
+
+  // Options
+  const addOpt = () => set({ options: [...(d.options || []), { id: uid(), label: '', formulas: {} }] });
+  const setOptLabel = (i: number, label: string) => {
+    const arr = [...(d.options || [])]; arr[i] = { ...arr[i], label }; set({ options: arr });
+  };
+  const setOptFormula = (i: number, outId: string, formula: string) => {
+    const arr = [...(d.options || [])];
+    arr[i] = { ...arr[i], formulas: { ...arr[i].formulas, [outId]: formula } };
+    set({ options: arr });
+  };
+  const delOpt = (i: number) => set({ options: (d.options || []).filter((_, j) => j !== i) });
+
+  const outputs = d.outputs || [];
+  const options = d.options || [];
+
+  return (
+    <Shell id={id} type="groupcalc" selected={selected}>
+      <div style={lbl}>Block-Titel</div>
+      <F value={d.label || ''} placeholder="Beplankungsnachweis" onChange={e => set({ label: e.target.value })} />
+      <div style={lbl}>Dropdown-Bezeichnung</div>
+      <F value={d.dropdown_label || ''} placeholder="Material / Schicht" onChange={e => set({ dropdown_label: e.target.value })} />
+
+      {/* Eingabe-Variablen */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+        <div style={lbl}>Eingabe-Variablen</div>
+        <button className="nodrag" onClick={addVar} style={{ fontSize: 10, border: 'none', background: '#ccfbf1', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>+</button>
+      </div>
+      {(d.vars || []).map((v, i) => (
+        <div key={v.id} style={{ background: '#f0fdfa', borderRadius: 3, padding: '3px 4px', marginBottom: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <F value={v.name} placeholder="d_i" onChange={e => setVar(i, { name: e.target.value })} style={{ flex: 1.5 }} />
+            <F value={v.label} placeholder="Schichtdicke" onChange={e => setVar(i, { label: e.target.value })} style={{ flex: 2 }} />
+            <F value={v.unit} placeholder="mm" onChange={e => setVar(i, { unit: e.target.value })} style={{ flex: 1 }} />
+            <F value={v.default_value} placeholder="0" onChange={e => setVar(i, { default_value: e.target.value })} style={{ flex: 1 }} />
+            <button className="nodrag" onClick={() => delVar(i)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 11, padding: '0 2px' }}>✕</button>
+          </div>
+        </div>
+      ))}
+      {(d.vars || []).length > 0 && <div style={{ fontSize: 7, color: '#9ca3af', marginBottom: 2 }}>Name · Bezeichnung · Einheit · Standard</div>}
+
+      {/* Ausgaben */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+        <div style={lbl}>Ausgaben</div>
+        <button className="nodrag" onClick={addOut} style={{ fontSize: 10, border: 'none', background: '#ccfbf1', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>+</button>
+      </div>
+      {outputs.map((o, i) => (
+        <div key={o.id} style={{ display: 'flex', gap: 2, alignItems: 'center', marginBottom: 2 }}>
+          <F value={o.name} placeholder="t_{prot,0,i}" onChange={e => setOut(i, { name: e.target.value })} style={{ flex: 2 }} />
+          <F value={o.label} placeholder="Brandschutzzeit" onChange={e => setOut(i, { label: e.target.value })} style={{ flex: 2 }} />
+          <F value={o.unit} placeholder="min" onChange={e => setOut(i, { unit: e.target.value })} style={{ flex: 1 }} />
+          <button className="nodrag" onClick={() => delOut(i)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 11, padding: '0 2px' }}>✕</button>
+        </div>
+      ))}
+      {outputs.length > 0 && <div style={{ fontSize: 7, color: '#9ca3af', marginBottom: 4 }}>LaTeX-Name · Bezeichnung · Einheit</div>}
+
+      {/* Optionen / Materialien */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+        <div style={lbl}>Materialien / Optionen</div>
+        <button className="nodrag" onClick={addOpt} style={{ fontSize: 10, border: 'none', background: '#ccfbf1', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>+</button>
+      </div>
+      {options.map((opt, oi) => (
+        <div key={opt.id} style={{ background: '#f0fdfa', border: '1px solid #5eead4', borderRadius: 4, padding: '4px 5px', marginBottom: 4 }}>
+          <div style={{ display: 'flex', gap: 2, alignItems: 'center', marginBottom: 3 }}>
+            <F value={opt.label} placeholder="Mineralwolle ≥ 26 kg/m³" onChange={e => setOptLabel(oi, e.target.value)} style={{ flex: 1 }} />
+            <button className="nodrag" onClick={() => delOpt(oi)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 11, padding: '0 2px' }}>✕</button>
+          </div>
+          {outputs.map(o => (
+            <div key={o.id} style={{ marginBottom: 2 }}>
+              <div style={{ fontSize: 7.5, color: '#0f766e', fontWeight: 600, marginBottom: 1 }}>{o.name || o.label || o.id}</div>
+              <LatexArea
+                value={opt.formulas?.[o.id] ?? ''}
+                onChange={v => setOptFormula(oi, o.id, v)}
+                placeholder="0.3 \cdot d_i^{0.75 \cdot \log(\rho_i) - \rho_i/400}"
+                style={{ ...inp, fontFamily: 'monospace', fontSize: 8.5, minHeight: 32 }}
+              />
+            </div>
+          ))}
+          {outputs.length === 0 && <div style={{ fontSize: 8, color: '#9ca3af' }}>Erst Ausgaben definieren</div>}
+        </div>
+      ))}
+    </Shell>
+  );
+}
+
+// ── ⟳ Schleifenblock ────────────────────────────────────────────────────────
+function LoopBlockNode({ id, data, selected }: NodeProps) {
+  const d = data as unknown as LoopBlockData;
+  const { updateNodeData } = useGraphCtx();
+  const set = (p: Partial<LoopBlockData>) => updateNodeData(id, { ...d, ...p });
+  const uid = () => Math.random().toString(36).slice(2, 8);
+
+  // Vars
+  const addVar = () => set({ vars: [...(d.vars || []), { id: uid(), name: '', label: '', unit: '', default_value: '0' }] });
+  const setVar = (i: number, p: Partial<GroupCalcVar>) => { const a = [...(d.vars || [])]; a[i] = { ...a[i], ...p }; set({ vars: a }); };
+  const delVar = (i: number) => set({ vars: (d.vars || []).filter((_, j) => j !== i) });
+  // Outputs
+  const addOut = () => set({ outputs: [...(d.outputs || []), { id: uid(), name: '', label: '', unit: '' }] });
+  const setOut = (i: number, p: Partial<GroupCalcOutput>) => { const a = [...(d.outputs || [])]; a[i] = { ...a[i], ...p }; set({ outputs: a }); };
+  const delOut = (i: number) => set({ outputs: (d.outputs || []).filter((_, j) => j !== i) });
+  // Options
+  const addOpt = () => set({ options: [...(d.options || []), { id: uid(), label: '', formulas: {} }] });
+  const setOptLabel = (i: number, label: string) => { const a = [...(d.options || [])]; a[i] = { ...a[i], label }; set({ options: a }); };
+  const setOptFormula = (i: number, outId: string, formula: string) => {
+    const a = [...(d.options || [])]; a[i] = { ...a[i], formulas: { ...a[i].formulas, [outId]: formula } }; set({ options: a });
+  };
+  const delOpt = (i: number) => set({ options: (d.options || []).filter((_, j) => j !== i) });
+  // Aggregations
+  const addAggr = () => set({ aggregations: [...(d.aggregations || []), { output_id: '', method: 'sum', name: '', label: '', unit: '' }] });
+  const setAggr = (i: number, p: Partial<LoopBlockAggr>) => { const a = [...(d.aggregations || [])]; a[i] = { ...a[i], ...p }; set({ aggregations: a }); };
+  const delAggr = (i: number) => set({ aggregations: (d.aggregations || []).filter((_, j) => j !== i) });
+
+  const outputs = d.outputs || [];
+  const options = d.options || [];
+
+  return (
+    <Shell id={id} type="loopblock" selected={selected}>
+      <div style={lbl}>Block-Titel</div>
+      <F value={d.label || ''} placeholder="Beplankungsnachweis Schichten" onChange={e => set({ label: e.target.value })} />
+      <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ flex: 1 }}>
+          <div style={lbl}>Anzahl-Bezeichnung</div>
+          <F value={d.count_label || ''} placeholder="Anzahl Schichten n" onChange={e => set({ count_label: e.target.value })} />
+        </div>
+        <div style={{ flex: 0 }}>
+          <div style={lbl}>Max</div>
+          <F value={String(d.max_count || 10)} placeholder="10" style={{ width: 40 }} onChange={e => set({ max_count: Number(e.target.value) || 10 })} />
+        </div>
+      </div>
+      <div style={lbl}>Dropdown-Bezeichnung</div>
+      <F value={d.dropdown_label || ''} placeholder="Material / Schicht" onChange={e => set({ dropdown_label: e.target.value })} />
+
+      {/* Variablen */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+        <div style={lbl}>Variablen pro Schicht</div>
+        <button className="nodrag" onClick={addVar} style={{ fontSize: 10, border: 'none', background: '#fed7aa', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>+</button>
+      </div>
+      <div style={{ fontSize: 8, color: '#9ca3af', marginBottom: 2 }}>Name · Bezeichnung · Einheit · Standard · Scope</div>
+      {(d.vars || []).map((v, i) => (
+        <div key={v.id} style={{ display: 'flex', gap: 2, alignItems: 'center', marginBottom: 2 }}>
+          <F value={v.name} placeholder="d" onChange={e => setVar(i, { name: e.target.value })} style={{ flex: 1 }} />
+          <F value={v.label} placeholder="Dicke" onChange={e => setVar(i, { label: e.target.value })} style={{ flex: 2 }} />
+          <F value={v.unit} placeholder="mm" onChange={e => setVar(i, { unit: e.target.value })} style={{ flex: 0.8 }} />
+          <F value={v.default_value} placeholder="15" onChange={e => setVar(i, { default_value: e.target.value })} style={{ flex: 0.8 }} />
+          <button
+            className="nodrag"
+            title={v.scope === 'global' ? 'Global (einmal für alle Schichten) — klicken für per-Schicht' : 'Pro Schicht — klicken für Global'}
+            onClick={() => setVar(i, { scope: v.scope === 'global' ? 'layer' : 'global' })}
+            style={{ flex: '0 0 auto', fontSize: 9, border: '1px solid', borderRadius: 3, padding: '1px 4px', cursor: 'pointer', background: v.scope === 'global' ? '#fef3c7' : '#f0fdf4', borderColor: v.scope === 'global' ? '#f59e0b' : '#86efac', color: v.scope === 'global' ? '#92400e' : '#166534', whiteSpace: 'nowrap' }}
+          >{v.scope === 'global' ? '🌐 Global' : '🔁 /Schicht'}</button>
+          <button className="nodrag" onClick={() => delVar(i)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 11, padding: '0 2px' }}>✕</button>
+        </div>
+      ))}
+      {(d.vars || []).length > 0 && <div style={{ fontSize: 7, color: '#9ca3af', marginBottom: 2 }}>Name · Bezeichnung · Einheit · Standard</div>}
+
+      {/* Ausgaben */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+        <div style={lbl}>Ausgaben pro Schicht</div>
+        <button className="nodrag" onClick={addOut} style={{ fontSize: 10, border: 'none', background: '#fed7aa', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>+</button>
+      </div>
+      {outputs.map((o, i) => (
+        <div key={o.id} style={{ display: 'flex', gap: 2, alignItems: 'center', marginBottom: 2 }}>
+          <F value={o.name} placeholder="t_{prot,0,i}" onChange={e => setOut(i, { name: e.target.value })} style={{ flex: 2 }} />
+          <F value={o.label} placeholder="Schutzzeit" onChange={e => setOut(i, { label: e.target.value })} style={{ flex: 2 }} />
+          <F value={o.unit} placeholder="min" onChange={e => setOut(i, { unit: e.target.value })} style={{ flex: 0.8 }} />
+          <button className="nodrag" onClick={() => delOut(i)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 11, padding: '0 2px' }}>✕</button>
+        </div>
+      ))}
+
+      {/* Materialien */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+        <div style={lbl}>Materialien</div>
+        <button className="nodrag" onClick={addOpt} style={{ fontSize: 10, border: 'none', background: '#fed7aa', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>+</button>
+      </div>
+      {options.map((opt, oi) => (
+        <div key={opt.id} style={{ background: '#fff7f0', border: '1px solid #fb923c', borderRadius: 4, padding: '4px 5px', marginBottom: 4 }}>
+          <div style={{ display: 'flex', gap: 2, alignItems: 'center', marginBottom: 3 }}>
+            <F value={opt.label} placeholder="Mineralwolle ≥ 26 kg/m³" onChange={e => setOptLabel(oi, e.target.value)} style={{ flex: 1 }} />
+            <button className="nodrag" onClick={() => delOpt(oi)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 11, padding: '0 2px' }}>✕</button>
+          </div>
+          {outputs.map(o => (
+            <div key={o.id} style={{ marginBottom: 2 }}>
+              <div style={{ fontSize: 7.5, color: '#c2410c', fontWeight: 600, marginBottom: 1 }}>{o.name || o.label || o.id}</div>
+              <LatexArea
+                value={opt.formulas?.[o.id] ?? ''}
+                onChange={v => setOptFormula(oi, o.id, v)}
+                placeholder="JS/LaTeX Formel (d, rho als Variablen)"
+                style={{ ...inp, fontFamily: 'monospace', fontSize: 8.5, minHeight: 28 }}
+              />
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {/* Aggregationen */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
+        <div style={lbl}>Aggregationen (Gesamtwerte)</div>
+        <button className="nodrag" onClick={addAggr} style={{ fontSize: 10, border: 'none', background: '#fed7aa', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>+</button>
+      </div>
+      {(d.aggregations || []).map((ag, i) => (
+        <div key={i} style={{ display: 'flex', gap: 2, alignItems: 'center', marginBottom: 2 }}>
+          <select className="nodrag" value={ag.output_id} onChange={e => setAggr(i, { output_id: e.target.value })} style={{ ...inp, flex: 1.5 }}>
+            <option value="">— Ausgabe —</option>
+            {outputs.map(o => <option key={o.id} value={o.id}>{o.name || o.id}</option>)}
+          </select>
+          <select className="nodrag" value={ag.method} onChange={e => setAggr(i, { method: e.target.value as any })} style={{ ...inp, flex: 1 }}>
+            <option value="sum">Σ Summe</option>
+            <option value="last">Letzte</option>
+            <option value="max">Max</option>
+            <option value="min">Min</option>
+          </select>
+          <F value={ag.name} placeholder="t_{prot,0}" onChange={e => setAggr(i, { name: e.target.value })} style={{ flex: 1.5 }} />
+          <F value={ag.unit} placeholder="min" onChange={e => setAggr(i, { unit: e.target.value })} style={{ flex: 0.8 }} />
+          <button className="nodrag" onClick={() => delAggr(i)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 11, padding: '0 2px' }}>✕</button>
+        </div>
+      ))}
+      {(d.aggregations || []).length > 0 && <div style={{ fontSize: 7, color: '#9ca3af' }}>Ausgabe · Methode · Symbol · Einheit</div>}
+    </Shell>
+  );
+}
+
 export const nodeTypes = {
   variable: VariableNode,
   dropdown: DropdownNode,
@@ -1415,5 +2125,11 @@ export const nodeTypes = {
   frame: FrameNode,
   ref: RefNode,
   cases: CasesNode,
+  matrix: MatrixNode,
+  beamvisual: BeamVisualNode,
+  section: SectionNode,
+  comment: CommentNode,
+  groupcalc: GroupCalcNode,
+  loopblock: LoopBlockNode,
   output: OutputNode,
 };

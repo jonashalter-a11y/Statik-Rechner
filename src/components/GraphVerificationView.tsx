@@ -4,15 +4,17 @@ import MathDisplay from './MathDisplay';
 import { nameToLatex } from '../utils/formatName';
 import { getGraph } from '../utils/legacyToGraph';
 import { evalGraph, topoSort, collectTableRefs, DbTableData } from '../utils/evalGraph';
-import { formatNumber } from '../utils/substituteFormula';
+import { formatNumber, substituteValues } from '../utils/substituteFormula';
 import { evalCondExpr } from '../utils/evalFormula';
-import { latexCondToJs } from '../utils/latexToJs';
+import { latexCondToJs, latexToJs } from '../utils/latexToJs';
 import { api } from '../api';
 import { useStore } from '../store/useStore';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   Legend, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
+import { computeBeam, BeamLoad, SupportKind } from '../utils/beamAnalysis';
+import { computeSection, CSShape, ShapeKind } from '../utils/sectionAnalysis';
 
 const CHART_COLORS = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#7c3aed', '#0891b2'];
 
@@ -127,16 +129,670 @@ function toLegacyShape(v: Verification) {
 
 const lbl: React.CSSProperties = { fontSize: 11, color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 };
 const card: React.CSSProperties = { border: '1px solid #e2e8f0', borderRadius: 6, padding: '8px 10px', marginBottom: 6, background: '#fff' };
+
+// ── Träger-Rechner (interaktive Eingabe + M/Q/N-Verlauf) ───────────────────────
+
+interface LocalBeamState {
+  L: number;
+  left: SupportKind;
+  right: SupportKind;
+  loads: BeamLoad[];
+}
+
+const SUPPORT_LABELS: Record<SupportKind, string> = {
+  pin: '△ Gelenk', roller: '○ Rolle', fixed: '▐ Einspannung', free: '— Frei',
+};
+
+function BeamSketchSVG({ L, left, right, loads }: LocalBeamState) {
+  const W = 500, beamY = 80, beamH = 12, marginX = 60;
+  const x0 = marginX, x1 = W - marginX, bLen = x1 - x0;
+
+  function support(x: number, type: SupportKind, side: 'left' | 'right') {
+    if (type === 'free') return null;
+    const s = 16;
+    const els: React.ReactNode[] = [];
+    if (type === 'pin' || type === 'roller') {
+      els.push(<polygon key="t" points={`${x},${beamY + beamH} ${x - s},${beamY + beamH + s * 1.2} ${x + s},${beamY + beamH + s * 1.2}`} fill="#374151" />);
+      if (type === 'roller') {
+        els.push(<circle key="c" cx={x} cy={beamY + beamH + s * 1.2 + 7} r={5} fill="none" stroke="#374151" strokeWidth={2} />);
+        els.push(<line key="g" x1={x - 18} y1={beamY + beamH + s * 1.2 + 14} x2={x + 18} y2={beamY + beamH + s * 1.2 + 14} stroke="#374151" strokeWidth={2} />);
+      } else {
+        els.push(<line key="g" x1={x - 18} y1={beamY + beamH + s * 1.2} x2={x + 18} y2={beamY + beamH + s * 1.2} stroke="#374151" strokeWidth={2} />);
+        for (let i = -3; i <= 3; i++) els.push(<line key={`h${i}`} x1={x + i * 7 - 3} y1={beamY + beamH + s * 1.2} x2={x + i * 7 - 9} y2={beamY + beamH + s * 1.2 + 8} stroke="#374151" strokeWidth={1.2} />);
+      }
+    } else {
+      const d = side === 'left' ? -1 : 1;
+      els.push(<rect key="w" x={x + d * 2} y={beamY - 24} width={14} height={beamH + 48} fill="#374151" />);
+      for (let i = 0; i < 5; i++) {
+        const y = beamY - 20 + i * 14;
+        els.push(<line key={`h${i}`} x1={x + d * 16} y1={y} x2={x + d * 24} y2={y + 8} stroke="#374151" strokeWidth={1.2} />);
+      }
+    }
+    return <g key={`sup-${side}`}>{els}</g>;
+  }
+
+  const loadEls: React.ReactNode[] = [];
+  loads.forEach((ld, li) => {
+    const downward = ld.dir === 1;
+    const color = ld.kind === 'uniform' ? (downward ? '#dc2626' : '#2563eb') : (downward ? '#7c3aed' : '#0891b2');
+    const aH = 30, ah = 6;
+    const aY0 = downward ? beamY - 4 : beamY + beamH + 4;
+    const aY1 = aY0 - (downward ? aH : -aH);
+    const label = `${ld.value} ${ld.kind === 'uniform' ? 'kN/m' : 'kN'}`;
+
+    if (ld.kind === 'uniform') {
+      const xa = x0 + (ld.pos / L) * bLen;
+      const xb = x0 + (Math.min(ld.pos2 ?? L, L) / L) * bLen;
+      for (let i = 0; i <= 6; i++) {
+        const ax = xa + (xb - xa) * i / 6;
+        loadEls.push(
+          <line key={`ua${li}${i}`} x1={ax} y1={aY1} x2={ax} y2={aY0} stroke={color} strokeWidth={1.5} />,
+          <polygon key={`uh${li}${i}`} points={`${ax},${aY0} ${ax - ah / 2},${aY0 - (downward ? ah : -ah)} ${ax + ah / 2},${aY0 - (downward ? ah : -ah)}`} fill={color} />,
+        );
+      }
+      loadEls.push(<line key={`ul${li}`} x1={xa} y1={aY1} x2={xb} y2={aY1} stroke={color} strokeWidth={2} />);
+      loadEls.push(<text key={`ut${li}`} x={(xa + xb) / 2} y={aY1 - (downward ? 7 : -7)} textAnchor="middle" fontSize={10} fill={color} fontWeight="600">{label}</text>);
+    } else {
+      const px = x0 + (ld.pos / L) * bLen;
+      loadEls.push(
+        <line key={`pa${li}`} x1={px} y1={aY1} x2={px} y2={aY0} stroke={color} strokeWidth={2} />,
+        <polygon key={`ph${li}`} points={`${px},${aY0} ${px - ah},${aY0 - (downward ? ah * 1.5 : -ah * 1.5)} ${px + ah},${aY0 - (downward ? ah * 1.5 : -ah * 1.5)}`} fill={color} />,
+        <text key={`pt${li}`} x={px} y={aY1 - (downward ? 7 : -7)} textAnchor="middle" fontSize={10} fill={color} fontWeight="600">{label}</text>,
+      );
+    }
+  });
+
+  const dimY = beamY + beamH + 50;
+  return (
+    <svg viewBox={`0 0 ${W} 160`} style={{ width: '100%', maxHeight: 160, overflow: 'visible' }}>
+      {loadEls}
+      <rect x={x0} y={beamY} width={bLen} height={beamH} fill="#374151" rx={2} />
+      {support(x0, left, 'left')}
+      {support(x1, right, 'right')}
+      <line x1={x0} y1={dimY} x2={x1} y2={dimY} stroke="#6b7280" strokeWidth={1.5} />
+      <line x1={x0} y1={dimY - 4} x2={x0} y2={dimY + 4} stroke="#6b7280" strokeWidth={1.5} />
+      <line x1={x1} y1={dimY - 4} x2={x1} y2={dimY + 4} stroke="#6b7280" strokeWidth={1.5} />
+      <polygon points={`${x0 + 8},${dimY} ${x0 + 16},${dimY - 3} ${x0 + 16},${dimY + 3}`} fill="#6b7280" />
+      <polygon points={`${x1 - 8},${dimY} ${x1 - 16},${dimY - 3} ${x1 - 16},${dimY + 3}`} fill="#6b7280" />
+      <text x={(x0 + x1) / 2} y={dimY + 13} textAnchor="middle" fontSize={11} fill="#374151" fontWeight="700">L = {L} m</text>
+    </svg>
+  );
+}
+
+function DiagramSVG({ x, y, label, color, unit }: { x: number[]; y: number[]; label: string; color: string; unit: string }) {
+  const W = 500, H = 100, padX = 50, padY = 12;
+  const iW = W - padX * 2, iH = H - padY * 2;
+  if (!x.length) return null;
+
+  const ymax = Math.max(...y.map(Math.abs), 0.001);
+  const yMin = Math.min(...y);
+  const yMax = Math.max(...y);
+  const xMax = x[x.length - 1];
+
+  // Mapping helpers
+  const px = (xi: number) => padX + (xi / xMax) * iW;
+  const py = (yi: number) => padY + iH / 2 - (yi / ymax) * (iH / 2 - 4);
+
+  // Build SVG path (filled)
+  const baseline = py(0);
+  let pathPos = `M ${px(x[0])},${baseline}`;
+  let pathNeg = `M ${px(x[0])},${baseline}`;
+  for (let i = 0; i < x.length; i++) {
+    pathPos += ` L ${px(x[i])},${py(y[i])}`;
+    pathNeg += ` L ${px(x[i])},${py(y[i])}`;
+  }
+  pathPos += ` L ${px(xMax)},${baseline} Z`;
+  pathNeg += ` L ${px(xMax)},${baseline} Z`;
+
+  // Extreme value positions
+  const iMax = y.indexOf(yMax);
+  const iMin = y.indexOf(yMin);
+
+  const fmt = (v: number) => Math.abs(v) < 0.001 ? '0' : v.toFixed(2);
+
+  return (
+    <div style={{ marginBottom: 6 }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color, marginBottom: 2 }}>{label}</div>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxHeight: H, display: 'block' }}>
+        {/* Nulllinie */}
+        <line x1={padX} y1={baseline} x2={W - padX} y2={baseline} stroke="#9ca3af" strokeWidth={1} strokeDasharray="4 3" />
+        {/* Y-Achse */}
+        <line x1={padX} y1={padY} x2={padX} y2={H - padY} stroke="#d1d5db" strokeWidth={1} />
+
+        {/* Positive Fläche (oben) */}
+        <clipPath id={`cp-${label}-pos`}><rect x={padX} y={padY} width={iW} height={iH / 2} /></clipPath>
+        <path d={pathPos} fill={color} fillOpacity={0.18} stroke="none" clipPath={`url(#cp-${label}-pos)`} />
+
+        {/* Negative Fläche (unten) */}
+        <clipPath id={`cp-${label}-neg`}><rect x={padX} y={padY + iH / 2} width={iW} height={iH / 2} /></clipPath>
+        <path d={pathNeg} fill={color} fillOpacity={0.18} stroke="none" clipPath={`url(#cp-${label}-neg)`} />
+
+        {/* Linie */}
+        <polyline
+          points={x.map((xi, i) => `${px(xi)},${py(y[i])}`).join(' ')}
+          fill="none" stroke={color} strokeWidth={2}
+        />
+
+        {/* Extremwert-Marker */}
+        {yMax !== 0 && (
+          <>
+            <circle cx={px(x[iMax])} cy={py(yMax)} r={3} fill={color} />
+            <text x={px(x[iMax])} y={py(yMax) - 5} textAnchor="middle" fontSize={9} fill={color} fontWeight="700">
+              {fmt(yMax)} {unit}
+            </text>
+          </>
+        )}
+        {yMin !== 0 && iMin !== iMax && (
+          <>
+            <circle cx={px(x[iMin])} cy={py(yMin)} r={3} fill={color} />
+            <text x={px(x[iMin])} y={py(yMin) + 12} textAnchor="middle" fontSize={9} fill={color} fontWeight="700">
+              {fmt(yMin)} {unit}
+            </text>
+          </>
+        )}
+
+        {/* Achsenbeschriftung */}
+        <text x={W - padX + 4} y={baseline + 4} fontSize={9} fill="#6b7280">x [m]</text>
+        <text x={padX - 4} y={padY + 5} textAnchor="end" fontSize={9} fill="#6b7280">+</text>
+        <text x={padX - 4} y={H - padY} textAnchor="end" fontSize={9} fill="#6b7280">−</text>
+      </svg>
+    </div>
+  );
+}
+
+// ─── Querschnitt-Kalkulator ───────────────────────────────────────────────────
+const SHAPE_LABEL_MAP: Record<ShapeKind, string> = {
+  rect: 'Rechteck',
+  circle: 'Kreis',
+  hollow_rect: 'Hohlrechteck',
+  hollow_circle: 'Hohlkreis',
+  triangle: 'Dreieck (rechtwinklig)',
+};
+
+function newShape(kind: ShapeKind): CSShape {
+  const id = Math.random().toString(36).slice(2, 7);
+  const defaults: Record<ShapeKind, Partial<CSShape>> = {
+    rect:          { b: 100, h: 200, bi: 0,   hi: 0,   di: 0 },
+    circle:        { b: 100, h: 0,   bi: 0,   hi: 0,   di: 0 },
+    hollow_rect:   { b: 200, h: 300, bi: 160, hi: 260, di: 0 },
+    hollow_circle: { b: 200, h: 0,   bi: 0,   hi: 0,   di: 100 },
+    triangle:      { b: 150, h: 200, bi: 0,   hi: 0,   di: 0 },
+  };
+  return { id, kind, label: SHAPE_LABEL_MAP[kind], cx: 0, cy: 0, subtract: false, ...defaults[kind] } as CSShape;
+}
+
+function SectionSVG({ shapes, cyS, cxS }: { shapes: CSShape[]; cyS: number; cxS: number }) {
+  if (!shapes.length) return <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13 }}>Keine Formen</div>;
+
+  // bounding box including origin (0,0)
+  const ys: number[] = [0];
+  shapes.forEach(s => {
+    const hh = s.kind === 'triangle' ? s.h : (s.h / 2 || s.b / 2);
+    ys.push(s.cy - hh, s.cy + (s.kind === 'triangle' ? 0 : hh));
+  });
+  const xs2: number[] = [0, ...shapes.flatMap(s => [s.cx - s.b / 2, s.cx + s.b / 2])];
+  const x0 = Math.min(...xs2), x1 = Math.max(...xs2);
+  const y0 = Math.min(...ys), y1 = Math.max(...ys);
+
+  // extra margin for axis arrows and labels
+  const W = 300, H = 220, padL = 30, padB = 30, padR = 24, padT = 20;
+  const drawW = W - padL - padR;
+  const drawH = H - padB - padT;
+  const scaleX = (x1 - x0 === 0) ? 1 : drawW / (x1 - x0);
+  const scaleY = (y1 - y0 === 0) ? 1 : drawH / (y1 - y0);
+  const scale = Math.min(scaleX, scaleY);
+
+  // center the geometry within the draw area
+  const geoW = (x1 - x0) * scale;
+  const geoH = (y1 - y0) * scale;
+  const offX = padL + (drawW - geoW) / 2;
+  const offY = padT + (drawH - geoH) / 2;
+
+  const tx = (x: number) => offX + (x - x0) * scale;
+  const ty = (y: number) => offY + geoH - (y - y0) * scale;
+
+  // origin in SVG coords
+  const ox = tx(0), oy = ty(0);
+  // axis endpoints
+  const axXEnd = W - 8, axYEnd = 8;
+  const arrSize = 5;
+
+  const shapeEl = (s: CSShape, i: number) => {
+    const fill = s.subtract ? '#fee2e2' : '#dbeafe';
+    const stroke = s.subtract ? '#ef4444' : '#2563eb';
+    if (s.kind === 'rect' || s.kind === 'hollow_rect') {
+      const bw = s.b * scale, bh = s.h * scale;
+      const rx = tx(s.cx - s.b / 2), ry = ty(s.cy + s.h / 2);
+      if (s.kind === 'hollow_rect') {
+        const iw = s.bi * scale, ih = s.hi * scale;
+        const rix = tx(s.cx - s.bi / 2), riy = ty(s.cy + s.hi / 2);
+        return (
+          <g key={i}>
+            <rect x={rx} y={ry} width={bw} height={bh} fill={fill} stroke={stroke} strokeWidth={1} />
+            <rect x={rix} y={riy} width={iw} height={ih} fill="#fff" stroke={stroke} strokeWidth={1} strokeDasharray="3 2" />
+          </g>
+        );
+      }
+      return <rect key={i} x={rx} y={ry} width={bw} height={bh} fill={fill} stroke={stroke} strokeWidth={1} />;
+    }
+    if (s.kind === 'circle') {
+      const r = s.b / 2 * scale;
+      return <circle key={i} cx={tx(s.cx)} cy={ty(s.cy)} r={r} fill={fill} stroke={stroke} strokeWidth={1} />;
+    }
+    if (s.kind === 'hollow_circle') {
+      const ra = s.b / 2 * scale, ri = s.di / 2 * scale;
+      return (
+        <g key={i}>
+          <circle cx={tx(s.cx)} cy={ty(s.cy)} r={ra} fill={fill} stroke={stroke} strokeWidth={1} />
+          <circle cx={tx(s.cx)} cy={ty(s.cy)} r={ri} fill="#fff" stroke={stroke} strokeWidth={1} strokeDasharray="3 2" />
+        </g>
+      );
+    }
+    if (s.kind === 'triangle') {
+      const x1t = tx(s.cx - s.b / 2), y1t = ty(s.cy);
+      const x2t = tx(s.cx + s.b / 2), y2t = ty(s.cy);
+      const x3t = tx(s.cx - s.b / 2), y3t = ty(s.cy + s.h);
+      return <polygon key={i} points={`${x1t},${y1t} ${x2t},${y2t} ${x3t},${y3t}`} fill={fill} stroke={stroke} strokeWidth={1} />;
+    }
+    return null;
+  };
+
+  const scx = tx(cxS), scy = ty(cyS);
+
+  return (
+    <svg width={W} height={H} style={{ border: '1px solid #e5e7eb', borderRadius: 6, background: '#f9fafb', display: 'block' }}>
+      {/* Koordinatensystem-Achsen */}
+      {/* x-Achse */}
+      <line x1={ox} y1={oy} x2={axXEnd} y2={oy} stroke="#374151" strokeWidth={1} markerEnd="url(#arr)" />
+      {/* y-Achse */}
+      <line x1={ox} y1={oy} x2={ox} y2={axYEnd} stroke="#374151" strokeWidth={1} markerEnd="url(#arr)" />
+      {/* Pfeilspitzen-Definition */}
+      <defs>
+        <marker id="arr" markerWidth={arrSize} markerHeight={arrSize} refX={arrSize - 1} refY={arrSize / 2} orient="auto">
+          <polygon points={`0 0, ${arrSize} ${arrSize / 2}, 0 ${arrSize}`} fill="#374151" />
+        </marker>
+      </defs>
+      {/* Achsenbeschriftungen */}
+      <text x={axXEnd - 2} y={oy - 5} fontSize={9} fill="#374151" textAnchor="middle">x</text>
+      <text x={ox + 5} y={axYEnd + 4} fontSize={9} fill="#374151">y</text>
+      {/* Nullpunkt O */}
+      <circle cx={ox} cy={oy} r={2} fill="#374151" />
+      <text x={ox - 9} y={oy + 9} fontSize={8} fill="#374151">O</text>
+
+      {/* Querschnitt-Formen */}
+      {shapes.map((s, i) => shapeEl(s, i))}
+
+      {/* Schwerpunkt S */}
+      {isFinite(scx) && isFinite(scy) && (
+        <g>
+          <line x1={scx - 8} y1={scy} x2={scx + 8} y2={scy} stroke="#dc2626" strokeWidth={1.5} />
+          <line x1={scx} y1={scy - 8} x2={scx} y2={scy + 8} stroke="#dc2626" strokeWidth={1.5} />
+          <circle cx={scx} cy={scy} r={2} fill="#dc2626" />
+          <text x={scx + 5} y={scy - 5} fontSize={9} fill="#dc2626" fontWeight="bold">S</text>
+        </g>
+      )}
+    </svg>
+  );
+}
+
+function fmtE(v: number): string {
+  if (!isFinite(v)) return '—';
+  if (Math.abs(v) >= 1e7) return v.toExponential(3);
+  return String(Math.round(v * 1000) / 1000);
+}
+
+function SectionCalcPanel({ label, savedShapes, onShapesChange }: {
+  label: string;
+  savedShapes?: string;
+  onShapesChange?: (shapes: CSShape[]) => void;
+}) {
+  const initShapes = React.useMemo<CSShape[]>(() => {
+    if (!savedShapes) return [newShape('rect')];
+    try { return JSON.parse(savedShapes) as CSShape[]; } catch { return [newShape('rect')]; }
+  }, []);
+
+  const [shapes, setShapesRaw] = React.useState<CSShape[]>(initShapes);
+
+  const setShapes = (fn: (prev: CSShape[]) => CSShape[]) =>
+    setShapesRaw(prev => { const next = fn(prev); onShapesChange?.(next); return next; });
+
+  const updateShape = (id: string, patch: Partial<CSShape>) =>
+    setShapes(s => s.map(x => x.id === id ? { ...x, ...patch } : x));
+  const removeShape = (id: string) => setShapes(s => s.filter(x => x.id !== id));
+  const addShape = (kind: ShapeKind) => setShapes(s => [...s, newShape(kind)]);
+
+  const res = React.useMemo(() => {
+    try { return computeSection(shapes); } catch { return null; }
+  }, [shapes]);
+
+  const numF = (v: number, d = 2) => isFinite(v) ? String(Math.round(v * Math.pow(10, d)) / Math.pow(10, d)) : '—';
+
+  const dimField = (id: string, field: keyof CSShape, lbl: string, shape: CSShape) => (
+    <label key={field as string} style={{ display: 'flex', flexDirection: 'column', gap: 2, fontSize: 11 }}>
+      <span style={{ color: '#6b7280', fontSize: 10 }}>{lbl} [mm]</span>
+      <input type="number" value={(shape[field] as number) ?? 0}
+        onChange={e => updateShape(id, { [field]: parseFloat(e.target.value) || 0 })}
+        style={{ width: 70, padding: '2px 4px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 11 }}
+      />
+    </label>
+  );
+
+  const dims = (s: CSShape) => {
+    switch (s.kind) {
+      case 'rect':          return [dimField(s.id, 'b', 'b', s), dimField(s.id, 'h', 'h', s)];
+      case 'circle':        return [dimField(s.id, 'b', 'D (⌀)', s)];
+      case 'hollow_rect':   return [dimField(s.id, 'b', 'b', s), dimField(s.id, 'h', 'h', s), dimField(s.id, 'bi', 'b_i', s), dimField(s.id, 'hi', 'h_i', s)];
+      case 'hollow_circle': return [dimField(s.id, 'b', 'D_a (⌀)', s), dimField(s.id, 'di', 'D_i (⌀)', s)];
+      case 'triangle':      return [dimField(s.id, 'b', 'b', s), dimField(s.id, 'h', 'h', s)];
+    }
+  };
+
+  const thCell: React.CSSProperties = { padding: '3px 8px', fontWeight: 600, fontSize: 10, color: '#374151', borderBottom: '1px solid #e5e7eb', background: '#f3f4f6', textAlign: 'right' };
+  const tdCell: React.CSSProperties = { padding: '3px 8px', fontSize: 10, color: '#374151', borderBottom: '1px solid #f3f4f6', textAlign: 'right' };
+
+  return (
+    <div style={{ fontFamily: 'system-ui, sans-serif' }}>
+      <div style={{ fontWeight: 700, fontSize: 14, color: '#374151', marginBottom: 10 }}>⊕ {label || 'Querschnitt'}</div>
+
+      {/* Form-Liste */}
+      {shapes.map((s, i) => (
+        <div key={s.id} style={{ border: '1px solid #e5e7eb', borderRadius: 6, marginBottom: 8, padding: '8px 10px', background: s.subtract ? '#fff1f2' : '#f9fafb' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+            <span style={{ fontWeight: 600, fontSize: 12, color: '#374151' }}>#{i + 1}</span>
+            <input value={s.label} onChange={e => updateShape(s.id, { label: e.target.value })}
+              style={{ flex: 1, padding: '2px 6px', border: '1px solid #d1d5db', borderRadius: 4, fontSize: 11 }} />
+            <label style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#dc2626' }}>
+              <input type="checkbox" checked={s.subtract} onChange={e => updateShape(s.id, { subtract: e.target.checked })} /> Abzug
+            </label>
+            <button onClick={() => removeShape(s.id)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444', fontSize: 14, padding: 2 }}>✕</button>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-end' }}>
+            {dims(s)}
+            {dimField(s.id, 'cx', 'x_S [mm]', s)}
+            {dimField(s.id, 'cy', 'y_S [mm]', s)}
+          </div>
+        </div>
+      ))}
+
+      {/* Neue Form hinzufügen */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
+        {(Object.keys(SHAPE_LABEL_MAP) as ShapeKind[]).map(k => (
+          <button key={k} onClick={() => addShape(k)}
+            style={{ padding: '3px 8px', fontSize: 10, border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}>
+            + {SHAPE_LABEL_MAP[k]}
+          </button>
+        ))}
+      </div>
+
+      {/* SVG-Vorschau + Ergebnisse nebeneinander */}
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 12 }}>
+        {res && <SectionSVG shapes={shapes} cyS={res.cyS} cxS={res.cxS} />}
+
+        {res && (
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 6 }}>Ergebnisse</div>
+            <table style={{ borderCollapse: 'collapse', fontSize: 11, width: '100%' }}>
+              <tbody>
+                {[
+                  ['A', numF(res.A, 1), 'mm²'],
+                  ['x_S', numF(res.cxS, 2), 'mm'],
+                  ['y_S', numF(res.cyS, 2), 'mm'],
+                  ['I_y', numF(res.Iy, 0), 'mm⁴'],
+                  ['I_z', numF(res.Iz, 0), 'mm⁴'],
+                  ['W_y', numF(res.Wy, 1), 'mm³'],
+                  ['W_z', numF(res.Wz, 1), 'mm³'],
+                ].map(([n, v, u]) => (
+                  <tr key={n as string}>
+                    <td style={{ padding: '2px 8px 2px 0', fontWeight: 600, color: '#374151' }}><MathDisplay latex={n as string} /></td>
+                    <td style={{ padding: '2px 8px', textAlign: 'right', fontFamily: 'monospace' }}>{v}</td>
+                    <td style={{ padding: '2px 0', color: '#6b7280', fontSize: 10 }}>{u}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Steiner-Tabelle I_y */}
+      {res && res.shapes.length > 0 && (
+        <div style={{ overflowX: 'auto', marginBottom: 8 }}>
+          <div style={{ fontWeight: 600, fontSize: 11, marginBottom: 4, color: '#374151' }}>Steiner-Anteile — I<sub>y</sub></div>
+          <table style={{ borderCollapse: 'collapse', fontSize: 10, width: '100%', minWidth: 520 }}>
+            <thead>
+              <tr>
+                {['Form', 'A [mm²]', 'y_i [mm]', 'e_{y,i} [mm]', 'A·e²_{y,i} [mm⁴]', 'I_{y,i} [mm⁴]', 'I_{y,i}+Steiner [mm⁴]'].map(h => (
+                  <th key={h} style={thCell}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {res.shapes.map((sr, i) => {
+                const sign = sr.sign;
+                const total_i = sign * (sr.Iy + sr.steinY);
+                return (
+                  <tr key={i} style={{ background: sign < 0 ? '#fff1f2' : undefined }}>
+                    <td style={{ ...tdCell, textAlign: 'left' }}>{shapes[i]?.label || `#${i + 1}`}{sign < 0 ? ' (−)' : ''}</td>
+                    <td style={tdCell}>{fmtE(sr.A)}</td>
+                    <td style={tdCell}>{fmtE(sr.cy)}</td>
+                    <td style={tdCell}>{fmtE(sr.ey)}</td>
+                    <td style={tdCell}>{fmtE(sr.steinY)}</td>
+                    <td style={tdCell}>{fmtE(sr.Iy)}</td>
+                    <td style={{ ...tdCell, fontWeight: 600 }}>{fmtE(total_i)}</td>
+                  </tr>
+                );
+              })}
+              <tr style={{ background: '#f3f4f6' }}>
+                <td style={{ ...tdCell, textAlign: 'left', fontWeight: 700 }}>Σ</td>
+                <td style={{ ...tdCell, fontWeight: 700 }}>{fmtE(res.A)}</td>
+                <td style={{ ...tdCell }}>—</td>
+                <td style={{ ...tdCell }}>—</td>
+                <td style={{ ...tdCell }}>—</td>
+                <td style={{ ...tdCell }}>—</td>
+                <td style={{ ...tdCell, fontWeight: 700 }}>{fmtE(res.Iy)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Steiner-Tabelle I_z */}
+      {res && res.shapes.length > 0 && (
+        <div style={{ overflowX: 'auto', marginBottom: 8 }}>
+          <div style={{ fontWeight: 600, fontSize: 11, marginBottom: 4, color: '#374151' }}>Steiner-Anteile — I<sub>z</sub></div>
+          <table style={{ borderCollapse: 'collapse', fontSize: 10, width: '100%', minWidth: 520 }}>
+            <thead>
+              <tr>
+                {['Form', 'A [mm²]', 'x_i [mm]', 'e_{z,i} [mm]', 'A·e²_{z,i} [mm⁴]', 'I_{z,i} [mm⁴]', 'I_{z,i}+Steiner [mm⁴]'].map(h => (
+                  <th key={h} style={thCell}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {res.shapes.map((sr, i) => {
+                const sign = sr.sign;
+                const total_i = sign * (sr.Iz + sr.steinZ);
+                return (
+                  <tr key={i} style={{ background: sign < 0 ? '#fff1f2' : undefined }}>
+                    <td style={{ ...tdCell, textAlign: 'left' }}>{shapes[i]?.label || `#${i + 1}`}{sign < 0 ? ' (−)' : ''}</td>
+                    <td style={tdCell}>{fmtE(sr.A)}</td>
+                    <td style={tdCell}>{fmtE(sr.cx)}</td>
+                    <td style={tdCell}>{fmtE(sr.ez)}</td>
+                    <td style={tdCell}>{fmtE(sr.steinZ)}</td>
+                    <td style={tdCell}>{fmtE(sr.Iz)}</td>
+                    <td style={{ ...tdCell, fontWeight: 600 }}>{fmtE(total_i)}</td>
+                  </tr>
+                );
+              })}
+              <tr style={{ background: '#f3f4f6' }}>
+                <td style={{ ...tdCell, textAlign: 'left', fontWeight: 700 }}>Σ</td>
+                <td style={{ ...tdCell, fontWeight: 700 }}>{fmtE(res.A)}</td>
+                <td style={{ ...tdCell }}>—</td>
+                <td style={{ ...tdCell }}>—</td>
+                <td style={{ ...tdCell }}>—</td>
+                <td style={{ ...tdCell }}>—</td>
+                <td style={{ ...tdCell, fontWeight: 700 }}>{fmtE(res.Iz)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Formel-Darstellung */}
+      {res && (
+        <div style={{ marginTop: 12, padding: '8px 12px', background: '#f5f3ff', borderRadius: 6, border: '1px solid #e9d5ff' }}>
+          <div style={{ fontWeight: 600, fontSize: 11, marginBottom: 6, color: '#6d28d9' }}>Berechnungsformeln (Steiner)</div>
+
+          {/* Schwerpunkt y_S */}
+          <MathDisplay latex={`y_S = \\dfrac{\\sum_i A_i \\cdot y_i}{\\sum_i A_i} = \\dfrac{${res.shapes.map(sr => `${fmtE(sr.A)} {\\cdot} ${fmtE(sr.cy)}`).join(' + ')}}{${fmtE(res.A)}} = ${fmtE(res.cyS)}\\;\\mathrm{mm}`} />
+
+          {/* Schwerpunkt x_S */}
+          <div style={{ marginTop: 6 }}>
+            <MathDisplay latex={`x_S = \\dfrac{\\sum_i A_i \\cdot x_i}{\\sum_i A_i} = \\dfrac{${res.shapes.map(sr => `${fmtE(sr.A)} {\\cdot} ${fmtE(sr.cx)}`).join(' + ')}}{${fmtE(res.A)}} = ${fmtE(res.cxS)}\\;\\mathrm{mm}`} />
+          </div>
+
+          {/* I_y */}
+          <div style={{ marginTop: 6 }}>
+            <MathDisplay latex={`I_y = \\sum_i (I_{y,i} + A_i \\cdot e_{y,i}^2) = ${res.shapes.map(sr => `(${fmtE(sr.Iy)} + ${fmtE(sr.A)}{\\cdot}${fmtE(sr.ey)}^2)`).join(' + ')} = ${fmtE(res.Iy)}\\;\\mathrm{mm}^4`} />
+          </div>
+
+          {/* I_z */}
+          <div style={{ marginTop: 6 }}>
+            <MathDisplay latex={`I_z = \\sum_i (I_{z,i} + A_i \\cdot e_{z,i}^2) = ${res.shapes.map(sr => `(${fmtE(sr.Iz)} + ${fmtE(sr.A)}{\\cdot}${fmtE(sr.ez)}^2)`).join(' + ')} = ${fmtE(res.Iz)}\\;\\mathrm{mm}^4`} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BeamCalcPanel({ label }: { label: string }) {
+  const [state, setState] = React.useState<LocalBeamState>({
+    L: 5, left: 'pin', right: 'roller', loads: [],
+  });
+
+  const setS = (p: Partial<LocalBeamState>) => setState(prev => ({ ...prev, ...p }));
+
+  const addLoad = (kind: BeamLoad['kind']) => {
+    const id = 'ld' + Date.now();
+    const newLoad: BeamLoad = kind === 'uniform'
+      ? { id, kind, value: 10, pos: 0, pos2: state.L, dir: 1 }
+      : { id, kind, value: 10, pos: state.L / 2, dir: 1 };
+    setS({ loads: [...state.loads, newLoad] });
+  };
+  const updLoad = (idx: number, patch: Partial<BeamLoad>) => {
+    const next = [...state.loads];
+    next[idx] = { ...next[idx], ...patch };
+    setS({ loads: next });
+  };
+  const removeLoad = (idx: number) => setS({ loads: state.loads.filter((_, i) => i !== idx) });
+
+  const res = state.L > 0 && state.loads.length > 0
+    ? computeBeam(state)
+    : null;
+
+  const inp: React.CSSProperties = { fontSize: 12, border: '1px solid #d1d5db', borderRadius: 4, padding: '3px 6px', width: '100%', boxSizing: 'border-box' };
+  const selectS: React.CSSProperties = { ...inp, appearance: 'none', background: '#fff' };
+  const SUPPORT_OPTS: SupportKind[] = ['pin', 'roller', 'fixed', 'free'];
+
+  return (
+    <div>
+      {label && <div style={{ fontWeight: 700, fontSize: 13, color: '#14532d', marginBottom: 8 }}>{label}</div>}
+
+      {/* Eingaben */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
+        <div>
+          <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, marginBottom: 2 }}>Stützweite L [m]</div>
+          <input style={inp} type="number" min={0.1} step={0.1} value={state.L} onChange={e => setS({ L: parseFloat(e.target.value) || 1 })} />
+        </div>
+        <div>
+          <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, marginBottom: 2 }}>Auflager links</div>
+          <select style={selectS} value={state.left} onChange={e => setS({ left: e.target.value as SupportKind })}>
+            {SUPPORT_OPTS.map(s => <option key={s} value={s}>{SUPPORT_LABELS[s]}</option>)}
+          </select>
+        </div>
+        <div>
+          <div style={{ fontSize: 10, color: '#6b7280', fontWeight: 600, marginBottom: 2 }}>Auflager rechts</div>
+          <select style={selectS} value={state.right} onChange={e => setS({ right: e.target.value as SupportKind })}>
+            {SUPPORT_OPTS.map(s => <option key={s} value={s}>{SUPPORT_LABELS[s]}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Träger-Skizze */}
+      <BeamSketchSVG {...state} />
+
+      {/* Lastentabelle */}
+      <div style={{ marginBottom: 8 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#374151' }}>Lasten</span>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={() => addLoad('uniform')} style={{ fontSize: 11, background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 4, padding: '2px 8px', cursor: 'pointer', color: '#92400e' }}>≡ Streckenlast</button>
+            <button onClick={() => addLoad('point')} style={{ fontSize: 11, background: '#ede9fe', border: '1px solid #c4b5fd', borderRadius: 4, padding: '2px 8px', cursor: 'pointer', color: '#5b21b6' }}>↓ Einzellast</button>
+          </div>
+        </div>
+        {state.loads.map((ld, li) => (
+          <div key={ld.id} style={{ display: 'grid', gridTemplateColumns: ld.kind === 'uniform' ? '1fr 0.7fr 0.7fr 0.7fr 0.7fr auto' : '1fr 0.7fr 0.7fr 0.7fr auto', gap: 4, marginBottom: 4, background: '#f8fafc', border: '1px solid #e5e7eb', borderRadius: 4, padding: '4px 6px', alignItems: 'center', fontSize: 11 }}>
+            <span style={{ color: '#6b7280', fontSize: 10, fontWeight: 600 }}>{ld.kind === 'uniform' ? '≡ Streckenlast' : '↓ Einzellast'}</span>
+            <div>
+              <div style={{ fontSize: 9, color: '#9ca3af' }}>Wert [kN{ld.kind === 'uniform' ? '/m' : ''}]</div>
+              <input style={{ ...inp, fontSize: 11 }} type="number" step={0.5} value={ld.value} onChange={e => updLoad(li, { value: parseFloat(e.target.value) || 0 })} />
+            </div>
+            <div>
+              <div style={{ fontSize: 9, color: '#9ca3af' }}>Richtung</div>
+              <select style={{ ...selectS, fontSize: 11 }} value={ld.dir} onChange={e => updLoad(li, { dir: parseInt(e.target.value) as 1 | -1 })}>
+                <option value={1}>↓ nach unten</option>
+                <option value={-1}>↑ nach oben</option>
+              </select>
+            </div>
+            <div>
+              <div style={{ fontSize: 9, color: '#9ca3af' }}>{ld.kind === 'uniform' ? 'Von [m]' : 'Position [m]'}</div>
+              <input style={{ ...inp, fontSize: 11 }} type="number" step={0.1} min={0} max={state.L} value={ld.pos} onChange={e => updLoad(li, { pos: parseFloat(e.target.value) ?? 0 })} />
+            </div>
+            {ld.kind === 'uniform' && (
+              <div>
+                <div style={{ fontSize: 9, color: '#9ca3af' }}>Bis [m]</div>
+                <input style={{ ...inp, fontSize: 11 }} type="number" step={0.1} min={0} max={state.L} value={ld.pos2 ?? state.L} onChange={e => updLoad(li, { pos2: parseFloat(e.target.value) ?? state.L })} />
+              </div>
+            )}
+            <button onClick={() => removeLoad(li)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 4px' }}>×</button>
+          </div>
+        ))}
+        {state.loads.length === 0 && <div style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', padding: 8 }}>Noch keine Lasten – bitte hinzufügen</div>}
+      </div>
+
+      {/* Auflagerreaktionen */}
+      {res && (
+        <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 4, padding: '6px 10px', marginBottom: 8, fontSize: 11 }}>
+          <div style={{ fontWeight: 700, color: '#14532d', marginBottom: 4 }}>⚖ {res.systemName}</div>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+            <span>RA = <b>{res.reactions.RA.toFixed(2)} kN</b></span>
+            <span>RB = <b>{res.reactions.RB.toFixed(2)} kN</b></span>
+            {res.reactions.MA !== 0 && <span>M_A = <b>{res.reactions.MA.toFixed(2)} kNm</b></span>}
+            {res.reactions.MB !== 0 && <span>M_B = <b>{res.reactions.MB.toFixed(2)} kNm</b></span>}
+          </div>
+        </div>
+      )}
+
+      {/* Diagramme */}
+      {res && (
+        <div>
+          <DiagramSVG x={res.x} y={res.M} label="Momentenverlauf M [kNm]" color="#dc2626" unit="kNm" />
+          <DiagramSVG x={res.x} y={res.Q} label="Querkraftverlauf Q [kN]" color="#2563eb" unit="kN" />
+        </div>
+      )}
+    </div>
+  );
+}
 const sel: React.CSSProperties = { border: '1px solid #d1d5db', borderRadius: 5, padding: '4px 8px', fontSize: 13, width: '100%', background: '#fff' };
 
-export default function GraphVerificationView({ verification, readOnly = false, initialInputs }: { verification: Verification; readOnly?: boolean; initialInputs?: Record<string, string> }) {
+export default function GraphVerificationView({ verification, readOnly = false, initialInputs, onInputsChange }: { verification: Verification; readOnly?: boolean; initialInputs?: Record<string, string>; onInputsChange?: (inputs: Record<string, string>) => void }) {
   const woodType = useStore(s => s.woodType);
   const woodClassId = useStore(s => s.woodClassId);
   const apiWoodClasses = useStore(s => s.apiWoodClasses);
   const setGraphInputs = useStore(s => s.setGraphInputs);
   const graph = useMemo(() => getGraph(toLegacyShape(verification)), [verification.id, verification.graph_json]);
   const [tables, setTables] = useState<Record<string, DbTableData>>({});
-  // Im Print-Modus: initialInputs als Startzustand; sonst leer (Defaults kommen via useEffect)
   const [inputs, setInputs] = useState<Record<string, string>>(initialInputs || {});
   const [decimals, setDecimals] = useState(3);
   const [imageModal, setImageModal] = useState<{ src: string; label?: string; source?: string } | null>(null);
@@ -162,7 +818,8 @@ export default function GraphVerificationView({ verification, readOnly = false, 
 
   // Default-Eingaben setzen (nur für Felder, die noch nicht belegt sind)
   useEffect(() => {
-    if (readOnly) return; // Im Print-Modus: initialInputs sind bereits gesetzt, keine Defaults nötig
+    // Im echten readOnly-Modus (ohne onInputsChange) keine Defaults nötig — initialInputs sind bereits korrekt
+    if (readOnly && !onInputsChange) return;
     setInputs(prev => {
       const next = { ...prev };
       for (const n of graph.nodes) {
@@ -177,6 +834,8 @@ export default function GraphVerificationView({ verification, readOnly = false, 
         } else if (n.type === 'dropdown') {
           if (d.mode === 'custom') next[n.id] = String(d.options?.[0]?.label ?? '');
           else { const t = d.table_ref ? tables[d.table_ref] : null; next[n.id] = t ? String(t.rows?.[0]?.[d.label_col ?? 0] ?? '') : ''; }
+        } else if (n.type === 'matrix') {
+          next[n.id] = String((d as any).rows?.[0]?.label ?? '');
         } else if (n.type === 'stdcalc') {
           const srcEdge = graph.edges.find(e => e.target === n.id);
           const tc = graph.nodes.find(x => x.type === 'tablecalc' && srcEdge && x.id === srcEdge.source)
@@ -184,15 +843,19 @@ export default function GraphVerificationView({ verification, readOnly = false, 
           next[n.id] = (tc?.data as any)?.zones?.[0] ?? '';
         }
       }
-      // Store aktualisieren damit addVerificationToPrint den korrekten Snapshot bekommt
-      setGraphInputs(verification.id, next);
+      // Store aktualisieren (nur wenn nicht Print-Item — Print-Items tracken ihre Inputs selbst)
+      if (!onInputsChange) setGraphInputs(verification.id, next);
       return next;
     });
   }, [graph, tables]);
 
   const setInput = (id: string, val: string) => setInputs(prev => {
     const next = { ...prev, [id]: val };
-    if (!readOnly) setGraphInputs(verification.id, next);
+    if (onInputsChange) {
+      onInputsChange(next);
+    } else if (!readOnly) {
+      setGraphInputs(verification.id, next);
+    }
     return next;
   });
   const ev = useMemo(() => evalGraph(graph, inputs, tables, materialProps, { woodType, woodClassId }), [graph, inputs, tables, materialProps, woodType, woodClassId]);
@@ -809,6 +1472,529 @@ export default function GraphVerificationView({ verification, readOnly = false, 
             </div>
           );
         }
+        if (n.type === 'matrix') {
+          const md: any = d;
+          const cols: any[] = md.columns || [];
+          const rows: any[] = md.rows || [];
+          const matVals: Record<string, number> = (r as any).matrixVals || {};
+          const matLatex: Record<string, string> = (r as any).matrixLatex || {};
+          return (
+            <div key={n.id} style={{ ...card, background: '#ecfeff', borderColor: '#0891b2' }}>
+              {md.label && <div style={{ fontWeight: 600, fontSize: 12, color: '#0369a1', marginBottom: 6 }}>{md.label}</div>}
+              <div style={lbl}>{md.row_label || 'Material / Schicht'}</div>
+              <select style={{ ...sel, marginBottom: 8, borderColor: '#0891b2' }} disabled={readOnly}
+                value={inputs[n.id] ?? ''}
+                onChange={e => setInput(n.id, e.target.value)}>
+                {rows.map((row: any) => <option key={row.id} value={row.label}>{row.label}</option>)}
+              </select>
+              {cols.length > 0 && cols.map((col: any) => {
+                const val = matVals[col.name];
+                const subLatex = matLatex[col.name];
+                const colHeader = col.header || col.name;
+                return (
+                  <div key={col.id} style={{ background: '#f0fdfe', border: '1px solid #a5f3fc', borderRadius: 4, padding: '4px 8px', marginBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'space-between' }}>
+                      <span style={{ color: '#0369a1', fontWeight: 600, fontSize: 11 }}>
+                        <MathDisplay latex={colHeader} />
+                      </span>
+                      {col.unit && <span style={{ fontSize: 10, color: '#6b7280' }}>[{col.unit}]</span>}
+                    </div>
+                    {isFiniteNumber(val) ? (
+                      <MathDisplay latex={
+                        subLatex
+                          ? `${col.name ? nameToLatex(col.name) : '?'} = ${subLatex} = ${resultLatex(val, col.unit)}`
+                          : `${col.name ? nameToLatex(col.name) : '?'} = ${resultLatex(val, col.unit)}`
+                      } />
+                    ) : <span style={{ color: '#9ca3af', fontSize: 11 }}>—</span>}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        }
+
+        if (n.type === 'beamvisual') {
+          return (
+            <div key={n.id} style={{ ...card, background: '#f0fdf4', borderColor: '#15803d', padding: '10px 14px' }}>
+              <BeamCalcPanel label={(d as any).label || ''} />
+            </div>
+          );
+        }
+
+        if (n.type === 'section') {
+          return (
+            <div key={n.id} style={{ ...card, background: '#fdf4ff', borderColor: '#9333ea', padding: '10px 14px' }}>
+              <SectionCalcPanel
+                label={(d as any).label || ''}
+                savedShapes={inputs[n.id]}
+                onShapesChange={shapes => setInput(n.id, JSON.stringify(shapes))}
+              />
+            </div>
+          );
+        }
+
+        if (n.type === 'loopblock') {
+          const lb = d as import('../types/graph').LoopBlockData;
+          let state: { count?: string; items?: Record<string, string>[]; globals?: Record<string, string> } = {};
+          try { state = JSON.parse(inputs[n.id] as string ?? '{}'); } catch { /* */ }
+          const countVal = Math.max(1, Math.min(Number(state.count ?? 1) || 1, lb.max_count || 8));
+          const items: Record<string, string>[] = Array.isArray(state.items) ? [...state.items] : [];
+          while (items.length < countVal) items.push({});
+          const stateGlobals: Record<string, string> = state.globals ?? {};
+
+          const setState = (patch: Partial<typeof state>) => {
+            setInput(n.id, JSON.stringify({ ...state, ...patch }));
+          };
+          const setItem = (i: number, patch: Record<string, string>) => {
+            const newItems = [...items];
+            newItems[i] = { ...newItems[i], ...patch };
+            setState({ items: newItems });
+          };
+          const setGlobal = (patch: Record<string, string>) => {
+            setState({ globals: { ...stateGlobals, ...patch } });
+          };
+
+          // Vars aufteilen
+          const globalVars = (lb.vars || []).filter(v => v.scope === 'global');
+          const layerVars  = (lb.vars || []).filter(v => v.scope !== 'global');
+
+          const res = ev?.results?.[n.id] as any;
+          const perIterVals: Record<string, number[]> = res?.loopPerIter ?? {};
+          const aggrVals: Record<string, number> = res?.matrixVals ?? {};
+
+          return (
+            <div key={n.id} style={{ ...card, background: '#fff7f0', borderColor: '#c2410c', padding: '10px 14px' }}>
+              {lb.label && <div style={{ fontWeight: 600, fontSize: 13, color: '#c2410c', marginBottom: 8 }}>{lb.label}</div>}
+
+              {/* Globale Variablen (einmal für alle Schichten) */}
+              {globalVars.length > 0 && (
+                <div style={{ background: '#fff', border: '1px solid #fed7aa', borderRadius: 6, padding: '8px 10px', marginBottom: 10 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#92400e', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Globale Variablen (alle Schichten)</div>
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                    {globalVars.map(v => {
+                      const rawVal = stateGlobals[v.id] ?? stateGlobals[v.name] ?? v.default_value ?? '';
+                      return (
+                        <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                          <MathDisplay latex={v.name} />
+                          <input
+                            type="number"
+                            value={rawVal}
+                            onChange={e => setGlobal({ [v.id]: e.target.value })}
+                            style={{ width: 72, border: '1.5px solid #fb923c', borderRadius: 4, padding: '3px 6px', fontSize: 13, textAlign: 'right' }}
+                          />
+                          {v.unit && <span style={{ fontSize: 11, color: '#9ca3af' }}>[{v.unit}]</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Anzahl Schichten */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <div style={{ fontSize: 12, color: '#6b7280' }}>{lb.count_label || 'Anzahl Schichten n'}</div>
+                <input
+                  type="number" min={1} max={lb.max_count || 8}
+                  value={countVal}
+                  onChange={e => {
+                    const nc = Math.max(1, Math.min(Number(e.target.value) || 1, lb.max_count || 8));
+                    setState({ count: String(nc), items: items.slice(0, nc) });
+                  }}
+                  style={{ width: 56, border: '1.5px solid #c2410c', borderRadius: 4, padding: '3px 6px', fontSize: 13, textAlign: 'center' }}
+                />
+              </div>
+
+              {/* Iterationen */}
+              {Array.from({ length: countVal }, (_, i) => {
+                const item = items[i] ?? {};
+                const selLabel = item['__sel__'] ?? '';
+                const iterOutVals: Record<string, number> = {};
+                for (const out of (lb.outputs || [])) {
+                  iterOutVals[out.id] = perIterVals[out.id]?.[i] ?? NaN;
+                }
+
+                const selectedOpt = (lb.options || []).find(opt => opt.id === selLabel || opt.label === selLabel);
+
+                // Werte-Map: globale Vars + per-Schicht-Vars dieser Iteration
+                // Schlüssel = normalisierter JS-Name (ohne \, {} aufgelöst)
+                const normalizeVarName = (n: string) =>
+                  n.replace(/\\/g, '').replace(/_\{([^{}]+)\}/g, '_$1').replace(/[{}]/g, '').trim();
+
+                const varVals: Record<string, number> = {};
+                for (const v of globalVars) {
+                  const raw = stateGlobals[v.id] ?? stateGlobals[v.name] ?? v.default_value ?? '0';
+                  const num = parseFloat(raw);
+                  if (isFinite(num)) varVals[normalizeVarName(v.name)] = num;
+                }
+                for (const v of layerVars) {
+                  const raw = item[v.id] ?? item[v.name] ?? v.default_value ?? '0';
+                  const num = parseFloat(raw);
+                  if (isFinite(num)) varVals[normalizeVarName(v.name)] = num;
+                }
+
+                const isLatex = (s: string) => s.includes('\\') || s.includes('^{');
+
+                // Substitution in LaTeX-Formel: Var-Namen durch Zahlenwerte ersetzen
+                // Probiert sowohl `d_i` als auch `d_{i}` Schreibweisen
+                const substituteLatex = (tex: string) => {
+                  let s = tex;
+                  const entries = Object.entries(varVals).sort((a, b) => b[0].length - a[0].length);
+                  for (const [jsName, val] of entries) {
+                    const numStr = formatNumber(val);
+                    // Formen zum Ausprobieren: d_i, d_{i}, und für Griechisch: \beta_0, \beta_{0}
+                    const forms: string[] = [
+                      '\\' + jsName,                                          // \beta_0 (griechisch)
+                      '\\' + jsName.replace(/_([A-Za-z0-9]+)$/g, '_{$1}'),  // \beta_{0}
+                      jsName,                                                  // d_i
+                      jsName.replace(/_([A-Za-z0-9]+)$/g, '_{$1}'),          // d_{i}
+                    ];
+                    for (const form of forms) {
+                      const esc = form.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                      try { s = s.replace(new RegExp(esc + '(?![\\w{])', 'g'), numStr); } catch { /* */ }
+                    }
+                  }
+                  return s;
+                };
+
+                return (
+                  <div key={i} style={{ border: '1px solid #fed7aa', borderRadius: 6, padding: '8px 10px', marginBottom: 8, background: '#fff' }}>
+                    <div style={{ fontWeight: 600, fontSize: 11, color: '#c2410c', marginBottom: 6 }}>
+                      Schicht {i + 1}{i === countVal - 1 ? ' (n = letzte)' : ''}
+                    </div>
+
+                    {/* Material-Dropdown */}
+                    <div style={{ marginBottom: 6 }}>
+                      <div style={lbl}>{lb.dropdown_label || 'Material'}</div>
+                      <select
+                        value={selLabel}
+                        onChange={e => setItem(i, { '__sel__': e.target.value })}
+                        style={{ width: '100%', border: '1px solid #fb923c', borderRadius: 4, padding: '4px 6px', fontSize: 12, background: '#fff' }}
+                      >
+                        <option value="">— wählen —</option>
+                        {(lb.options || []).map(opt => (
+                          <option key={opt.id} value={opt.label}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Per-Schicht-Variablen */}
+                    {layerVars.length > 0 && (
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+                        {layerVars.map(v => {
+                          const rawVal = item[v.id] ?? item[v.name] ?? v.default_value ?? '';
+                          return (
+                            <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 4, flex: '0 0 auto' }}>
+                              <MathDisplay latex={v.name} />
+                              <input
+                                type="number"
+                                value={rawVal}
+                                onChange={e => setItem(i, { [v.id]: e.target.value })}
+                                style={{ width: 64, border: '1px solid #fed7aa', borderRadius: 4, padding: '3px 5px', fontSize: 12, textAlign: 'right' }}
+                              />
+                              {v.unit && <span style={{ fontSize: 10, color: '#9ca3af' }}>[{v.unit}]</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Ausgaben dieser Iteration — mit Formelzeile */}
+                    {selLabel && (lb.outputs || []).map(out => {
+                      const val = iterOutVals[out.id];
+                      const formula = selectedOpt?.formulas?.[out.id] ?? '';
+                      const isLatexFormula = isLatex(formula);
+                      // Substitution: LaTeX-Formel → Werte einsetzen
+                      const subLatex = isLatexFormula ? substituteLatex(formula) : '';
+                      // JS-Formel: latexToJs konvertieren, dann substituteValues
+                      const jsFormula = isLatexFormula ? latexToJs(formula) : formula;
+                      const subJs = jsFormula ? substituteValues(jsFormula, varVals) : '';
+                      const hasSubstitution = isLatexFormula
+                        ? (subLatex !== formula && subLatex.trim() !== '')
+                        : (subJs !== jsFormula && subJs.trim() !== '');
+                      return (
+                        <div key={out.id} style={{ borderTop: '1px solid #fed7aa', paddingTop: 5, marginTop: 5 }}>
+                          {/* Formel mit Variablennamen */}
+                          {formula && (
+                            <div style={{ color: '#9ca3af', marginBottom: 2 }}>
+                              {out.name && <><MathDisplay latex={out.name} />{' = '}</>}
+                              {isLatexFormula
+                                ? <MathDisplay latex={formula} display />
+                                : <span style={{ fontFamily: 'monospace', fontSize: 10.5 }}>{formula}</span>
+                              }
+                            </div>
+                          )}
+                          {/* Formel mit eingesetzten Werten + Ergebnis */}
+                          {formula && hasSubstitution && (
+                            <div style={{ color: '#78716c', marginBottom: 3 }}>
+                              {isLatexFormula
+                                ? <MathDisplay
+                                    latex={isFinite(val)
+                                      ? `= ${subLatex} = ${formatNumber(val)}${out.unit ? `\\;\\mathrm{${out.unit.replace(/\//g, '/')}}` : ''}`
+                                      : `= ${subLatex}`}
+                                    display
+                                  />
+                                : <span style={{ fontFamily: 'monospace', fontSize: 10.5 }}>
+                                    {'= '}{subJs}
+                                    {isFinite(val) && <span style={{ color: '#c2410c', fontWeight: 700, marginLeft: 4 }}>= {formatNumber(val)}</span>}
+                                  </span>
+                              }
+                            </div>
+                          )}
+                          {/* Wenn keine Substitution möglich: nur das Ergebnis rechts */}
+                          {formula && !hasSubstitution && isFinite(val) && (
+                            <div style={{ fontSize: 11, color: '#c2410c', fontWeight: 700, marginBottom: 3 }}>
+                              = {formatNumber(val)} {out.unit && <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: 9 }}>[{out.unit}]</span>}
+                            </div>
+                          )}
+                          {/* Kompakt-Zeile: Label + Ergebnis */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+                            <span style={{ color: '#6b7280' }}>
+                              {out.label && <span style={{ marginRight: 4 }}>{out.label}</span>}
+                              {out.name && <MathDisplay latex={out.name} />}
+                            </span>
+                            <span style={{ fontWeight: 700, color: isFinite(val) ? '#c2410c' : '#9ca3af' }}>
+                              {isFinite(val) ? formatNumber(val) : '—'}
+                              {out.unit && <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: 10, marginLeft: 3 }}>[{out.unit}]</span>}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+
+              {/* Aggregations-Ergebnisse */}
+              {(lb.aggregations || []).length > 0 && (
+                <div style={{ borderTop: '2px solid #c2410c', marginTop: 8, paddingTop: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: '#c2410c', marginBottom: 6 }}>Gesamtergebnis</div>
+                  {(lb.aggregations || []).map((ag, ai) => {
+                    const val = aggrVals[ag.output_id];
+                    const methodLabel = ag.method === 'sum' ? 'Σ' : ag.method === 'last' ? 'letzte Schicht' : ag.method;
+                    return (
+                      <div key={ai} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <div>
+                          <div style={{ fontSize: 11, color: '#6b7280' }}>{ag.label} <span style={{ color: '#9ca3af' }}>({methodLabel})</span></div>
+                          {ag.name && <MathDisplay latex={ag.name} />}
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: isFinite(val) ? '#c2410c' : '#9ca3af' }}>
+                            {isFinite(val) ? formatNumber(val) : '—'}
+                          </div>
+                          {ag.unit && <div style={{ fontSize: 10, color: '#9ca3af' }}>[{ag.unit}]</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        if (n.type === 'groupcalc') {
+          const gc = d as import('../types/graph').GroupCalcData;
+          let state: Record<string, string> = {};
+          try { state = JSON.parse(inputs[n.id] as string ?? '{}'); } catch { /* */ }
+
+          const setState = (patch: Record<string, string>) => {
+            const next = { ...state, ...patch };
+            setInput(n.id, JSON.stringify(next));
+          };
+
+          const selLabel = state['__sel__'] ?? '';
+          const res = ev?.results?.[n.id];
+          const outVals: Record<string, number> = (res as any)?.matrixVals ?? {};
+          const outLatex: Record<string, string> = (res as any)?.matrixLatex ?? {};
+
+          return (
+            <div key={n.id} style={{ ...card, background: '#f0fdfa', borderColor: '#0f766e', padding: '10px 14px' }}>
+              {gc.label && <div style={{ fontWeight: 600, fontSize: 13, color: '#0f766e', marginBottom: 8 }}>{gc.label}</div>}
+
+              {/* Dropdown */}
+              <div style={{ marginBottom: 8 }}>
+                <div style={lbl}>{gc.dropdown_label || 'Auswahl'}</div>
+                <select
+                  value={selLabel}
+                  onChange={e => setState({ '__sel__': e.target.value })}
+                  style={{ width: '100%', border: '1.5px solid #0f766e', borderRadius: 5, padding: '5px 8px', fontSize: 13, background: '#fff', color: '#134e4a' }}
+                >
+                  <option value="">— wählen —</option>
+                  {(gc.options || []).map(opt => (
+                    <option key={opt.id} value={opt.label}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Eingabe-Variablen */}
+              {(gc.vars || []).map(v => {
+                const rawVal = state[v.id] ?? state[v.name] ?? v.default_value ?? '';
+                return (
+                  <div key={v.id} style={{ display: 'flex', alignItems: 'center', marginBottom: 6, gap: 8 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 1 }}>{v.label}</div>
+                      {v.name && <MathDisplay latex={v.name.includes('_{') ? v.name : nameToLatex(v.name)} />}
+                    </div>
+                    <input
+                      type="number"
+                      value={rawVal}
+                      onChange={e => setState({ [v.id]: e.target.value })}
+                      style={{ width: 80, border: '1px solid #5eead4', borderRadius: 4, padding: '4px 6px', fontSize: 13, textAlign: 'right' }}
+                    />
+                    {v.unit && <div style={{ fontSize: 11, color: '#6b7280', minWidth: 32 }}>[{v.unit}]</div>}
+                  </div>
+                );
+              })}
+
+              {/* Ausgaben */}
+              {(gc.outputs || []).length > 0 && (gc.vars || []).length > 0 && <div style={{ borderTop: '1px solid #5eead4', marginTop: 6, paddingTop: 6 }} />}
+              {(gc.outputs || []).map(out => {
+                const val = outVals[out.id];
+                const latex = outLatex[out.id];
+                return (
+                  <div key={out.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <div>
+                      <div style={{ fontSize: 11, color: '#6b7280' }}>{out.label}</div>
+                      {out.name && <MathDisplay latex={out.name.includes('_{') ? out.name : nameToLatex(out.name)} />}
+                      {latex && selLabel && (
+                        <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>
+                          = <MathDisplay latex={latex} />
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: isFinite(val) ? '#0f766e' : '#9ca3af' }}>
+                        {isFinite(val) ? formatNumber(val) : '—'}
+                      </div>
+                      {out.unit && <div style={{ fontSize: 11, color: '#6b7280' }}>[{out.unit}]</div>}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {!selLabel && (gc.options || []).length > 0 && (
+                <div style={{ fontSize: 11, color: '#9ca3af', textAlign: 'center', marginTop: 4 }}>
+                  Material wählen um Berechnung zu starten
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        if (n.type === 'comment') {
+          const cd = d as import('../types/graph').CommentData;
+          const tbl = cd.table_ref ? tables[cd.table_ref] : null;
+          const chartJson = tbl?.chart_json ?? null;
+          return (
+            <div key={n.id} style={{ ...card, background: '#fffbeb', borderColor: '#fcd34d' }}>
+              {/* Kommentartext */}
+              {cd.text && (
+                <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginBottom: cd.extra !== 'none' ? 10 : 0 }}>
+                  {cd.text}
+                </div>
+              )}
+
+              {/* Link */}
+              {cd.extra === 'link' && cd.link_url && (
+                <a href={cd.link_url} target="_blank" rel="noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 5, color: '#92400e', fontSize: 12, textDecoration: 'none', fontWeight: 500 }}>
+                  🔗 {cd.link_label || cd.link_url}
+                </a>
+              )}
+
+              {/* Bild */}
+              {cd.extra === 'image' && cd.image && (
+                <div>
+                  <img src={cd.image} style={{ maxWidth: '100%', maxHeight: 320, objectFit: 'contain', borderRadius: 5, border: '1px solid #fcd34d', display: 'block', cursor: 'pointer' }}
+                    onClick={() => setImageModal({ src: cd.image!, label: cd.image_caption, source: cd.image_source })} />
+                  {(cd.image_caption || cd.image_source) && (
+                    <div style={{ marginTop: 4 }}>
+                      {cd.image_caption && <div style={{ fontSize: 11, color: '#374151' }}>{cd.image_caption}</div>}
+                      {cd.image_source && <div style={{ fontSize: 10, color: '#9ca3af' }}>Quelle: {cd.image_source}</div>}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Diagramm aus DB */}
+              {cd.extra === 'chart' && chartJson && (() => {
+                const series: any[] = chartJson.series ?? [];
+                const allX = series.flatMap((s: any) => (s.data ?? []).map((p: any) => p[0]));
+                const xMin = Math.min(...allX), xMax = Math.max(...allX);
+                const chartData = [];
+                const steps = 80;
+                for (let i = 0; i <= steps; i++) {
+                  const xv = xMin + (xMax - xMin) * i / steps;
+                  const pt: Record<string, number> = { x: xv };
+                  series.forEach((s: any) => {
+                    const pts: [number, number][] = s.data ?? [];
+                    for (let j = 0; j < pts.length - 1; j++) {
+                      if (xv >= pts[j][0] && xv <= pts[j + 1][0]) {
+                        const t2 = (xv - pts[j][0]) / (pts[j + 1][0] - pts[j][0]);
+                        pt[s.name] = pts[j][1] + t2 * (pts[j + 1][1] - pts[j][1]);
+                        break;
+                      }
+                    }
+                  });
+                  chartData.push(pt);
+                }
+                return (
+                  <div>
+                    {tbl?.headers?.[0] && <div style={{ fontSize: 10, color: '#6b7280', marginBottom: 2 }}>{tbl?.headers?.[0] ?? ''}</div>}
+                    <ResponsiveContainer width="100%" height={220}>
+                      <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 16, left: 8 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                        <XAxis dataKey="x" type="number" domain={['dataMin', 'dataMax']}
+                          tickFormatter={(v: number) => String(Math.round(v * 10) / 10)}
+                          label={{ value: chartJson.xAxis?.label ?? '', position: 'insideBottom', offset: -8, fontSize: 10 }}
+                          tick={{ fontSize: 9 }} />
+                        <YAxis tick={{ fontSize: 9 }}
+                          label={{ value: chartJson.yAxis?.label ?? '', angle: -90, position: 'insideLeft', fontSize: 10 }} />
+                        <Tooltip formatter={(v: any) => [typeof v === 'number' ? Math.round(v * 1000) / 1000 : v]} labelFormatter={(l: any) => `x = ${Math.round(Number(l) * 100) / 100}`} />
+                        <Legend wrapperStyle={{ fontSize: 10 }} />
+                        {series.map((s: any, i: number) => (
+                          <Line key={s.name} type="monotone" dataKey={s.name} stroke={CHART_COLORS[i % CHART_COLORS.length]} dot={false} strokeWidth={1.5} />
+                        ))}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                );
+              })()}
+
+              {/* Tabelle aus DB */}
+              {cd.extra === 'table' && tbl && (
+                <div style={{ overflowX: 'auto' }}>
+                  {tbl.headers.length > 0 && (
+                    <table style={{ borderCollapse: 'collapse', fontSize: 11, width: '100%' }}>
+                      <thead>
+                        <tr>
+                          {tbl.headers.map((h, i) => (
+                            <th key={i} style={{ padding: '4px 8px', fontWeight: 600, color: '#374151', background: '#fef3c7', borderBottom: '2px solid #fcd34d', textAlign: 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tbl.rows.map((row, ri) => (
+                          <tr key={ri} style={{ background: ri % 2 === 0 ? '#fffbeb' : '#fff' }}>
+                            {row.map((cell, ci) => (
+                              <td key={ci} style={{ padding: '3px 8px', borderBottom: '1px solid #fef3c7', color: '#374151' }}>{cell}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )}
+
+              {/* Ladezustand */}
+              {(cd.extra === 'chart' || cd.extra === 'table') && cd.table_ref && !tbl && (
+                <div style={{ fontSize: 11, color: '#9ca3af' }}>Tabelle wird geladen…</div>
+              )}
+            </div>
+          );
+        }
+
         return null;
       })}
 
