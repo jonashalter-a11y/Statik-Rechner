@@ -229,9 +229,43 @@ const cellStyle: React.CSSProperties = {
 };
 
 export default function PrintPanel() {
-  const { printItems, woodClassId } = useStore();
+  const { printItems, woodClassId, exportPrintProtocol, importPrintProtocol, clearPrintProtocol } = useStore() as any;
   const printRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [exporting, setExporting] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const protocolFileName = () => `Ausdrucksprotokoll-${new Date().toISOString().slice(0, 10)}.json`;
+
+  const downloadProtocol = () => {
+    const payload = exportPrintProtocol();
+    const blob = new Blob([JSON.stringify(payload, null, 2) + '\n'], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = protocolFileName();
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    setMessage('Ausdrucksprotokoll exportiert');
+    setTimeout(() => setMessage(''), 1800);
+  };
+
+  const importProtocolFile = async (file?: File | null) => {
+    if (!file) return;
+    try {
+      const payload = JSON.parse(await file.text());
+      const result = importPrintProtocol(payload);
+      if (!result.ok) throw new Error(result.error);
+      setMessage(`${result.count} Nachweis${result.count === 1 ? '' : 'e'} importiert`);
+      setTimeout(() => setMessage(''), 2200);
+    } catch (err) {
+      alert('Import fehlgeschlagen: ' + String((err as Error).message || err));
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const exportPDF = async () => {
     if (!printRef.current) return;
@@ -324,6 +358,29 @@ export default function PrintPanel() {
           Fügen Sie Nachweise zum Ausdruck hinzu<br />
           über die Schaltfläche «+ Zum Ausdruck»
         </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json,.json"
+          style={{ display: 'none' }}
+          onChange={e => importProtocolFile(e.target.files?.[0])}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            marginTop: 16,
+            background: '#2563eb',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 6,
+            padding: '8px 14px',
+            fontSize: 12,
+            cursor: 'pointer',
+            fontWeight: 600,
+          }}
+        >
+          Ausdrucksprotokoll importieren
+        </button>
       </div>
     );
   }
@@ -342,6 +399,67 @@ export default function PrintPanel() {
         <span style={{ fontSize: 12, color: '#6b7280', flex: 1 }}>
           {printItems.length} Nachweis{printItems.length > 1 ? 'e' : ''} in der Ablage
         </span>
+        {message && (
+          <span style={{ fontSize: 11, color: '#047857', fontWeight: 600, whiteSpace: 'nowrap' }}>{message}</span>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/json,.json"
+          className="no-print"
+          style={{ display: 'none' }}
+          onChange={e => importProtocolFile(e.target.files?.[0])}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          style={{
+            background: '#fff',
+            color: '#1e40af',
+            border: '1px solid #bfdbfe',
+            borderRadius: 6,
+            padding: '6px 10px',
+            fontSize: 12,
+            cursor: 'pointer',
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          JSON importieren
+        </button>
+        <button
+          onClick={downloadProtocol}
+          style={{
+            background: '#fff',
+            color: '#166534',
+            border: '1px solid #bbf7d0',
+            borderRadius: 6,
+            padding: '6px 10px',
+            fontSize: 12,
+            cursor: 'pointer',
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          JSON exportieren
+        </button>
+        <button
+          onClick={() => {
+            if (window.confirm('Ausdrucksprotokoll wirklich leeren?')) clearPrintProtocol();
+          }}
+          style={{
+            background: '#fff',
+            color: '#991b1b',
+            border: '1px solid #fecaca',
+            borderRadius: 6,
+            padding: '6px 10px',
+            fontSize: 12,
+            cursor: 'pointer',
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Leeren
+        </button>
         <button
           onClick={exportPDF}
           disabled={exporting}
@@ -417,7 +535,7 @@ export default function PrintPanel() {
             </div>
           </div>
 
-          {printItems.map((item, i) => (
+          {printItems.map((item: any, i: number) => (
             <PrintVerification
               key={item.key}
               itemKey={item.key}

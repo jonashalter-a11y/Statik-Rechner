@@ -8,11 +8,25 @@ const LS_ACTIVE_CHAPTER = 'sia-active-chapter-id';
 const LS_ACTIVE_VERIFICATION = 'sia-active-verification-id';
 const LS_GRAPH_INPUTS = 'sia-graph-inputs-v1';
 const LS_VERIFICATION_DRAFTS = 'sia-verification-drafts-v1';
+const LS_PRINT_PROTOCOL = 'sia-print-protocol-v1';
 
 // ─── Typen ───────────────────────────────────────────────────────────────────
 export interface ApiWoodType  { id: string; name: string; label: string; sort_order: number; }
 export interface ApiWoodClass { id: string; wood_type_id: string; name: string; label: string; properties: ApiProperty[]; }
 export interface ApiProperty  { id: number; wood_class_id: string; key: string; label: string; value: number; unit: string; }
+
+type PrintItem = { key: string; snapshot: Verification; graphInputs: Record<string, string> };
+
+export interface PrintProtocolExport {
+  version: 1;
+  exportedAt: string;
+  app: 'Statik-Rechner';
+  kind: 'print-protocol';
+  normId: string;
+  woodType: WoodType;
+  woodClassId: string;
+  items: PrintItem[];
+}
 
 interface AppState {
   discipline: Discipline;
@@ -25,7 +39,7 @@ interface AppState {
   activeVerificationId: string | null;
   verifications: Verification[];
   // Jedes Print-Item ist ein eigener eingefrorener Snapshot mit eindeutigem key
-  printItems: Array<{ key: string; snapshot: Verification; graphInputs: Record<string, string> }>;
+  printItems: PrintItem[];
   // Graph-Eingaben je Nachweis (Node-ID → Wert); wird beim Snapshot mitkapturiert
   graphInputsByVerif: Record<string, Record<string, string>>;
   // Hochgezählt bei jedem restoreFromPrint → erzwingt Re-mount von GraphVerificationView
@@ -52,6 +66,9 @@ interface AppState {
   removeVerificationFromPrint: (key: string) => void; // entfernt genau diese Instanz
   updatePrintItemInputs: (key: string, inputs: Record<string, string>) => void;
   restoreFromPrint: (key: string) => void; // Werte aus Print-Item ins Frontend übernehmen
+  exportPrintProtocol: () => PrintProtocolExport;
+  importPrintProtocol: (payload: unknown) => { ok: true; count: number } | { ok: false; error: string };
+  clearPrintProtocol: () => void;
   setGraphInputs: (verifId: string, inputs: Record<string, string>) => void;
   addVerification: (v: Verification) => void;
   globalUnits: string[];             // LaTeX-Einheiten aus der DB
@@ -100,6 +117,33 @@ function patchVerificationDraft(verificationId: string, patch: Record<string, un
   const drafts = readJsonStorage<Record<string, any>>(LS_VERIFICATION_DRAFTS, {});
   const next = { ...drafts, [verificationId]: { ...(drafts[verificationId] || {}), ...patch } };
   writeJsonStorage(LS_VERIFICATION_DRAFTS, next);
+}
+
+function readPrintProtocolItems(): PrintItem[] {
+  const payload = readJsonStorage<any>(LS_PRINT_PROTOCOL, null);
+  if (!payload) return [];
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload.items)) return payload.items;
+  return [];
+}
+
+function writePrintProtocolItems(items: PrintItem[]) {
+  writeJsonStorage(LS_PRINT_PROTOCOL, { version: 1, items });
+}
+
+function normalizeImportedPrintItems(payload: unknown): PrintItem[] {
+  const data: any = payload;
+  const items = Array.isArray(data) ? data : data?.items;
+  if (!Array.isArray(items)) throw new Error('Keine Ausdrucksprotokoll-Einträge gefunden');
+
+  return items.map((item: any, index: number) => {
+    if (!item?.snapshot?.id) throw new Error(`Eintrag ${index + 1}: Nachweis-Snapshot fehlt`);
+    return {
+      key: String(item.key || `${item.snapshot.id}_${Date.now()}_${index}`),
+      snapshot: item.snapshot as Verification,
+      graphInputs: item.graphInputs && typeof item.graphInputs === 'object' ? item.graphInputs : {},
+    };
+  });
 }
 
 function buildChapterTree(data: any[], verifications: Verification[], standard: Standard, state: any) {
@@ -172,7 +216,7 @@ export const useStore = create<AppState>((set, get) => ({
   activeChapterId: localStorage.getItem(LS_ACTIVE_CHAPTER),
   activeVerificationId: localStorage.getItem(LS_ACTIVE_VERIFICATION),
   verifications: defaultVerifications.map(v => computeVerification(v)),
-  printItems: [],
+  printItems: readPrintProtocolItems(),
   graphInputsByVerif: readJsonStorage<Record<string, Record<string, string>>>(LS_GRAPH_INPUTS, {}),
   restoreNonce: 0,
   apiWoodTypes:   [],
@@ -293,18 +337,26 @@ export const useStore = create<AppState>((set, get) => ({
       const key = `${id}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
       const snapshot: Verification = JSON.parse(JSON.stringify(v));
       const graphInputs = { ...(state.graphInputsByVerif[id] || {}) };
-      return { printItems: [...state.printItems, { key, snapshot, graphInputs }] };
+      const printItems = [...state.printItems, { key, snapshot, graphInputs }];
+      writePrintProtocolItems(printItems);
+      return { printItems };
     }),
 
   removeVerificationFromPrint: (key) =>
-    set(state => ({ printItems: state.printItems.filter(item => item.key !== key) })),
+    set(state => {
+      const printItems = state.printItems.filter(item => item.key !== key);
+      writePrintProtocolItems(printItems);
+      return { printItems };
+    }),
 
   updatePrintItemInputs: (key, inputs) =>
-    set(state => ({
-      printItems: state.printItems.map(item =>
+    set(state => {
+      const printItems = state.printItems.map(item =>
         item.key === key ? { ...item, graphInputs: inputs } : item
-      ),
-    })),
+      );
+      writePrintProtocolItems(printItems);
+      return { printItems };
+    }),
 
   restoreFromPrint: (key) =>
     set(state => {
@@ -325,6 +377,36 @@ export const useStore = create<AppState>((set, get) => ({
         restoreNonce: state.restoreNonce + 1,
       };
     }),
+
+  exportPrintProtocol: () => {
+    const state = get();
+    return {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      app: 'Statik-Rechner',
+      kind: 'print-protocol',
+      normId: state.normId,
+      woodType: state.woodType,
+      woodClassId: state.woodClassId,
+      items: state.printItems,
+    };
+  },
+
+  importPrintProtocol: (payload) => {
+    try {
+      const printItems = normalizeImportedPrintItems(payload);
+      set({ printItems });
+      writePrintProtocolItems(printItems);
+      return { ok: true, count: printItems.length };
+    } catch (err) {
+      return { ok: false, error: String((err as Error).message || err) };
+    }
+  },
+
+  clearPrintProtocol: () => {
+    writePrintProtocolItems([]);
+    set({ printItems: [] });
+  },
 
   setGraphInputs: (verifId, inputs) =>
     set(state => {
