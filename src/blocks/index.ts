@@ -1,6 +1,7 @@
 import { BlockData, BlockType } from '../types/graph';
 import { beamvisualBlock } from './beamvisual';
 import { calcBlock } from './calc';
+import { casesBlock } from './cases';
 import { chartlookupBlock } from './chartlookup';
 import { checkBlock } from './check';
 import { commentBlock } from './comment';
@@ -34,6 +35,7 @@ export const BLOCK_DEFINITIONS = [
   conditionBlock,
   checkBlock,
   minmaxBlock,
+  casesBlock,
   imageBlock,
   titleBlock,
   frameBlock,
