@@ -7,4 +7,8 @@ export const chartlookupBlock: BlockDefinition = {
   label: 'Diagramm-Wert',
   color: '#059669',
   createDefaultData: chartlookupDefaults,
+  theme: {
+    bg: '#ecfdf5',
+    border: '#059669',
+  },
 };

@@ -7,4 +7,8 @@ export const calcBlock: BlockDefinition = {
   label: 'Rechnung',
   color: '#dc2626',
   createDefaultData: calcDefaults,
+  theme: {
+    bg: '#fef2f2',
+    border: '#dc2626',
+  },
 };

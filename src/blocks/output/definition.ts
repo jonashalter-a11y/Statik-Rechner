@@ -7,4 +7,8 @@ export const outputBlock: BlockDefinition = {
   label: 'PDF / Ausgabe',
   color: '#6b7280',
   createDefaultData: outputDefaults,
+  theme: {
+    bg: '#f9fafb',
+    border: '#6b7280',
+  },
 };

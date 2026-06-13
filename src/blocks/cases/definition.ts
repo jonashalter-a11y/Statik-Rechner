@@ -7,4 +7,8 @@ export const casesBlock: BlockDefinition = {
   label: 'Fallunterscheidung',
   color: '#7c3aed',
   createDefaultData: casesDefaults,
+  theme: {
+    bg: '#faf5ff',
+    border: '#7c3aed',
+  },
 };

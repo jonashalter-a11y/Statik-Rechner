@@ -7,4 +7,8 @@ export const groupcalcBlock: BlockDefinition = {
   label: 'Gruppenberechnung',
   color: '#0f766e',
   createDefaultData: groupcalcDefaults,
+  theme: {
+    bg: '#f0fdfa',
+    border: '#0f766e',
+  },
 };

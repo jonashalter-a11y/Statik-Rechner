@@ -7,4 +7,8 @@ export const loopblockBlock: BlockDefinition = {
   label: 'Schleifenblock',
   color: '#c2410c',
   createDefaultData: loopblockDefaults,
+  theme: {
+    bg: '#fff7f0',
+    border: '#c2410c',
+  },
 };

@@ -6,4 +6,8 @@ export interface BlockDefinition {
   label: string;
   color: string;
   createDefaultData: () => BlockData;
+  theme?: {
+    bg: string;
+    border: string;
+  };
 }

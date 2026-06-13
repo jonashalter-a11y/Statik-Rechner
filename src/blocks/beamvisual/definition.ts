@@ -7,4 +7,8 @@ export const beamvisualBlock: BlockDefinition = {
   label: 'Träger',
   color: '#15803d',
   createDefaultData: beamvisualDefaults,
+  theme: {
+    bg: '#f0fdf4',
+    border: '#15803d',
+  },
 };

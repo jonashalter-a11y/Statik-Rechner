@@ -7,4 +7,8 @@ export const stdcalcBlock: BlockDefinition = {
   label: 'Std-Berechnung',
   color: '#92400e',
   createDefaultData: stdcalcDefaults,
+  theme: {
+    bg: '#f5f0e8',
+    border: '#92400e',
+  },
 };

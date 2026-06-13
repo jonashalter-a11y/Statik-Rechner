@@ -7,4 +7,8 @@ export const frameBlock: BlockDefinition = {
   label: 'Rahmen',
   color: '#94a3b8',
   createDefaultData: frameDefaults,
+  theme: {
+    bg: '#f8fafc',
+    border: '#94a3b8',
+  },
 };

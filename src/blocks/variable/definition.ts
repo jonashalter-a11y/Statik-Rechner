@@ -7,4 +7,8 @@ export const variableBlock: BlockDefinition = {
   label: 'Variabel',
   color: '#7c3aed',
   createDefaultData: variableDefaults,
+  theme: {
+    bg: '#f5f3ff',
+    border: '#7c3aed',
+  },
 };

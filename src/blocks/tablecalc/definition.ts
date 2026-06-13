@@ -7,4 +7,8 @@ export const tablecalcBlock: BlockDefinition = {
   label: 'Tabellenberechnung',
   color: '#2563eb',
   createDefaultData: tablecalcDefaults,
+  theme: {
+    bg: '#eff6ff',
+    border: '#2563eb',
+  },
 };

@@ -26,8 +26,11 @@ export type BlockType =
   | 'comment'      // 💬 Kommentar-Block mit optionalem Extra (Link, Bild, Diagramm, Tabelle)
   | 'groupcalc'    // ⚙ Gruppenberechnung: inline Variablen + Fallauswahl + mehrere Ausgaben
   | 'loopblock'    // ⟳ Schleifenblock: n Iterationen mit Aggregation (z.B. Brandschutz-Schichten)
-  | 'summenblock'  // ➕ Summen-Block: Summe von Variablen/Ausdrücken
-  | 'output';      // ⬜ PDF/Ausgabe
+  | 'summenblock'  // ➕ Summen-Block: Summe von Variablen/Ausdrücke
+  | 'sum'          // Σ Summen-Block
+  | 'output'
+  | 'summenblock_neu'
+;      // ⬜ PDF/Ausgabe
 
 export type EdgeKind = 'workflow' | 'condition';
 
@@ -132,6 +135,121 @@ export interface SummenblockData {
   label: string;          // Bezeichnung (z.B. "Summe")
   unit: string;           // Einheit
   expr: string;           // Formel (z.B. "a + b + c")
+}
+
+export interface SumData {
+  kind: 'sum';
+  name: string;           // Ausgabe-Variable (z.B. "S")
+  label: string;          // Bezeichnung
+  unit: string;           // Einheit
+  latex: string;          // Anzeige-Formel
+  expr: string;           // JS-Ausdruck
+  description?: string;   // Erklärung
+}
+
+export interface BeamvisualData {
+  kind: 'beamvisual';
+  label: string;
+  span_var: string;
+  span_unit: string;
+  left_support: string;
+  right_support: string;
+  loads: string;
+}
+
+export interface ChartlookupData {
+  kind: 'chartlookup';
+  chart_ref: string;
+  series_index: string;
+  x_name: string;
+  name: string;
+  label: string;
+  unit: string;
+}
+
+export interface GroupcalcData {
+  kind: 'groupcalc';
+  label: string;
+  dropdown_label: string;
+  vars: string;
+  options: string;
+  outputs: string;
+}
+
+export interface ImageData {
+  kind: 'image';
+  label: string;
+}
+
+export interface LoopblockData {
+  kind: 'loopblock';
+  label: string;
+  count_label: string;
+  max_count: string;
+  dropdown_label: string;
+  vars: string;
+  name: string;
+  unit: string;
+  default_value: string;
+  id: string;
+  outputs: string;
+  options: string;
+  formulas: string;
+  tins: string;
+  aggregations: string;
+  method: string;
+  output_id: string;
+}
+
+export interface MinmaxData {
+  kind: 'minmax';
+  name: string;
+  label: string;
+  unit: string;
+  latex: string;
+  expr: string;
+}
+
+export interface StdcalcData {
+  kind: 'stdcalc';
+  name: string;
+  label: string;
+  unit: string;
+  latex: string;
+  expr: string;
+  picker_name: string;
+}
+
+export interface TablecalcData {
+  kind: 'tablecalc';
+  name: string;
+  label: string;
+  unit: string;
+  zones: string;
+  expr: string;
+}
+
+export interface TablevalueData {
+  kind: 'tablevalue';
+  name: string;
+  label: string;
+  unit: string;
+  table_col: string;
+}
+
+export interface WoodclassData {
+  kind: 'woodclass';
+  label: string;
+}
+
+export interface SummenblockneuData {
+  kind: 'summenblock_neu';
+  name: string;
+  label: string;
+  unit: string;
+  latex: string;
+  expr: string;
+  description?: string;
 }
 
 export interface OutputData {
@@ -341,7 +459,7 @@ export type BlockData =
   | VariableData | DropdownData | WoodClassData | TableValueData | CalcData
   | StdCalcData | TableCalcData | ChartLookupData | ConditionData | CheckData | MinMaxData | ImageBlockData
   | TitleData | FrameData | RefData | CasesData | MatrixData | BeamVisualData | SectionData | CommentData
-  | GroupCalcData | LoopBlockData | SummenblockData | OutputData;
+  | GroupCalcData | LoopBlockData | SummenblockData | SumData | OutputData | BeamvisualData | ChartlookupData | GroupcalcData | ImageData | LoopblockData | MinmaxData | StdcalcData | TablecalcData | TablevalueData | WoodclassData | SummenblockneuData;
 
 // ── React-Flow-kompatible Node/Edge-Strukturen ──────────────────────────────
 export interface GraphNode {

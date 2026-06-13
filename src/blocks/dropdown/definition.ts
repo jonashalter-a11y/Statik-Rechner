@@ -7,4 +7,8 @@ export const dropdownBlock: BlockDefinition = {
   label: 'Dropdown',
   color: '#ea580c',
   createDefaultData: dropdownDefaults,
+  theme: {
+    bg: '#fff7ed',
+    border: '#ea580c',
+  },
 };

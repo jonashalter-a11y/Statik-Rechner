@@ -7,4 +7,8 @@ export const minmaxBlock: BlockDefinition = {
   label: 'Min / Max',
   color: '#be123c',
   createDefaultData: minmaxDefaults,
+  theme: {
+    bg: '#fff1f2',
+    border: '#be123c',
+  },
 };

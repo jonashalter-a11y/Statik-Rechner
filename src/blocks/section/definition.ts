@@ -7,4 +7,8 @@ export const sectionBlock: BlockDefinition = {
   label: 'Querschnitt',
   color: '#9333ea',
   createDefaultData: sectionDefaults,
+  theme: {
+    bg: '#fdf4ff',
+    border: '#9333ea',
+  },
 };

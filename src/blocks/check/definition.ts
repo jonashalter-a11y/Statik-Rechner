@@ -7,4 +7,8 @@ export const checkBlock: BlockDefinition = {
   label: 'Nachweis',
   color: '#059669',
   createDefaultData: checkDefaults,
+  theme: {
+    bg: '#f0fdf4',
+    border: '#059669',
+  },
 };

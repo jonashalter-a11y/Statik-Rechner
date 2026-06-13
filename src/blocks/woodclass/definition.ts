@@ -7,4 +7,8 @@ export const woodclassBlock: BlockDefinition = {
   label: 'Holzklasse',
   color: '#ca8a04',
   createDefaultData: woodclassDefaults,
+  theme: {
+    bg: '#fefce8',
+    border: '#ca8a04',
+  },
 };

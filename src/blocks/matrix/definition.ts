@@ -7,4 +7,8 @@ export const matrixBlock: BlockDefinition = {
   label: 'Materialtabelle',
   color: '#0891b2',
   createDefaultData: matrixDefaults,
+  theme: {
+    bg: '#ecfeff',
+    border: '#0891b2',
+  },
 };

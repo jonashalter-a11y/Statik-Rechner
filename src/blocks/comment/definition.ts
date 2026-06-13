@@ -7,4 +7,8 @@ export const commentBlock: BlockDefinition = {
   label: 'Kommentar',
   color: '#d97706',
   createDefaultData: commentDefaults,
+  theme: {
+    bg: '#fffbeb',
+    border: '#d97706',
+  },
 };

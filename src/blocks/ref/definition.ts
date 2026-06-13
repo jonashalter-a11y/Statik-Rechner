@@ -7,4 +7,8 @@ export const refBlock: BlockDefinition = {
   label: 'Referenz',
   color: '#0369a1',
   createDefaultData: refDefaults,
+  theme: {
+    bg: '#e0f2fe',
+    border: '#0369a1',
+  },
 };

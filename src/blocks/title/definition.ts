@@ -7,4 +7,8 @@ export const titleBlock: BlockDefinition = {
   label: 'Titel',
   color: '#0284c7',
   createDefaultData: titleDefaults,
+  theme: {
+    bg: '#f0f9ff',
+    border: '#0284c7',
+  },
 };
