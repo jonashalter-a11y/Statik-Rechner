@@ -2193,10 +2193,14 @@ function LoopBlockNode({ id, data, selected }: NodeProps) {
             <option value="last">Letzte</option>
             <option value="max">Max</option>
             <option value="min">Min</option>
+            <option value="expr">Ausdruck</option>
           </select>
           <F value={ag.name} placeholder="t_{prot,0}" onChange={e => setAggr(i, { name: e.target.value })} style={{ flex: 1.5 }} />
           <F value={ag.unit} placeholder="min" onChange={e => setAggr(i, { unit: e.target.value })} style={{ flex: 0.8 }} />
           <button className="nodrag" onClick={() => delAggr(i)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 11, padding: '0 2px' }}>✕</button>
+          {ag.method === 'expr' && (
+            <F value={ag.expr || ''} placeholder="sum_tprot_before_last + last_tins" onChange={e => setAggr(i, { expr: e.target.value } as any)} style={{ flex: 2 }} />
+          )}
         </div>
       ))}
       {(d.aggregations || []).length > 0 && <div style={{ fontSize: 7, color: '#9ca3af' }}>Ausgabe · Methode · Symbol · Einheit</div>}

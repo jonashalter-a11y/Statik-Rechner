@@ -1772,7 +1772,8 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                     {/* Zusatzrechnungen des Materials */}
                     {selectedOpt && (selectedOpt.calcs || []).map(calc => {
                       const val = perIterCalcVals[calc.id]?.[i] ?? NaN;
-                      const formula = perIterCalcFormulas[calc.id]?.[i] || calc.formula || '';
+                      const activeCalcFormula = perIterCalcFormulas[calc.id]?.[i];
+                      const formula = activeCalcFormula !== undefined ? activeCalcFormula : (calc.formula || '');
                       if (!formula && !isFinite(val)) return null;
                       if (calc.name && isFinite(val)) varVals[normalizeVarName(calc.name)] = val;
                       const isLatexFormula = isLatex(formula);
@@ -1852,7 +1853,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#c2410c', marginBottom: 6 }}>Gesamtergebnis</div>
                   {(lb.aggregations || []).map((ag, ai) => {
                     const val = aggrVals[ag.output_id];
-                    const methodLabel = ag.method === 'sum' ? 'Σ' : ag.method === 'last' ? 'letzte Schicht' : ag.method;
+                    const methodLabel = ag.method === 'sum' ? 'Σ' : ag.method === 'last' ? 'letzte Schicht' : ag.method === 'expr' ? 'Ausdruck' : ag.method;
                     return (
                       <div key={ai} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                         <div>

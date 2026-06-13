@@ -695,6 +695,14 @@ export function evalGraph(
           // Aggregationen
           const aggrVals: Record<string, number> = {};
           const aggrLatex: Record<string, string> = {};
+          const aggrSym: Record<string, number> = { ...symbols };
+          for (const [outId, vals] of Object.entries(perIterVals)) {
+            const finite = vals.filter(isFinite);
+            const beforeLast = finite.slice(0, Math.max(0, finite.length - 1));
+            setSymbol(aggrSym, `sum_${outId}`, finite.reduce((a, b) => a + b, 0));
+            setSymbol(aggrSym, `sum_${outId}_before_last`, beforeLast.reduce((a, b) => a + b, 0));
+            setSymbol(aggrSym, `last_${outId}`, finite.length ? finite[finite.length - 1] : NaN);
+          }
           for (const ag of (d.aggregations || [])) {
             const vals = perIterVals[ag.output_id] ?? [];
             const finite = vals.filter(isFinite);
@@ -703,6 +711,7 @@ export function evalGraph(
             else if (ag.method === 'last') agg = finite.length ? finite[finite.length - 1] : NaN;
             else if (ag.method === 'max') agg = finite.length ? Math.max(...finite) : NaN;
             else if (ag.method === 'min') agg = finite.length ? Math.min(...finite) : NaN;
+            else if (ag.method === 'expr') agg = evalBestEffortFormula(ag.expr || '', aggrSym);
             aggrVals[ag.output_id] = agg;
             if (ag.name && isFinite(agg)) setSymbol(symbols, ag.name, agg);
           }
