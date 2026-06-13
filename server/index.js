@@ -1,10 +1,28 @@
 const express = require('express');
 const cors = require('cors');
 const db = require('./db');
+const { exportVerificationById, exportVerificationsByNorm } = require('./verification-export');
 
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '20mb' }));
+
+function safeExportVerification(id) {
+  try {
+    exportVerificationById(db, id);
+  } catch (err) {
+    console.error(`Nachweis-Export fehlgeschlagen (${id}):`, err);
+  }
+}
+
+function safeExportNorm(normId) {
+  if (!normId) return;
+  try {
+    exportVerificationsByNorm(db, normId);
+  } catch (err) {
+    console.error(`Nachweis-Export fehlgeschlagen (${normId}):`, err);
+  }
+}
 
 // ─── NORMEN ──────────────────────────────────────────────────────────────────
 app.get('/api/norms', (_, res) => res.json(db.prepare('SELECT * FROM norms').all()));
@@ -31,15 +49,20 @@ app.post('/api/chapters', (req, res) => {
   const { id, norm_id, parent_id, number, title } = req.body;
   const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM chapters WHERE norm_id=?').get(norm_id).m || 0;
   db.prepare('INSERT INTO chapters (id, norm_id, parent_id, number, title, sort_order) VALUES (?, ?, ?, ?, ?, ?)').run(id, norm_id, parent_id||null, number, title, maxOrder+1);
+  safeExportNorm(norm_id);
   res.json({ ok: true });
 });
 app.put('/api/chapters/:id', (req, res) => {
   const { number, title } = req.body;
+  const existing = db.prepare('SELECT norm_id FROM chapters WHERE id=?').get(req.params.id);
   db.prepare('UPDATE chapters SET number=?, title=? WHERE id=?').run(number, title, req.params.id);
+  if (existing) safeExportNorm(existing.norm_id);
   res.json({ ok: true });
 });
 app.delete('/api/chapters/:id', (req, res) => {
+  const existing = db.prepare('SELECT norm_id FROM chapters WHERE id=?').get(req.params.id);
   db.prepare('DELETE FROM chapters WHERE id=?').run(req.params.id);
+  if (existing) safeExportNorm(existing.norm_id);
   res.json({ ok: true });
 });
 
@@ -95,6 +118,7 @@ app.post('/api/verifications', (req, res) => {
   const id = title.toLowerCase().replace(/[^a-z0-9]/g,'_').slice(0,30) + '_' + Date.now().toString(36);
   const gj = graph_json == null ? null : (typeof graph_json === 'string' ? graph_json : JSON.stringify(graph_json));
   db.prepare('INSERT INTO verifications (id, norm_id, chapter_id, title, formula_latex, formula_description, compute_expr, graph_json) VALUES (?,?,?,?,?,?,?,?)').run(id, norm_id, chapter_id, title, formula_latex, formula_description, compute_expr, gj);
+  safeExportVerification(id);
   res.json({ id });
 });
 app.put('/api/verifications/:id', (req, res) => {
@@ -104,10 +128,12 @@ app.put('/api/verifications/:id', (req, res) => {
     const gj = graph_json == null ? null : (typeof graph_json === 'string' ? graph_json : JSON.stringify(graph_json));
     db.prepare('UPDATE verifications SET graph_json=? WHERE id=?').run(gj, req.params.id);
   }
+  safeExportVerification(req.params.id);
   res.json({ ok: true });
 });
 app.delete('/api/verifications/:id', (req, res) => {
   db.prepare('UPDATE verifications SET active=0 WHERE id=?').run(req.params.id);
+  safeExportVerification(req.params.id);
   res.json({ ok: true });
 });
 
@@ -125,19 +151,24 @@ app.post('/api/verifications/:vid/variables', (req, res) => {
   if (type !== 'table_column') {
     options.forEach((o, i) => db.prepare('INSERT INTO variable_options (variable_id, label, value, sort_order) VALUES (?,?,?,?)').run(id, o.label, o.value, i));
   }
+  safeExportVerification(req.params.vid);
   res.json({ id });
 });
 app.put('/api/variables/:id', (req, res) => {
   const { name, label, unit='', type, default_value, description='', options=[], table_ref=null, table_col=null } = req.body;
+  const existing = db.prepare('SELECT verification_id FROM variables WHERE id=?').get(req.params.id);
   db.prepare('UPDATE variables SET name=?, label=?, unit=?, type=?, default_value=?, description=?, table_ref=?, table_col=? WHERE id=?').run(name, label, unit, type, String(default_value), description, table_ref, table_col != null ? Number(table_col) : null, req.params.id);
   db.prepare('DELETE FROM variable_options WHERE variable_id=?').run(req.params.id);
   if (type !== 'table_column') {
     options.forEach((o, i) => db.prepare('INSERT INTO variable_options (variable_id, label, value, sort_order) VALUES (?,?,?,?)').run(req.params.id, o.label, o.value, i));
   }
+  if (existing) safeExportVerification(existing.verification_id);
   res.json({ ok: true });
 });
 app.delete('/api/variables/:id', (req, res) => {
+  const existing = db.prepare('SELECT verification_id FROM variables WHERE id=?').get(req.params.id);
   db.prepare('DELETE FROM variables WHERE id=?').run(req.params.id);
+  if (existing) safeExportVerification(existing.verification_id);
   res.json({ ok: true });
 });
 
@@ -202,15 +233,21 @@ app.post('/api/db-tables', (req, res) => {
   const { norm_id='sia265', chapter_id=null, title, description='', type='table', headers=[], rows=[], chart_json=null } = req.body;
   const id = title.toLowerCase().replace(/[^a-z0-9]/g,'_') + '_' + Date.now().toString(36);
   db.prepare('INSERT INTO db_tables (id, norm_id, chapter_id, title, description, type, headers, rows, chart_json) VALUES (?,?,?,?,?,?,?,?,?)').run(id, norm_id, chapter_id, title, description, type, JSON.stringify(headers), JSON.stringify(rows), chart_json ? JSON.stringify(chart_json) : null);
+  safeExportNorm(norm_id);
   res.json({ id });
 });
 app.put('/api/db-tables/:id', (req, res) => {
   const { norm_id, chapter_id=null, title, description, type='table', headers=[], rows=[], chart_json=null } = req.body;
+  const existing = db.prepare('SELECT norm_id FROM db_tables WHERE id=?').get(req.params.id);
   db.prepare('UPDATE db_tables SET norm_id=?, chapter_id=?, title=?, description=?, type=?, headers=?, rows=?, chart_json=? WHERE id=?').run(norm_id, chapter_id, title, description||'', type, JSON.stringify(headers), JSON.stringify(rows), chart_json ? JSON.stringify(chart_json) : null, req.params.id);
+  if (existing) safeExportNorm(existing.norm_id);
+  safeExportNorm(norm_id);
   res.json({ ok: true });
 });
 app.delete('/api/db-tables/:id', (req, res) => {
+  const existing = db.prepare('SELECT norm_id FROM db_tables WHERE id=?').get(req.params.id);
   db.prepare('DELETE FROM db_tables WHERE id=?').run(req.params.id);
+  if (existing) safeExportNorm(existing.norm_id);
   res.json({ ok: true });
 });
 

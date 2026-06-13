@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "exported_at": "2026-06-13T15:11:17.280Z",
+  "verification": {
+    "id": "neuer_nachweis_mq4y8icg",
+    "norm_id": "lignum_erdbeben",
+    "chapter_id": "lignum_erdbeben_2_1",
+    "title": "Beblankungsnachweis",
+    "formula_latex": "",
+    "formula_description": "",
+    "compute_expr": "",
+    "sort_order": 0,
+    "active": 1,
+    "graph_json": "{\"version\":1,\"nodes\":[],\"edges\":[]}",
+    "notes": ""
+  },
+  "chapter": {
+    "id": "lignum_erdbeben_2_1",
+    "norm_id": "lignum_erdbeben",
+    "parent_id": null,
+    "number": "2.1",
+    "title": "Beplankung",
+    "sort_order": 2
+  },
+  "variables": [],
+  "tables": [],
+  "graph": {
+    "version": 1,
+    "nodes": [],
+    "edges": []
+  }
+}
