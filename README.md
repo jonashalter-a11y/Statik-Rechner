@@ -58,6 +58,38 @@ node server/seed-anhangc-full.js   # Windtabellen Anhang C
 
 ---
 
+## Nachweise per JSON importieren
+
+Admin → Nachweise → **JSON importieren** erlaubt Batch-Import von Verifikationen im Node-Editor-Format:
+
+**JSON-Struktur (Vorlage):**
+```json
+{
+  "id": "eindeutige_id",
+  "title": "Nachweis-Titel",
+  "formula_latex": "\\eta = ...",
+  "formula_description": "Beschreibung",
+  "compute_expr": "",
+  "graph_json": {
+    "version": 1,
+    "nodes": [ ... ],
+    "edges": [ ... ]
+  }
+}
+```
+
+**Workflow:**
+1. Admin erstellt Nachweis-Graph im Node-Editor (oder exportiert bestehenden)
+2. JSON speichern (ohne `norm_id` und `chapter_id`)
+3. **JSON importieren** → Dialog: Norm + Kapitel wählen → Import
+4. Verifikation wird mit gewählter Norm und Kapitel eingefügt
+
+**Batch-Import:**
+- Mehrere Nachweise per Array importierbar: `[{...}, {...}]`
+- Oder Vorlage von Nachweis-Export: auto-extrahiert `.verification`-Objekt
+
+---
+
 ## Stack
 
 | Schicht | Technologie |

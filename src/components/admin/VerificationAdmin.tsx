@@ -20,7 +20,7 @@ interface Verification {
   notes?: string;
   variables: Variable[];
 }
-interface Chapter { id: string; number: string; title: string; parent_id: string | null; }
+interface Chapter { id: string; norm_id: string; number: string; title: string; parent_id: string | null; }
 interface ChapterNode extends Chapter { children: ChapterNode[]; verifications: Verification[]; expanded?: boolean; totalCount: number; }
 
 function buildTree(chapters: Chapter[], verifications: Verification[]): ChapterNode[] {
@@ -344,6 +344,10 @@ export default function VerificationAdmin() {
   const savedSnapshotRef = useRef('');
   const savingRef = useRef(false);
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const batchImportRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [importDialog, setImportDialog] = useState<{ open: boolean; file?: File; normId: string; chapterId: string }>({ open: false, normId: normId, chapterId: '' });
 
   useEffect(() => { editingRef.current = editing; }, [editing]);
   useEffect(() => { savingRef.current = saving; }, [saving]);
@@ -404,6 +408,65 @@ export default function VerificationAdmin() {
     setEditing({ id: '', originalId: '', chapter_id: chapters[0]?.id || '', title: 'Neuer Nachweis', graph: emptyGraph(), notes: { text: '', table: { headers: [], rows: [] } } });
     savedSnapshotRef.current = '';
     setMsg('');
+  };
+
+  const openImportDialog = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportDialog({ open: true, file, normId: normId, chapterId: chapters[0]?.id || '' });
+    e.target.value = '';
+  };
+
+  const doImport = async () => {
+    if (!importDialog.file || !importDialog.normId || !importDialog.chapterId) {
+      setMsg('⚠ Datei, Norm und Kapitel erforderlich');
+      return;
+    }
+    try {
+      const text = await importDialog.file.text();
+      const data = JSON.parse(text);
+      let verifications = Array.isArray(data) ? data : [data];
+      // Norm und Kapitel-ID auf alle Nachweise überschreiben
+      verifications = verifications.map((v: any) => ({ ...v, norm_id: importDialog.normId, chapter_id: importDialog.chapterId }));
+      const resp = await fetch('/api/verifications/import-batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(verifications),
+      });
+      const result = await resp.json();
+      if (resp.ok) {
+        const ok = (result.imported || []).filter((r: any) => r.ok).length;
+        const err = (result.imported || []).filter((r: any) => r.error).length;
+        const firstOkId = (result.imported || []).find((r: any) => r.ok)?.id;
+        setMsg(`✓ ${ok} importiert${err ? `, ${err} Fehler` : ''}`);
+        setImportDialog({ open: false, normId, chapterId: '' });
+        // Reload und dann Auto-select
+        const fresh = await api.getVerifications(normId);
+        const fresh_chapters = await api.getChapters(normId);
+        setVerifications(fresh);
+        setChapters(fresh_chapters);
+        const toOpen = new Set<string>();
+        const parentOf = new Map<string, string>();
+        fresh_chapters.forEach((c: Chapter) => { if (c.parent_id) parentOf.set(c.id, c.parent_id); });
+        fresh.forEach((v: Verification) => {
+          let cur: string | undefined = v.chapter_id;
+          while (cur) {
+            toOpen.add(cur);
+            cur = parentOf.get(cur);
+          }
+        });
+        setExpanded(toOpen);
+        // Auto-select
+        if (firstOkId) {
+          const imported = fresh.find((v: Verification) => v.id === firstOkId);
+          if (imported) setTimeout(() => selectVerification(imported), 100);
+        }
+      } else {
+        setMsg(`⚠ Import fehlgeschlagen: ${result.error || 'unbekannter Fehler'}`);
+      }
+    } catch (ex) {
+      setMsg(`⚠ Fehler beim Lesen/Parsen: ${String(ex)}`);
+    }
   };
 
   const selectVerification = (v: Verification) => {
@@ -597,12 +660,26 @@ export default function VerificationAdmin() {
               style={{ display: 'none' }}
               onChange={e => importJsonFile(e.target.files?.[0] || null)}
             />
+            <input
+              ref={batchImportRef}
+              type="file"
+              accept="application/json,.json"
+              style={{ display: 'none' }}
+              onChange={openImportDialog}
+            />
             <button
               onClick={() => importInputRef.current?.click()}
-              title="Nachweis aus JSON importieren"
+              title="1 Nachweis aus JSON"
               style={{ background: '#f1f5f9', color: '#374151', border: '1px solid #d1d5db', borderRadius: 5, padding: '4px 8px', cursor: 'pointer', fontSize: 11 }}
             >
               JSON
+            </button>
+            <button
+              onClick={() => batchImportRef.current?.click()}
+              title="Mehrere Nachweise aus JSON (Array)"
+              style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #f59e0b', borderRadius: 5, padding: '4px 8px', cursor: 'pointer', fontSize: 11 }}
+            >
+              📁 Batch
             </button>
           </div>
         </div>
@@ -698,6 +775,77 @@ export default function VerificationAdmin() {
           onClose={() => setChapterForm(null)}
           onSaved={() => { reload(); setChapterForm(null); }}
         />
+      )}
+
+      {/* JSON-Import-Dialog */}
+      {importDialog.open && (
+        <div onClick={() => setImportDialog({ open: false, normId, chapterId: '' })} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 10, padding: 24, maxWidth: 500, boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 600, color: '#1e40af' }}>JSON Nachweise importieren</h3>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase' }}>Datei</div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/json,.json"
+                style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) setImportDialog(prev => ({ ...prev, file: f })); }}
+              />
+              {importDialog.file && <div style={{ fontSize: 11, color: '#059669', marginTop: 4 }}>✓ {importDialog.file.name}</div>}
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase' }}>Kapitel</div>
+              <select
+                value={importDialog.chapterId}
+                onChange={e => setImportDialog(prev => ({ ...prev, chapterId: e.target.value }))}
+                style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}
+              >
+                <option value="">— Wählen —</option>
+                {chapters.map(c => <option key={c.id} value={c.id}>{c.number} {c.title}</option>)}
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase' }}>Norm</div>
+                <select
+                  value={importDialog.normId}
+                  onChange={e => setImportDialog(prev => ({ ...prev, normId: e.target.value, chapterId: '' }))}
+                  style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}
+                >
+                  <option value="">— Wählen —</option>
+                  <option value="sia265">SIA 265:2021 – Holzbau</option>
+                  <option value="sia261">SIA 261:2020 – Einwirkungen</option>
+                </select>
+              </div>
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase' }}>Kapitel</div>
+                <select
+                  value={importDialog.chapterId}
+                  onChange={e => setImportDialog(prev => ({ ...prev, chapterId: e.target.value }))}
+                  style={{ width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: 13, boxSizing: 'border-box' }}
+                >
+                  <option value="">— Wählen —</option>
+                  {chapters.filter(c => c.norm_id === importDialog.normId).map(c => <option key={c.id} value={c.id}>{c.number} {c.title}</option>)}
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setImportDialog({ open: false, normId, chapterId: '' })}
+                  style={{ padding: '6px 14px', border: '1px solid #d1d5db', background: '#fff', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}
+                >
+                  Abbrechen
+                </button>
+                <button
+                  onClick={doImport}
+                  disabled={!importDialog.file || !importDialog.normId || !importDialog.chapterId}
+                  style={{ padding: '6px 16px', background: !importDialog.file || !importDialog.normId || !importDialog.chapterId ? '#d1d5db' : '#2563eb', color: '#fff', border: 'none', borderRadius: 6, cursor: !importDialog.file || !importDialog.normId || !importDialog.chapterId ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600 }}
+                >
+                  📁 Importieren
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

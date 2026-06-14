@@ -166,7 +166,8 @@ if (chapCount === 0) {
 
   // SIA 265 Nachweise
   seedVerifications.forEach((v, i) => {
-    iV.run(v.id, 'sia265', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, v.graph_json || null, i);
+    const graphStr = v.graph_json ? (typeof v.graph_json === 'string' ? v.graph_json : JSON.stringify(v.graph_json)) : null;
+    iV.run(v.id, 'sia265', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, graphStr, i);
     v.variables.forEach((vr, j) => {
       const vid = v.id + '__' + vr.name;
       iVr.run(vid, v.id, vr.name, vr.label, vr.unit||'', vr.type||'number', vr.default_value, vr.description||'', j, vr.table_ref||null, vr.table_col||null);
@@ -180,7 +181,8 @@ if (chapCount === 0) {
 
   // SIA 261 Nachweise
   sia261.verifications.forEach((v, i) => {
-    iV.run(v.id, 'sia261', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, v.graph_json || null, i);
+    const graphStr = v.graph_json ? (typeof v.graph_json === 'string' ? v.graph_json : JSON.stringify(v.graph_json)) : null;
+    iV.run(v.id, 'sia261', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, graphStr, i);
     v.variables.forEach((vr, j) => {
       const vid = v.id + '__' + vr.name;
       iVr.run(vid, v.id, vr.name, vr.label, vr.unit||'', vr.type||'number', vr.default_value, vr.description||'', j, vr.table_ref||null, vr.table_col||null);
@@ -194,7 +196,8 @@ if (chapCount === 0) {
 
   // Lignum Erdbeben Nachweise
   lignumErdbeben.verifications.forEach((v, i) => {
-    iV.run(v.id, 'lignum_erdbeben', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, v.graph_json || null, i);
+    const graphStr = v.graph_json ? (typeof v.graph_json === 'string' ? v.graph_json : JSON.stringify(v.graph_json)) : null;
+    iV.run(v.id, 'lignum_erdbeben', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, graphStr, i);
     v.variables.forEach((vr, j) => {
       const vid = v.id + '__' + vr.name;
       iVr.run(vid, v.id, vr.name, vr.label, vr.unit||'', vr.type||'number', vr.default_value, vr.description||'', j, vr.table_ref||null, vr.table_col||null);
