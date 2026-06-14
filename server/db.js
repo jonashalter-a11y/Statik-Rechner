@@ -164,46 +164,19 @@ if (chapCount === 0) {
   seedChapters.forEach(([id, parent_id, number, title], i) =>
     iC.run(id, 'sia265', parent_id, number, title, i));
 
-  // SIA 265 Nachweise
-  seedVerifications.forEach((v, i) => {
-    const graphStr = v.graph_json ? (typeof v.graph_json === 'string' ? v.graph_json : JSON.stringify(v.graph_json)) : null;
-    iV.run(v.id, 'sia265', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, graphStr, i);
-    v.variables.forEach((vr, j) => {
-      const vid = v.id + '__' + vr.name;
-      iVr.run(vid, v.id, vr.name, vr.label, vr.unit||'', vr.type||'number', vr.default_value, vr.description||'', j, vr.table_ref||null, vr.table_col||null);
-      (vr.options||[]).forEach((o, k) => iO.run(vid, o.label, o.value, k));
-    });
-  });
+  // SIA 265 Nachweise — ENTFERNT: nur noch aus JSON-Dateien laden
 
   // SIA 261 Kapitel
   sia261.chapters.forEach(([id, parent_id, number, title], i) =>
     iC.run(id, 'sia261', parent_id, number, title, i));
 
-  // SIA 261 Nachweise
-  sia261.verifications.forEach((v, i) => {
-    const graphStr = v.graph_json ? (typeof v.graph_json === 'string' ? v.graph_json : JSON.stringify(v.graph_json)) : null;
-    iV.run(v.id, 'sia261', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, graphStr, i);
-    v.variables.forEach((vr, j) => {
-      const vid = v.id + '__' + vr.name;
-      iVr.run(vid, v.id, vr.name, vr.label, vr.unit||'', vr.type||'number', vr.default_value, vr.description||'', j, vr.table_ref||null, vr.table_col||null);
-      (vr.options||[]).forEach((o, k) => iO.run(vid, o.label, o.value, k));
-    });
-  });
+  // SIA 261 Nachweise — ENTFERNT: nur noch aus JSON-Dateien laden
 
   // Lignum Erdbeben Kapitel
   lignumErdbeben.chapters.forEach(([id, parent_id, number, title], i) =>
     iC.run(id, 'lignum_erdbeben', parent_id, number, title, i));
 
-  // Lignum Erdbeben Nachweise
-  lignumErdbeben.verifications.forEach((v, i) => {
-    const graphStr = v.graph_json ? (typeof v.graph_json === 'string' ? v.graph_json : JSON.stringify(v.graph_json)) : null;
-    iV.run(v.id, 'lignum_erdbeben', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, graphStr, i);
-    v.variables.forEach((vr, j) => {
-      const vid = v.id + '__' + vr.name;
-      iVr.run(vid, v.id, vr.name, vr.label, vr.unit||'', vr.type||'number', vr.default_value, vr.description||'', j, vr.table_ref||null, vr.table_col||null);
-      (vr.options||[]).forEach((o, k) => iO.run(vid, o.label, o.value, k));
-    });
-  });
+  // Lignum Erdbeben Nachweise — ENTFERNT: nur noch aus JSON-Dateien laden
 
   // Lignum Brandschutz Kapitel
   lignumBrandschutz.chapters.forEach(([id, parent_id, number, title], i) =>
@@ -223,16 +196,7 @@ if (chapCount === 0) {
   baustatik.chapters.forEach(([id, parent_id, number, title], i) =>
     iC.run(id, 'baustatik', parent_id, number, title, i));
 
-  // Baustatik Nachweise
-  baustatik.verifications.forEach((v, i) => {
-    const graphStr = v.graph_json ? (typeof v.graph_json === 'string' ? v.graph_json : JSON.stringify(v.graph_json)) : null;
-    iV.run(v.id, 'baustatik', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, graphStr, i);
-    v.variables.forEach((vr, j) => {
-      const vid = v.id + '__' + vr.name;
-      iVr.run(vid, v.id, vr.name, vr.label, vr.unit||'', vr.type||'number', vr.default_value, vr.description||'', j, vr.table_ref||null, vr.table_col||null);
-      (vr.options||[]).forEach((o, k) => iO.run(vid, o.label, o.value, k));
-    });
-  });
+  // Baustatik Nachweise — ENTFERNT: nur noch aus JSON-Dateien laden
 
   // ─── Normtabellen (sauber mit Kategorie) ─────────────────────────────────
   const iT = db.prepare('INSERT INTO db_tables (id, norm_id, category, title, description, headers, rows) VALUES (?, ?, ?, ?, ?, ?, ?)');
@@ -367,7 +331,8 @@ if (!staticSync.skipped) {
   console.log(`✓ Stammdaten aus JSON synchronisiert: ${staticSync.norms} Normen, ${staticSync.chapters} Kapitel, ${staticSync.tables} Tabellen`);
 }
 
-const verificationJsonSync = importActiveVerificationExports(db, { pruneMissing: false });
+// ─── Nachweise nur noch aus JSON-Dateien laden (keine Seed-Daten) ─────────────
+const verificationJsonSync = importActiveVerificationExports(db, { pruneMissing: false, forceActive: true });
 if (verificationJsonSync.files > 0) {
   console.log(`✓ Nachweise aus JSON synchronisiert: ${verificationJsonSync.imported}/${verificationJsonSync.files}`);
   if (verificationJsonSync.errors.length) {
