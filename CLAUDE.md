@@ -23,14 +23,15 @@ cd server && PORT=3002 node index.js
 npm run dev          # http://localhost:5173
 ```
 
-### Datenbank neu aufbauen (nach Änderungen an seed-*.js oder db.js)
+### Datenbank neu aufbauen (nach Änderungen an db.js oder seed-anhangc-full.js)
 ```bash
 rm -f server/sia265.db server/sia265.db-wal server/sia265.db-shm
-node server/db.js                  # Schema + SIA 265 + SIA 261 Basis-Seed
-node server/seed-anhangc-full.js   # Anhang C Windtabellen Tab. 31–45
+node server/db.js                  # Schema + Kapitel-Seeds (SIA 265 + SIA 261)
+node server/seed-anhangc-full.js   # Windtabellen Anhang C
 ```
 
 `db.js` seedet nur wenn die DB leer ist (`chapCount === 0`). Datei liegt unter `server/sia265.db`.
+**Verifikationen werden nicht mehr automatisch eingepflanzt** — nur per JSON-Import im Admin-UI.
 
 ### Frontend bauen
 ```bash
@@ -49,11 +50,19 @@ npm run build   # TypeScript check + Vite bundle → dist/
 - **Formeln**: KaTeX für LaTeX-Rendering, `evalFormula.ts` für Auswertung
 
 ### Dual-Norm-System
-Der Norm-Switcher im Header schaltet zwischen `sia265` und `sia261`. Alle DB-Tabellen haben eine `norm_id`-Spalte als FK. Beim Wechsel:
+Der Norm-Switcher im Header schaltet zwischen `sia265` und `sia261`. Beim Wechsel:
 1. `setNormId(id)` → baut sofort den Kapitelbaum aus dem Cache
 2. `loadNormData(id)` → lädt Kapitel + Verifikationen frisch aus der API
 
 Verifikationen werden pro Norm gecacht in `_verifsByNorm: Record<string, Verification[]>`.
+
+### Verifikations-Architektur: JSON statt DB-Seeding
+**Verifikationen werden nicht mehr in der DB persistent gespeichert**, sondern als JSON importiert:
+- Admin erstellt Nachweis im Node-Editor (Block-Graph)
+- Export → JSON-Datei oder direkt per JSON-Import in Admin-UI
+- Import speichert die Verifikation in `verifications` Tabelle mit `graph_json`-Spalte
+- Beim API-Abruf (`/api/verifications`) werden alle DB-Einträge ausgegeben
+- **Kapitel und Referenztabellen** (Anhang C) sind weiterhin in der DB gespeichert
 
 ### Berechnungsformel-Pipeline
 1. `compute_expr` in DB = JavaScript-String (darf `Math.*` verwenden)
@@ -65,18 +74,18 @@ Variablen vom Typ `dropdown` speichern den Wert als String (z.B. `'III'` für Ge
 
 ### Seed-Struktur
 - `seed-chapters.js` → SIA 265 Kapitel (exportiert Array)
-- `seed-sia261.js` → SIA 261 Kapitel + Verifikationen (exportiert `{ chapters, verifications }`)
+- `seed-sia261.js` → SIA 261 Kapitel (exportiert Array) — **keine Verifikationen mehr**
 - `seed-anhangc-full.js` → Windtabellen Tab. 31–45; **direkt ausführbar**, löscht vorher alle `anhc_*` Einträge
 - `db.js` importiert die Seed-Module und führt sie beim ersten Start aus
+- **Verifikationen** müssen per JSON-Import eingefügt werden (Admin → Nachweise → JSON importieren)
 
 ### DB-Schema (wichtigste Tabellen)
 ```
 chapters        id, norm_id, parent_id, number, title, sort_order
-verifications   id, norm_id, chapter_id, title, formula_latex, formula_description, compute_expr, active, graph_json
-variables       id, verification_id, name, label, unit, type, default_value, description, sort_order, table_ref, table_col
-variable_options variable_id, label, value, sort_order
+verifications   id, norm_id, chapter_id, title, formula_latex, formula_description, graph_json, active
 db_tables       id, norm_id, category, title, description, headers(JSON), rows(JSON)
 ```
+**Anmerkung:** `variables` und `variable_options` sind Legacy — neue Verifikationen speichern alles in `graph_json` (Blöcke + Kanten). Alte `compute_expr`-Nachweise rendern noch via Adapter in `legacyToGraph.ts`.
 
 ### Node-Editor / Block-System (Nachweis-Erstellung)
 Neue Nachweise werden im Backend als **Graph aus Blöcken** gebaut (React Flow, `@xyflow/react`)
@@ -128,25 +137,32 @@ var qp = ch * qp0;
 
 ## Neue Verifikation hinzufügen
 
-1. In `seed-sia261.js` (oder `seed-verifications.js` für SIA 265) ein Objekt ergänzen:
-   ```javascript
+**Verifikationen werden per JSON-Import eingefügt** (Admin → Nachweise → JSON importieren):
+
+1. Im **Node-Editor** einen Nachweis grafisch aufbauen (Admin → Nachweise → Neuer Nachweis)
+   - Blöcke: Variable 🟪, Dropdown 🟧, Tabellenwert 🟩, Berechnung 🟥, Std-Berechnung 🟫, etc.
+   - Workflow-Kanten verbinden Blöcke (Ausführungsreihenfolge), Bedingung-Kanten für Verzweigungen
+   
+2. Nachweis speichern → Export als JSON
+   ```json
    {
-     id: 'eindeutiger_snake_case_name',
-     chapter_id: '261.6.2.2',
-     title: 'Titel (Gl.-Nr.)',
-     formula_latex: 'LaTeX-String',
-     formula_description: 'Beschreibung',
-     compute_expr: 'JavaScript-Ausdruck mit Variablennamen',
-     variables: [
-       { name: 'var_name', label: 'Anzeigename', unit: 'kN/m²',
-         type: 'number' | 'dropdown', default_value: '1.0',
-         description: '...', options: [{ label: '...', value: '...' }] }
-     ]
+     "id": "eindeutiger_snake_case_name",
+     "title": "Titel (Gl.-Nr.)",
+     "formula_latex": "\\eta = ...",
+     "formula_description": "Beschreibung",
+     "graph_json": {
+       "version": 1,
+       "nodes": [ ... ],
+       "edges": [ ... ]
+     }
    }
    ```
-2. DB neu aufbauen (siehe oben)
-3. SIA 261-Ergebnisse: `result` zeigt Zahlenwert, kein η-Pass/Fail
-4. SIA 265-Ergebnisse: `result` ist η, `passed = eta ≤ 1.0`
+
+3. JSON importieren: Admin → Nachweise → JSON importieren
+   - Norm (SIA 265/261) und Kapitel auswählen
+   - Verifikation wird mit gewähltem Kontext eingefügt
+
+**Legacy-Nachweise** (alte `compute_expr`-basierte Formeln) rendern noch immer, nutzen aber den Adapter in `legacyToGraph.ts`.
 
 ---
 

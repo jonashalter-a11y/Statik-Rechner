@@ -153,52 +153,10 @@ if (woodTypeCount === 0) {
   for(const[n,l,o,p]of bshKlassen){iWC.run(n,'bsh',n,l,o);for(const[k,[v,u,lb]]of Object.entries(p))iProp.run(n,k,lb,v,u);}
 }
 
-const chapCount = db.prepare("SELECT COUNT(*) as n FROM chapters").get().n;
-if (chapCount === 0) {
-  const iC = db.prepare('INSERT INTO chapters (id, norm_id, parent_id, number, title, sort_order) VALUES (?, ?, ?, ?, ?, ?)');
-  const iV = db.prepare('INSERT INTO verifications (id, norm_id, chapter_id, title, formula_latex, formula_description, compute_expr, graph_json, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)');
-  const iVr= db.prepare('INSERT INTO variables (id, verification_id, name, label, unit, type, default_value, description, sort_order, table_ref, table_col) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-  const iO = db.prepare('INSERT INTO variable_options (variable_id, label, value, sort_order) VALUES (?, ?, ?, ?)');
-
-  // SIA 265 Kapitel
-  seedChapters.forEach(([id, parent_id, number, title], i) =>
-    iC.run(id, 'sia265', parent_id, number, title, i));
-
-  // SIA 265 Nachweise — ENTFERNT: nur noch aus JSON-Dateien laden
-
-  // SIA 261 Kapitel
-  sia261.chapters.forEach(([id, parent_id, number, title], i) =>
-    iC.run(id, 'sia261', parent_id, number, title, i));
-
-  // SIA 261 Nachweise — ENTFERNT: nur noch aus JSON-Dateien laden
-
-  // Lignum Erdbeben Kapitel
-  lignumErdbeben.chapters.forEach(([id, parent_id, number, title], i) =>
-    iC.run(id, 'lignum_erdbeben', parent_id, number, title, i));
-
-  // Lignum Erdbeben Nachweise — ENTFERNT: nur noch aus JSON-Dateien laden
-
-  // Lignum Brandschutz Kapitel
-  lignumBrandschutz.chapters.forEach(([id, parent_id, number, title], i) =>
-    iC.run(id, 'lignum_brandschutz', parent_id, number, title, i));
-
-  // Lignum Brandschutz Nachweise
-  lignumBrandschutz.verifications.forEach((v, i) => {
-    iV.run(v.id, 'lignum_brandschutz', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, v.graph_json || null, i);
-    v.variables.forEach((vr, j) => {
-      const vid = v.id + '__' + vr.name;
-      iVr.run(vid, v.id, vr.name, vr.label, vr.unit||'', vr.type||'number', vr.default_value, vr.description||'', j, vr.table_ref||null, vr.table_col||null);
-      (vr.options||[]).forEach((o, k) => iO.run(vid, o.label, o.value, k));
-    });
-  });
-
-  // Baustatik Kapitel
-  baustatik.chapters.forEach(([id, parent_id, number, title], i) =>
-    iC.run(id, 'baustatik', parent_id, number, title, i));
-
-  // Baustatik Nachweise — ENTFERNT: nur noch aus JSON-Dateien laden
-
-  // ─── Normtabellen (sauber mit Kategorie) ─────────────────────────────────
+// ─── KAPITEL NUR AUS JSON LADEN (keine Seed-Daten mehr) ───────────────────
+// Tabellen seeden (einmalig)
+const tabCount = db.prepare("SELECT COUNT(*) as n FROM db_tables").get().n;
+if (tabCount === 0) {
   const iT = db.prepare('INSERT INTO db_tables (id, norm_id, category, title, description, headers, rows) VALUES (?, ?, ?, ?, ?, ?, ?)');
 
   // SIA 265 Tabellen

@@ -285,6 +285,43 @@ app.post('/api/verifications/import', (req, res) => {
   }
 });
 
+// ─── JSON SPEICHERN ──────────────────────────────────────────────────────────
+app.post('/api/verifications/save-json', (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const { id, norm_id, chapter_id, title, formula_latex, formula_description, compute_expr, graph_json, notes } = req.body;
+
+    if (!id || !norm_id) throw new Error('ID und Norm erforderlich');
+
+    const nachweise_dir = path.join(__dirname, 'nachweise', norm_id);
+    if (!fs.existsSync(nachweise_dir)) fs.mkdirSync(nachweise_dir, { recursive: true });
+
+    const file_path = path.join(nachweise_dir, `${id}.json`);
+    const payload = {
+      version: 1,
+      exported_at: new Date().toISOString(),
+      verification: {
+        id, norm_id, chapter_id: chapter_id || '',
+        title: title || id,
+        formula_latex: formula_latex || '',
+        formula_description: formula_description || '',
+        compute_expr: compute_expr || '',
+        graph_json: typeof graph_json === 'string' ? graph_json : (graph_json ? JSON.stringify(graph_json) : null),
+        notes: notes || '',
+        sort_order: 0,
+        active: 1
+      },
+      chapter: chapter_id ? db.prepare('SELECT id, norm_id, parent_id, number, title FROM chapters WHERE id=?').get(chapter_id) : null
+    };
+
+    fs.writeFileSync(file_path, JSON.stringify(payload, null, 2) + '\n');
+    res.json({ ok: true, file: file_path });
+  } catch (err) {
+    res.status(400).json({ error: String(err.message || err) });
+  }
+});
+
 // ─── VARIABLEN ───────────────────────────────────────────────────────────────
 app.get('/api/verifications/:vid/variables', (req, res) => {
   const vars = db.prepare('SELECT * FROM variables WHERE verification_id=? ORDER BY sort_order').all(req.params.vid);

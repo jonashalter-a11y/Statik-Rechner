@@ -1,6 +1,6 @@
 # SIA 265/261 Holzbau Rechner
 
-Interaktiver Statik-Rechner für Schweizer Baunormen. Unterstützt SIA 265 (Holzbau) und SIA 261 (Einwirkungen auf Tragwerke) mit automatischer Berechnungsformel-Auswertung, Anhang-C-Windtabellen und PDF-Export.
+Interaktiver Statik-Rechner für Schweizer Baunormen. Unterstützt **SIA 265 (Holzbau)** und **SIA 261 (Einwirkungen auf Tragwerke)** mit automatischer Berechnungsformel-Auswertung, Anhang-C-Windtabellen und PDF-Export.
 
 ---
 
@@ -24,14 +24,12 @@ Interaktiver Statik-Rechner für Schweizer Baunormen. Unterstützt SIA 265 (Holz
 - Resizable Columns (Sidebar, Nachweis-Panel, Ausdruckprotokoll)
 - PDF-Export (jsPDF + html2canvas)
 - SVG-Gebäudeskizzen für 6 Grundformen (Flachdach, Satteldach, Pultdach)
-- **Node-Editor zum Erstellen von Nachweisen** (React Flow): Blöcke per Drag &
-  Verbindungen statt Formular — Variabel, Dropdown, Tabellenwert, Rechnung,
-  Std-Berechnung, Tabellenberechnung, Bedingung, PDF-Ausgabe
-- Admin-UI zum Bearbeiten von Kapiteln, Tabellen und (als Graph) Verifikationen
+- **Node-Editor zum Erstellen von Nachweisen** (React Flow): Blöcke per Drag & Drop + Kanten statt Formular
+- Admin-UI zum Bearbeiten von Kapiteln, Tabellen und Verifikationen
 
 ---
 
-## Starten
+## Quick Start
 
 ```bash
 # Terminal 1 – Backend (Port 3002)
@@ -46,94 +44,99 @@ Browser: **http://localhost:5173**
 
 ---
 
-## Datenbank neu aufbauen
+## Architektur
 
-Notwendig nach Änderungen an `server/db.js`, `server/seed-*.js` oder `server/seed-anhangc-full.js`:
+### Stack
+| Schicht | Technologie |
+|---------|-------------|
+| Backend | Node.js, Express 5, CommonJS |
+| Datenbank | SQLite (`better-sqlite3`) |
+| Frontend | React 18, TypeScript, Vite |
+| State | Zustand |
+| Editor | React Flow (Node-Editor) |
+| Formeln | KaTeX (Rendering), `new Function()` (Auswertung) |
+| Export | jsPDF, html2canvas |
 
-```bash
-rm -f server/sia265.db server/sia265.db-wal server/sia265.db-shm
-node server/db.js                  # Schema + SIA 265 + SIA 261
-node server/seed-anhangc-full.js   # Windtabellen Anhang C
-```
+### Datenspeicher: JSON-basierte Verifikationen
+**Verifikationen werden NICHT in der DB persistent gespeichert**, sondern als JSON-Objekte verwaltet:
+
+1. **Admin erstellt Nachweis** im Node-Editor (Block-Graph mit 8 Block-Typen)
+2. **Export → JSON** oder direkter **JSON-Import** im Admin-UI
+3. **Speicherung in `verifications` Tabelle** mit `graph_json`-Spalte
+4. **Beim API-Abruf** (`/api/verifications`) werden alle Einträge ausgegeben
+
+**Kapitel und Referenztabellen** (Anhang C) bleiben in der DB.
+
+### Block-Typen (Node-Editor)
+`variable` 🟪 · `dropdown` 🟧 · `tablevalue` 🟩 · `calc` 🟥 · `stdcalc` 🟫 · `tablecalc` 🟦 · `condition` 🔶 · `output` ⬜
+
+Kanten: `workflow` (Standard) und `condition` (bedingte Ausführung)
+
+### Dual-Norm-System
+Der Norm-Switcher im Header schaltet zwischen SIA 265 und SIA 261:
+- `setNormId(id)` → Kapitelbaum aus Cache
+- `loadNormData(id)` → frischer API-Abruf (Kapitel + Verifikationen)
+- Verifikationen pro Norm gecacht in `_verifsByNorm`
 
 ---
 
-## Nachweise per JSON importieren
+## Datenbank
 
-Admin → Nachweise → **JSON importieren** erlaubt Batch-Import von Verifikationen im Node-Editor-Format:
+### Neu aufbauen
 
-**JSON-Struktur (Vorlage):**
+Nach Änderungen an `db.js` oder `seed-anhangc-full.js`:
+
+```bash
+rm -f server/sia265.db server/sia265.db-wal server/sia265.db-shm
+node server/db.js                  # Schema + Kapitel-Seeds
+node server/seed-anhangc-full.js   # Windtabellen Anhang C (Tab. 31–45)
+```
+
+`db.js` seedet nur beim ersten Start (wenn DB leer: `chapCount === 0`).
+
+### Schema (wichtigste Tabellen)
+```
+chapters        id, norm_id, parent_id, number, title, sort_order
+verifications   id, norm_id, chapter_id, title, formula_latex, formula_description, graph_json, active
+db_tables       id, norm_id, category, title, description, headers(JSON), rows(JSON)
+```
+
+**Legacy-Spalten** (`variables`, `variable_options`, `compute_expr`):
+- Alt-Nachweise rendern weiterhin via Adapter in `legacyToGraph.ts`
+- Neue Verifikationen speichern alles in `graph_json`
+
+---
+
+## Nachweise erstellen
+
+### Workflow
+
+1. **Admin-UI öffnen** → Nachweise → **Neuer Nachweis**
+2. **Node-Editor**: Blöcke aus Palette ziehen → mit Workflow-Kanten verbinden
+3. **Speichern** → JSON-Export oder direkt in DB importieren
+4. **JSON-Import**: Admin → Nachweise → **JSON importieren** → Norm + Kapitel wählen
+
+### JSON-Format
 ```json
 {
-  "id": "eindeutige_id",
-  "title": "Nachweis-Titel",
+  "id": "eindeutiger_snake_case_name",
+  "title": "Nachweis-Titel (Gl.-Nr.)",
   "formula_latex": "\\eta = ...",
-  "formula_description": "Beschreibung",
-  "compute_expr": "",
+  "formula_description": "Beschreibung der Formel",
   "graph_json": {
     "version": 1,
-    "nodes": [ ... ],
-    "edges": [ ... ]
+    "nodes": [
+      { "id": "n1", "type": "variable", "position": [0,0], "data": { "name": "var1", "label": "..." } },
+      { "id": "n2", "type": "calc", "position": [200,0], "data": { "formula": "..." } }
+    ],
+    "edges": [
+      { "id": "e1", "source": "n1", "target": "n2", "type": "workflow" }
+    ]
   }
 }
 ```
 
-**Workflow:**
-1. Admin erstellt Nachweis-Graph im Node-Editor (oder exportiert bestehenden)
-2. JSON speichern (ohne `norm_id` und `chapter_id`)
-3. **JSON importieren** → Dialog: Norm + Kapitel wählen → Import
-4. Verifikation wird mit gewählter Norm und Kapitel eingefügt
-
-**Batch-Import:**
-- Mehrere Nachweise per Array importierbar: `[{...}, {...}]`
-- Oder Vorlage von Nachweis-Export: auto-extrahiert `.verification`-Objekt
-
----
-
-## Stack
-
-| Schicht | Technologie |
-|---------|-------------|
-| Backend | Node.js, Express 5, CommonJS |
-| Datenbank | SQLite (`better-sqlite3`) — `server/sia265.db` |
-| Frontend | React 18, TypeScript, Vite |
-| State | Zustand |
-| Formeln | KaTeX (Rendering), `new Function()` (Auswertung) |
-| Export | jsPDF, html2canvas |
-
----
-
-## Projektstruktur
-
-```
-server/
-  index.js              API-Endpunkte (Express)
-  db.js                 Schema + Auto-Seed beim ersten Start
-  seed-chapters.js      SIA 265 Kapitel (138 Stück)
-  seed-sia261.js        SIA 261 Kapitel + Verifikationen (90 Kap., 6 Nachweise)
-  seed-anhangc-full.js  Anhang-C-Windtabellen Tab. 31–45 (Excel-verifiziert)
-  sia265.db             SQLite-Datenbankdatei
-
-src/
-  App.tsx               Layout, Norm-Wechsel-Logik, Resizable Columns
-  store/useStore.ts     Zustand-Store (normId, chapters, verifications, Cache)
-  components/
-    Header.tsx          Norm-Switcher, Holzart/Klasse
-    LeftSidebar.tsx     Inhaltsverzeichnis + Statistik
-    VerificationPanel.tsx  Hülle: Titel + Graph-Ansicht + Kommentar
-    GraphVerificationView.tsx  Rendert Nachweis-Graph als Eingabemaske (Live-Eval)
-    PrintPanel.tsx      Ausdruckprotokoll, PDF-Export (graph + legacy)
-    BuildingShape.tsx   SVG-Gebäudeskizzen
-    admin/              Backend-UI (Kapitel/Tabellen-Editor)
-      graph/            Node-Editor (React Flow): GraphEditor, BlockNodes, graphContext
-  utils/
-    evalFormula.ts      JavaScript-Formel-Evaluator (new Function)
-    evalGraph.ts        Graph-Auswertung (topo-sort, Blocktypen)
-    legacyToGraph.ts    Adapter: alte Nachweise → Graph (getGraph)
-  types/
-    index.ts            TypeScript-Interfaces
-    graph.ts            Graph-/Block-Datentypen
-```
+**Batch-Import**: Array von Verifikationen oder einzelnes Objekt.
 
 ---
 
@@ -142,7 +145,7 @@ src/
 | Methode | Pfad | Beschreibung |
 |---------|------|--------------|
 | GET | `/api/chapters?norm=sia261` | Kapitelstruktur einer Norm |
-| GET | `/api/verifications?norm=sia261` | Nachweise mit Variablen und Formeln |
+| GET | `/api/verifications?norm=sia261` | Nachweise mit Variablen (graph + legacy) |
 | GET | `/api/db-tables?norm=sia261` | Referenztabellen (Wind, Schnee, …) |
 | GET | `/api/db-tables/:id` | Einzelne Tabelle |
 | GET | `/api/wood-types` | Holzarten |
@@ -150,7 +153,7 @@ src/
 
 ---
 
-## Berechnungsformeln
+## Wichtige Berechnungen
 
 ### Schneelast — SIA 261 §5.2 Gl. 9/10
 ```
@@ -160,12 +163,19 @@ qk = μ₁ · Ce · CT · sk
 - h₀ = Bezugshöhe über Meer inkl. Höhenzuschlag aus Karte Anhang D (m)
 - μ₁ = Dachformbeiwert (0.80 für α ≤ 30°, linear → 0 bis α = 60°)
 
+**⚠️ Häufiger Fehler:** `(1 + h₀*h₀/350)` statt `(1 + Math.pow(h₀/350, 2))` dividiert falsch.
+
 ### Windlast — SIA 261 §6.2.1 Gl. 11/12
 ```
 ch = 1.6 · (z / zg)^(2·αr) + 0.375
 qp = ch · qp0
 ```
-Geländekategorien (Tab. 4): GK II → zg=300/αr=0.16, IIa → 380/0.19, III → 450/0.23, IV → 526/0.30
+
+Geländekategorien (Tab. 4):
+- GK II → zg=300, αr=0.16, zmin=5
+- GK IIa → zg=380, αr=0.19, zmin=5
+- GK III → zg=450, αr=0.23, zmin=5
+- GK IV → zg=526, αr=0.30, zmin=10
 
 ### Lokaler Winddruck — SIA 261 §6.2.2
 ```
@@ -180,29 +190,55 @@ Qk = cred · cd · cf · qp · Aref
 
 ---
 
+## Projektstruktur
+
+```
+server/
+  index.js              API-Endpunkte (Express)
+  db.js                 Schema + Kapitel-Seed
+  seed-chapters.js      SIA 265 Kapitel (138)
+  seed-sia261.js        SIA 261 Kapitel (90)
+  seed-anhangc-full.js  Windtabellen Anhang C (Excel-verifiziert)
+  sia265.db             SQLite
+
+src/
+  App.tsx               Layout, Norm-Switcher, Resizable Columns
+  store/useStore.ts     Zustand (normId, chapters, verifications, Cache)
+  components/
+    Header.tsx          Norm-Switcher, Holzart/Klasse
+    LeftSidebar.tsx     Inhaltsverzeichnis
+    VerificationPanel.tsx  Nachweis-Hülle
+    GraphVerificationView.tsx  Rendert Nachweis als Eingabemaske + Live-Eval
+    PrintPanel.tsx      PDF-Export
+    BuildingShape.tsx   SVG-Gebäudeskizzen
+    admin/              Admin-UI
+      graph/            Node-Editor (React Flow)
+  utils/
+    evalFormula.ts      JavaScript-Formel-Evaluator
+    evalGraph.ts        Graph-Auswertung (topo-sort, Blocktypen)
+    legacyToGraph.ts    Adapter: Alt-Nachweise → Graph
+  types/
+    graph.ts            Block-/Graph-Typen
+```
+
+---
+
 ## Anhang-C-Windtabellen (Tab. 31–45)
 
-Alle Tabellen aus `Schneelast_Windlast.xlsm` verifiziert. Nur Tabellen mit Flag=True enthalten (Tab. 46–49 offene Gebäude ausgelassen).
+Alle Tabellen aus `Schneelast_Windlast.xlsm` verifiziert. Nur Tabellen mit Flag=True enthalten.
 
 | Tabelle | Gebäudeform | h:b:d |
 |---------|-------------|-------|
 | Tab. 31 | Flachdach | ≤ 0.3:1:1 |
 | Tab. 32 | Flachdach | 1:1:1 |
-| Tab. 33 | Satteldach 10° | 1:1:1 |
-| Tab. 34 | Satteldach 10° | 2.5:1:1 |
-| Tab. 35 | Satteldach 10° | 1.5:2:1 |
-| Tab. 36 | Satteldach 30° | 0.5:2:1 |
-| Tab. 37 | Satteldach 30° | 2.5:2:1 |
-| Tab. 38 | Satteldach 30° | 2:2.5:1 |
+| Tab. 33–35 | Satteldach 10° | verschiedene |
+| Tab. 36–38 | Satteldach 30° | verschiedene |
 | Tab. 39 | Satteldach 50° | 2:2:1 |
 | Tab. 40 | Pultdach 30° | 1:4:1 |
 | Tab. 41 | Satteldach 60°/30° | 1.5:4:1 |
-| Tab. 42 | Sheddach-Reihe | 2:7:6 |
-| Tab. 43 | Sheddach-Reihe | 1:20:10 |
+| Tab. 42–43 | Sheddach-Reihe | verschiedene |
 | Tab. 44 | Gebrochenes Dach 30° | 2:6:5 |
 | Tab. 45 | Dach mit Dachlüftung 30° | 2:7:4 |
-
-Spaltenbedeutung: A=Luv Wand, B=Lee Wand, C=Seite, D-H=Dachzonen, cf1=Kraftbeiwert b·h, cf2=Kraftbeiwert d·h
 
 ---
 
@@ -223,5 +259,6 @@ Spaltenbedeutung: A=Luv Wand, B=Lee Wand, C=Seite, D-H=Dachzonen, cf1=Kraftbeiwe
 | v1.0 | SIA 265 Basis: 138 Kapitel, 13 Nachweise, Holzklassen, PDF-Export |
 | v2.0 | SIA 261 hinzugefügt, Dual-Norm-System, Anhang-C-Windtabellen, SVG-Skizzen |
 | v2.1 | 19 Anhang-C-Tabellen, 6 SVG-Formen, Grundberechnungen |
-| v2.2 | Schneelast-Formel korrigiert (`h₀/350)²`), Wind-Geländekategorie als Einzel-Dropdown, Tabellen 31–45 Excel-verifiziert, Tabs 46–49 entfernt, neuer `wind_druck_lokal`-Nachweis |
-| v3.0 | **Node-Editor (React Flow)** für die Nachweis-Erstellung: Block-/Graph-System (`graph_json`) mit 8 Block-Typen, Workflow-/Bedingungs-Kanten, Live-Auswertung (`evalGraph`), Legacy-Adapter für bestehende Nachweise, Graph-Ausgabe im PDF-Protokoll |
+| v2.2 | Schneelast-Formel korrigiert, Wind-Geländekategorie Dropdown, Tab. 31–45 Excel-verifiziert |
+| v3.0 | Node-Editor (React Flow) für Nachweis-Erstellung: Block-/Graph-System, Live-Auswertung, Legacy-Adapter |
+| v3.1 | **Verifikationen nur noch JSON-basiert** — kein DB-Seeding mehr, Admin-UI mit JSON-Import |
