@@ -24,6 +24,9 @@ export function LoopBlockNode({ id, data, selected }: NodeProps) {
   const { updateNodeData } = useGraphCtx();
   const set = (p: Partial<LoopBlockData>) => updateNodeData(id, p);
   const uid = () => Math.random().toString(36).slice(2, 8);
+  const [dragOptIndex, setDragOptIndex] = useState<number | null>(null);
+  const [dragOptHoverIndex, setDragOptHoverIndex] = useState<number | null>(null);
+  const dragOptFromRef = useRef<number | null>(null);
 
   // Vars
   const addVar = () => set({ vars: [...(d.vars || []), { id: uid(), name: '', label: '', unit: '', default_value: '0' }] });
@@ -92,6 +95,48 @@ export function LoopBlockNode({ id, data, selected }: NodeProps) {
     if (j < 0 || j >= a.length) return;
     [a[i], a[j]] = [a[j], a[i]];
     set({ options: a });
+  };
+  const moveOptTo = (from: number, to: number) => {
+    if (from === to) return;
+    const a = [...(d.options || [])];
+    if (from < 0 || to < 0 || from >= a.length || to >= a.length) return;
+    const [item] = a.splice(from, 1);
+    a.splice(to, 0, item);
+    set({ options: a });
+  };
+  const startOptDrag = (event: React.PointerEvent<HTMLButtonElement>, from: number) => {
+    if (options.length < 2) return;
+    event.preventDefault();
+    event.stopPropagation();
+    dragOptFromRef.current = from;
+    setDragOptIndex(from);
+    setDragOptHoverIndex(from);
+    document.body.style.cursor = 'grabbing';
+
+    let hover = from;
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const el = document.elementFromPoint(moveEvent.clientX, moveEvent.clientY) as HTMLElement | null;
+      const target = el?.closest('[data-loop-option-index]') as HTMLElement | null;
+      const next = target ? Number(target.dataset.loopOptionIndex) : NaN;
+      if (!Number.isFinite(next)) return;
+      hover = next;
+      setDragOptHoverIndex(next);
+    };
+    const onPointerUp = () => {
+      const source = dragOptFromRef.current;
+      if (source !== null && Number.isFinite(hover)) moveOptTo(source, hover);
+      dragOptFromRef.current = null;
+      setDragOptIndex(null);
+      setDragOptHoverIndex(null);
+      document.body.style.cursor = '';
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
   };
   // Frei definierbare Material-Kategorien für das Dropdown je Material.
   const addCategory = () => set({ option_categories: [...(d.option_categories || []), `Kategorie ${(d.option_categories || []).length + 1}`] });
@@ -193,8 +238,36 @@ export function LoopBlockNode({ id, data, selected }: NodeProps) {
         <button className="nodrag" onClick={addOpt} style={{ fontSize: 10, border: 'none', background: '#fed7aa', borderRadius: 4, padding: '1px 6px', cursor: 'pointer' }}>+</button>
       </div>
       {options.map((opt, oi) => (
-        <div key={opt.id} style={{ background: '#fff7f0', border: '1px solid #fb923c', borderRadius: 4, padding: '4px 5px', marginBottom: 4 }}>
+        <div
+          key={opt.id}
+          data-loop-option-index={oi}
+          style={{
+            background: '#fff7f0',
+            border: dragOptHoverIndex === oi && dragOptIndex !== null && dragOptIndex !== oi ? '2px solid #ea580c' : '1px solid #fb923c',
+            borderRadius: 4,
+            padding: dragOptHoverIndex === oi && dragOptIndex !== null && dragOptIndex !== oi ? '3px 4px' : '4px 5px',
+            marginBottom: 4,
+            opacity: dragOptIndex === oi ? 0.55 : 1,
+          }}
+        >
           <div style={{ display: 'flex', gap: 2, alignItems: 'center', marginBottom: 3 }}>
+            <button
+              className="nodrag"
+              onPointerDown={e => startOptDrag(e, oi)}
+              title="Material ziehen und neu sortieren"
+              style={{
+                flex: '0 0 22px',
+                height: 23,
+                border: '1px solid #fed7aa',
+                background: '#fff',
+                color: '#c2410c',
+                borderRadius: 4,
+                cursor: dragOptIndex === oi ? 'grabbing' : 'grab',
+                fontSize: 12,
+                lineHeight: 1,
+                padding: 0,
+              }}
+            >↕</button>
             <F value={opt.label} placeholder="Mineralwolle ≥ 26 kg/m³" onChange={e => setOptLabel(oi, e.target.value)} style={{ flex: 1 }} />
             <select
               className="nodrag"

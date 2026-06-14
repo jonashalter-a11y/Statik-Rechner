@@ -935,6 +935,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
   const unitLatex = (unit?: string) => {
     const trimmed = String(unit || '').trim();
     if (!trimmed) return '';
+    if (trimmed === '[]' || trimmed === '-' || trimmed === '1') return '';
     if (trimmed.includes('\\') || trimmed.includes('{')) return trimmed;
     const part = (value: string) => {
       const match = value.trim().match(/^([A-Za-z]+)(\^.+)?$/);
@@ -1650,7 +1651,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
 
                 const isLatex = (s: string) => s.includes('\\') || s.includes('^{');
 
-                const indexLatexName = (name: string, idx: number | 'n') => {
+                const indexLatexName = (name: string, idx: number | 'n' | 'j') => {
                   if (!name) return '';
                   return name
                     .replace(/_\{([^{}]*)\}/g, (_m, sub: string) => `_{${sub.replace(/(^|,)i(?=,|$)/g, `$1${idx}`)}}`)
@@ -1658,13 +1659,36 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                 };
 
                 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const replaceFunctionCall = (expr: string, fn: string, render: (content: string) => string) => {
+                  let s = expr;
+                  let guard = 0;
+                  while (guard++ < 20) {
+                    const start = s.indexOf(`${fn}(`);
+                    if (start < 0) break;
+                    const innerStart = start + fn.length + 1;
+                    let depth = 1;
+                    let end = innerStart;
+                    for (; end < s.length; end++) {
+                      if (s[end] === '(') depth++;
+                      else if (s[end] === ')') {
+                        depth--;
+                        if (depth === 0) break;
+                      }
+                    }
+                    if (depth !== 0) break;
+                    const inner = s.slice(innerStart, end);
+                    s = s.slice(0, start) + render(inner) + s.slice(end + 1);
+                  }
+                  return s;
+                };
                 const jsExprToLatex = (expr: string, replacements: Record<string, string>) => {
                   let s = expr || '';
                   for (const [key, value] of Object.entries(replacements).sort((a, b) => b[0].length - a[0].length)) {
                     s = s.replace(new RegExp(`(?<![\\w$])${escapeRe(key)}(?![\\w$])`, 'g'), value);
                   }
+                  s = replaceFunctionCall(s, 'Math.sqrt', content => `\\sqrt{${content}}`);
+                  s = replaceFunctionCall(s, 'sqrt', content => `\\sqrt{${content}}`);
                   return s
-                    .replace(/\bMath\.sqrt\s*\(([^()]*)\)/g, '\\sqrt{$1}')
                     .replace(/\bMath\.pow\s*\(([^,()]+)\s*,\s*([^()]+)\)/g, '{$1}^{$2}')
                     .replace(/\*/g, '\\cdot ')
                     .replace(/<=/g, '\\le ')
@@ -1688,9 +1712,13 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                     const currentVal = iterOutVals[out.id];
                     const prevSymbolTerms = prevVals.map((_, pi) => indexLatexName(out.name, pi + 1) || `${out.id}_{${pi + 1}}`);
                     const prevValueTerms = prevVals.map(v => formatNumber(v));
+                    const sumUpper = i === countVal - 1 ? 'n-1' : String(i);
+                    const sumSymbol = out.name
+                      ? `\\sum_{j=1}^{${sumUpper}} ${indexLatexName(out.name, 'j') || `${out.id}_{j}`}`
+                      : `\\sum_{j=1}^{${sumUpper}} ${out.id}_{j}`;
                     const sumText = mode === 'values'
                       ? (prevValueTerms.length ? `(${prevValueTerms.join(' + ')})` : '0')
-                      : (prevSymbolTerms.length ? `(${prevSymbolTerms.join(' + ')})` : '0');
+                      : (prevSymbolTerms.length ? sumSymbol : '0');
                     replacements[`sum_${out.id}_prev`] = sumText;
                     replacements[`sum_${out.id}_before`] = sumText;
                     const prevLast = prevVals.length ? prevVals[prevVals.length - 1] : NaN;
@@ -1703,6 +1731,10 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                     }
                   }
                   return jsExprToLatex(expr, replacements);
+                };
+                const loopUnit = (unit?: string) => {
+                  const u = unitLatex(unit);
+                  return u ? `\\;${u}` : '';
                 };
 
                 // Substitution in LaTeX-Formel: Var-Namen durch Zahlenwerte ersetzen
@@ -1790,12 +1822,12 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                           <div style={{ color: '#111827', fontSize: 13, fontWeight: 500 }}>
                             {isLatexFormula
                               ? <MathDisplay
-                                  latex={`${calc.label || ''}${calc.label ? ' = ' : ''}${subLatex || formula}${isFinite(val) ? ` = \\underline{${formatNumber(val)}${calc.unit ? `\\;\\mathrm{${calc.unit.replace(/\//g, '/')}}` : ''}}` : ''}`}
+                                  latex={`${calc.label || ''}${calc.label ? ' = ' : ''}${subLatex || formula}${isFinite(val) ? ` = \\underline{${formatNumber(val)}${loopUnit(calc.unit)}}` : ''}`}
                                   display
                                 />
                               : <>
                                   <MathDisplay latex={`${calc.label || ''}${calc.label ? ' = ' : ''}${symbolFormula}`} display />
-                                  <MathDisplay latex={`= ${valueFormula}${isFinite(val) ? ` = \\underline{${formatNumber(val)}${calc.unit ? `\\;\\mathrm{${calc.unit.replace(/\//g, '/')}}` : ''}}` : ''}`} display />
+                                  <MathDisplay latex={`= ${valueFormula}${isFinite(val) ? ` = \\underline{${formatNumber(val)}${loopUnit(calc.unit)}}` : ''}`} display />
                                 </>
                             }
                           </div>
@@ -1827,12 +1859,12 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                             {formula
                               ? isLatexFormula
                                 ? <MathDisplay
-                                    latex={`${out.label || ''}${out.label ? ' = ' : ''}${hasSubstitution ? subLatex : formula}${isFinite(val) ? ` = \\underline{${formatNumber(val)}${out.unit ? `\\;\\mathrm{${out.unit.replace(/\//g, '/')}}` : ''}}` : ''}`}
+                                    latex={`${out.label || ''}${out.label ? ' = ' : ''}${hasSubstitution ? subLatex : formula}${isFinite(val) ? ` = \\underline{${formatNumber(val)}${loopUnit(out.unit)}}` : ''}`}
                                     display
                                   />
                                 : <>
                                     <MathDisplay latex={`${out.label || ''}${out.label ? ' = ' : ''}${symbolFormula}`} display />
-                                    <MathDisplay latex={`= ${valueFormula}${isFinite(val) ? ` = \\underline{${formatNumber(val)}${out.unit ? `\\;\\mathrm{${out.unit.replace(/\//g, '/')}}` : ''}}` : ''}`} display />
+                                    <MathDisplay latex={`= ${valueFormula}${isFinite(val) ? ` = \\underline{${formatNumber(val)}${loopUnit(out.unit)}}` : ''}`} display />
                                   </>
                               : <span style={{ color: isFinite(val) ? '#111827' : '#6b7280', fontWeight: 800 }}>
                                   {out.label && <span style={{ marginRight: 4 }}>{out.label}</span>}
