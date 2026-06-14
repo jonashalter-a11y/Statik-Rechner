@@ -225,7 +225,8 @@ if (chapCount === 0) {
 
   // Baustatik Nachweise
   baustatik.verifications.forEach((v, i) => {
-    iV.run(v.id, 'baustatik', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, v.graph_json || null, i);
+    const graphStr = v.graph_json ? (typeof v.graph_json === 'string' ? v.graph_json : JSON.stringify(v.graph_json)) : null;
+    iV.run(v.id, 'baustatik', v.chapter_id, v.title, v.formula_latex, v.formula_description, v.compute_expr, graphStr, i);
     v.variables.forEach((vr, j) => {
       const vid = v.id + '__' + vr.name;
       iVr.run(vid, v.id, vr.name, vr.label, vr.unit||'', vr.type||'number', vr.default_value, vr.description||'', j, vr.table_ref||null, vr.table_col||null);
@@ -366,7 +367,7 @@ if (!staticSync.skipped) {
   console.log(`✓ Stammdaten aus JSON synchronisiert: ${staticSync.norms} Normen, ${staticSync.chapters} Kapitel, ${staticSync.tables} Tabellen`);
 }
 
-const verificationJsonSync = importActiveVerificationExports(db);
+const verificationJsonSync = importActiveVerificationExports(db, { pruneMissing: false });
 if (verificationJsonSync.files > 0) {
   console.log(`✓ Nachweise aus JSON synchronisiert: ${verificationJsonSync.imported}/${verificationJsonSync.files}`);
   if (verificationJsonSync.errors.length) {

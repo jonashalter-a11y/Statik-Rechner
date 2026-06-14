@@ -11,6 +11,18 @@ module.exports = {
     "baustatik_1",
     "1.1",
     "Schubfluss"
+  ],
+  [
+    "baustatik_2",
+    null,
+    "2",
+    "Brandschutz"
+  ],
+  [
+    "baustatik_2_3_1",
+    "baustatik_2",
+    "2.3.1",
+    "Grundschutzzeit nach Tab. 231-1"
   ]
 ],
   verifications: [
