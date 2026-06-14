@@ -32,6 +32,52 @@ export function evaluateLoopBlock(node: GraphNode, runtime: BlockEvalRuntime) {
             const perIterCalcVals: Record<string, number[]> = {};
             const perIterFormulas: Record<string, string[]> = {};
             const perIterCalcFormulas: Record<string, string[]> = {};
+            const optionForItem = (item: Record<string, string> | undefined) => {
+              const sel = item?.['__sel__'] ?? '';
+              return (d.options || []).find((o: any) => o.id === sel || o.label === sel);
+            };
+            const isHollowOption = (opt: any) =>
+              String(opt?.category || opt?.label || '').toLowerCase().includes('hohlraum');
+            const categoryKey = (opt: any) =>
+              String(opt?.category || opt?.label || '')
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '');
+            const isCoverOption = (opt: any) => {
+              const key = categoryKey(opt);
+              return key.includes('bekleidung') || key.includes('beplankung');
+            };
+            const isInsulationOption = (opt: any) => categoryKey(opt).includes('damm');
+            const isGypsumOption = (opt: any) => categoryKey(opt).includes('gips');
+            const layerThickness = (item: Record<string, string> | undefined) => {
+              if (!item) return NaN;
+              for (const v of (d.vars || [])) {
+                if (v.scope === 'global') continue;
+                const key = normalizeMaterialKey(v.name || '').replace(/\\/g, '');
+                const isThickness = key === 'd_i' || key === 'd' || key === 'd_n' || String(v.label || '').toLowerCase().includes('dicke');
+                if (!isThickness) continue;
+                const raw = item[v.id] ?? item[v.name] ?? v.default_value ?? '';
+                const num = parseNum(raw);
+                if (isFinite(num)) return num;
+              }
+              return NaN;
+            };
+            const isEffectiveHollow = (idx: number) => {
+              if (idx < 0 || idx >= n) return false;
+              const opt = optionForItem(items[idx]);
+              return isHollowOption(opt) && layerThickness(items[idx]) >= 40;
+            };
+            const outputApplies = (out: any, idx: number, opt: any) => {
+              const key = `${out?.id || ''} ${out?.name || ''} ${out?.label || ''}`.toLowerCase();
+              if (out?.scope === 'last' && idx !== n - 1) return false;
+              if (out?.id === 'tprot') return idx < n - 1;
+              if (out?.id === 'tins') return idx === n - 1;
+              if (!key.includes('hohlraum') && !key.includes('_hl_') && !key.includes('pos,h')) return true;
+              if (isHollowOption(opt)) return false;
+              if (key.includes('brandzugewandt')) return isEffectiveHollow(idx + 1);
+              if (key.includes('brandabgewandt') || key.includes('pos,h')) return isEffectiveHollow(idx - 1);
+              return isEffectiveHollow(idx - 1) || isEffectiveHollow(idx + 1);
+            };
 
             for (let i = 0; i < n; i++) {
               const item = items[i] ?? {};
@@ -43,6 +89,7 @@ export function evaluateLoopBlock(node: GraphNode, runtime: BlockEvalRuntime) {
               for (const [k, v2] of Object.entries(globalSymPatch)) setSymbol(localSym, k, v2);
               for (const v of (d.vars || [])) {
                 if (v.scope === 'global') continue; // bereits in globalSymPatch
+                if (v.scope === 'last' && i !== n - 1) continue;
                 const raw = item[v.id] ?? item[v.name] ?? v.default_value ?? '0';
                 const num = parseNum(raw);
                 if (isFinite(num)) setSymbol(localSym, v.name, num);
@@ -54,6 +101,16 @@ export function evaluateLoopBlock(node: GraphNode, runtime: BlockEvalRuntime) {
               }
               const selLabel = item['__sel__'] ?? '';
               const opt = (d.options || []).find((o: any) => o.id === selLabel || o.label === selLabel);
+              const prevOpt = optionForItem(items[i - 1]);
+              const nextOpt = optionForItem(items[i + 1]);
+              setSymbol(localSym, 'prev_is_bekleidung', isCoverOption(prevOpt) ? 1 : 0);
+              setSymbol(localSym, 'prev_is_daemmung', isInsulationOption(prevOpt) ? 1 : 0);
+              setSymbol(localSym, 'prev_is_hohlraum', isEffectiveHollow(i - 1) ? 1 : 0);
+              setSymbol(localSym, 'prev_is_gips', isGypsumOption(prevOpt) ? 1 : 0);
+              setSymbol(localSym, 'next_is_bekleidung', isCoverOption(nextOpt) ? 1 : 0);
+              setSymbol(localSym, 'next_is_daemmung', isInsulationOption(nextOpt) ? 1 : 0);
+              setSymbol(localSym, 'next_is_hohlraum', isEffectiveHollow(i + 1) ? 1 : 0);
+              setSymbol(localSym, 'next_is_gips', isGypsumOption(nextOpt) ? 1 : 0);
 
               for (const out of (d.outputs || [])) {
                 const prevVals = perIterVals[out.id] ?? [];
@@ -80,6 +137,12 @@ export function evaluateLoopBlock(node: GraphNode, runtime: BlockEvalRuntime) {
               }
 
               for (const out of (d.outputs || [])) {
+                if (!outputApplies(out, i, opt)) {
+                  perIterVals[out.id].push(NaN);
+                  if (!perIterFormulas[out.id]) perIterFormulas[out.id] = [];
+                  perIterFormulas[out.id].push('');
+                  continue;
+                }
                 const cases = opt?.formulaCases?.[out.id] || [];
                 const activeCase = cases.find((c: any) => evalBestEffortCondition(c.cond_expr || c.cond_latex || '', localSym));
                 const formula = activeCase?.formula ?? opt?.formulas?.[out.id] ?? '';

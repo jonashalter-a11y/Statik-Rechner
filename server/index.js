@@ -5,6 +5,7 @@ const {
   buildVerificationExport,
   exportVerificationById,
   exportVerificationsByNorm,
+  importActiveVerificationExports,
   importVerificationExport,
   deleteExportFile,
   trashVerificationExport,
@@ -35,6 +36,15 @@ function safeExportNorm(normId) {
     exportVerificationsByNorm(db, normId);
   } catch (err) {
     console.error(`Nachweis-Export fehlgeschlagen (${normId}):`, err);
+  }
+}
+
+function safeImportVerificationJsons() {
+  try {
+    return importActiveVerificationExports(db);
+  } catch (err) {
+    console.error('Nachweis-JSON-Sync fehlgeschlagen:', err);
+    return null;
   }
 }
 
@@ -150,6 +160,7 @@ function resolveTableColumnOptions(vr) {
 }
 
 app.get('/api/verifications', (req, res) => {
+  safeImportVerificationJsons();
   const norm = req.query.norm || 'sia265';
   const vs = db.prepare('SELECT * FROM verifications WHERE norm_id=? AND active=1 ORDER BY sort_order').all(norm);
   const vars = db.prepare('SELECT * FROM variables ORDER BY sort_order').all();
@@ -173,6 +184,7 @@ app.get('/api/verification-export/:id', (req, res) => {
 });
 
 app.get('/api/verifications/:id', (req, res) => {
+  safeImportVerificationJsons();
   const v = db.prepare('SELECT * FROM verifications WHERE id=?').get(req.params.id);
   if (!v) return res.status(404).json({ error: 'Not found' });
   const vars = db.prepare('SELECT * FROM variables WHERE verification_id=? ORDER BY sort_order').all(v.id);

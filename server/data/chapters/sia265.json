@@ -22,5 +22,13 @@
     "number": "4.2.9",
     "title": "Stabilität von Biegeträgern (Kippen)",
     "sort_order": 49
+  },
+  {
+    "id": "sia265_4_2_8_mqe59n3c",
+    "norm_id": "sia265",
+    "parent_id": "4.2",
+    "number": "4.2.8",
+    "title": "Knicken (Stabilität von Druckstäben)",
+    "sort_order": 50
   }
 ]

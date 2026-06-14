@@ -419,7 +419,9 @@ export interface GroupCalcVar {
   label: string;         // Anzeigetext (z.B. "Schichtdicke")
   unit: string;          // Einheit (z.B. "mm")
   default_value: string; // Standardwert als String
-  scope?: 'layer' | 'global'; // 'layer' = pro Schicht (default), 'global' = einmal für alle
+  scope?: 'layer' | 'last' | 'global'; // 'layer' = pro Schicht, 'last' = nur letzte Schicht, 'global' = einmal für alle
+  inputKind?: 'number' | 'dropdown';
+  options?: { label: string; value: string }[];
 }
 export interface GroupCalcOption {
   id: string;
@@ -447,6 +449,7 @@ export interface GroupCalcOutput {
   name: string;  // LaTeX-Variablenname (z.B. "t_{prot,0,i}")
   label: string; // Anzeigetext
   unit: string;
+  scope?: 'layer' | 'last';
 }
 export interface GroupCalcData {
   kind: 'groupcalc';

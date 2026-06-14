@@ -35,6 +35,16 @@
     "sort_order": 9
   },
   {
+    "id": 23,
+    "latex": "\\mathrm{min}",
+    "sort_order": 9
+  },
+  {
+    "id": 24,
+    "latex": "\\mathrm{mm/min}",
+    "sort_order": 10
+  },
+  {
     "id": 12,
     "latex": "\\mathrm{mm^2}",
     "sort_order": 12

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-06-13T18:48:44.356Z",
+  "exported_at": "2026-06-14T18:55:25.286Z",
   "verification": {
     "id": "4_2_9_kippen",
     "norm_id": "sia265",
@@ -107,14 +107,14 @@
       "table_col": null,
       "options": [
         {
-          "id": 83,
+          "id": 131,
           "variable_id": "kippen_vh__k_mod",
           "label": "FK1, mittelfristig (0.80)",
           "value": "0.8",
           "sort_order": 0
         },
         {
-          "id": 84,
+          "id": 132,
           "variable_id": "kippen_vh__k_mod",
           "label": "FK1, kurz (0.90)",
           "value": "0.9",

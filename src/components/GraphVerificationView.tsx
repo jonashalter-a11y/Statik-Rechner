@@ -1557,7 +1557,8 @@ export default function GraphVerificationView({ verification, readOnly = false, 
 
           // Vars aufteilen
           const globalVars = (lb.vars || []).filter(v => v.scope === 'global');
-          const layerVars  = (lb.vars || []).filter(v => v.scope !== 'global');
+          const scopedLayerVars  = (lb.vars || []).filter(v => v.scope !== 'global');
+          const layerVars = scopedLayerVars;
 
           const res = ev?.results?.[n.id] as any;
           const perIterVals: Record<string, number[]> = res?.loopPerIter ?? {};
@@ -1580,12 +1581,22 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                       return (
                         <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                           <MathDisplay latex={v.name} />
-                          <input
-                            type="number"
-                            value={rawVal}
-                            onChange={e => setGlobal({ [v.id]: e.target.value })}
-                            style={{ width: 72, border: '1.5px solid #fb923c', borderRadius: 4, padding: '3px 6px', fontSize: 13, textAlign: 'right' }}
-                          />
+                          {v.inputKind === 'dropdown' ? (
+                            <select
+                              value={rawVal}
+                              onChange={e => setGlobal({ [v.id]: e.target.value })}
+                              style={{ minWidth: 110, border: '1.5px solid #fb923c', borderRadius: 4, padding: '3px 6px', fontSize: 13, background: '#fff' }}
+                            >
+                              {(v.options || []).map(o => <option key={`${o.label}_${o.value}`} value={o.value}>{o.label}</option>)}
+                            </select>
+                          ) : (
+                            <input
+                              type="number"
+                              value={rawVal}
+                              onChange={e => setGlobal({ [v.id]: e.target.value })}
+                              style={{ width: 72, border: '1.5px solid #fb923c', borderRadius: 4, padding: '3px 6px', fontSize: 13, textAlign: 'right' }}
+                            />
+                          )}
                           {v.unit && <span style={{ fontSize: 11, color: '#9ca3af' }}>[{v.unit}]</span>}
                         </div>
                       );
@@ -1618,11 +1629,50 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                 }
 
                 const selectedOpt = (lb.options || []).find(opt => opt.id === selLabel || opt.label === selLabel);
+                const optionForItem = (loopItem: Record<string, string> | undefined) => {
+                  const selected = loopItem?.['__sel__'] ?? '';
+                  return (lb.options || []).find(opt => opt.id === selected || opt.label === selected);
+                };
+                const isHollowOption = (opt: typeof selectedOpt) =>
+                  String(opt?.category || opt?.label || '').toLowerCase().includes('hohlraum');
+                const layerThickness = (loopItem: Record<string, string> | undefined) => {
+                  if (!loopItem) return NaN;
+                  for (const v of layerVars) {
+                    const key = normalizeVarName(v.name || '');
+                    const isThickness = key === 'd_i' || key === 'd' || key === 'd_n' || String(v.label || '').toLowerCase().includes('dicke');
+                    if (!isThickness) continue;
+                    const raw = loopItem[v.id] ?? loopItem[v.name] ?? v.default_value ?? '';
+                    const num = parseFloat(String(raw).replace(',', '.'));
+                    if (isFinite(num)) return num;
+                  }
+                  return NaN;
+                };
+                const isEffectiveHollow = (idx: number) => {
+                  if (idx < 0 || idx >= countVal) return false;
+                  const opt = optionForItem(items[idx]);
+                  return isHollowOption(opt) && layerThickness(items[idx]) >= 40;
+                };
+                const outputApplies = (out: import('../types/graph').GroupCalcOutput) => {
+                  const key = `${out.id || ''} ${out.name || ''} ${out.label || ''}`.toLowerCase();
+                  if (out.scope === 'last' && i !== countVal - 1) return false;
+                  if (out.id === 'tprot') return i < countVal - 1;
+                  if (out.id === 'tins') return i === countVal - 1;
+                  if (!key.includes('hohlraum') && !key.includes('_hl_') && !key.includes('pos,h')) return true;
+                  if (isHollowOption(selectedOpt)) return false;
+                  if (key.includes('brandzugewandt')) return isEffectiveHollow(i + 1);
+                  if (key.includes('brandabgewandt') || key.includes('pos,h')) return isEffectiveHollow(i - 1);
+                  return isEffectiveHollow(i - 1) || isEffectiveHollow(i + 1);
+                };
 
                 // Werte-Map: globale Vars + per-Schicht-Vars dieser Iteration
                 // Schlüssel = normalisierter JS-Name (ohne \, {} aufgelöst)
                 const normalizeVarName = (n: string) =>
-                  n.replace(/\\/g, '').replace(/_\{([^{}]+)\}/g, '_$1').replace(/[{}]/g, '').trim();
+                  n
+                    .replace(/\\/g, '')
+                    .replace(/_\{([^{}]+)\}/g, (_m, sub: string) => '_' + sub.replace(/[,\s.]+/g, '_'))
+                    .replace(/[{},\s.]+/g, '_')
+                    .replace(/_+/g, '_')
+                    .replace(/^_|_$/g, '');
 
                 const varVals: Record<string, number> = {};
                 for (const v of globalVars) {
@@ -1659,6 +1709,47 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                 };
 
                 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const splitTopLevelComma = (expr: string) => {
+                  const parts: string[] = [];
+                  let depth = 0;
+                  let start = 0;
+                  for (let idx = 0; idx < expr.length; idx++) {
+                    const ch = expr[idx];
+                    if (ch === '(' || ch === '[' || ch === '{') depth++;
+                    else if (ch === ')' || ch === ']' || ch === '}') depth = Math.max(0, depth - 1);
+                    else if (ch === ',' && depth === 0) {
+                      parts.push(expr.slice(start, idx).trim());
+                      start = idx + 1;
+                    }
+                  }
+                  parts.push(expr.slice(start).trim());
+                  return parts.filter(Boolean);
+                };
+                const splitTopLevelTernary = (expr: string) => {
+                  let depth = 0;
+                  let question = -1;
+                  for (let idx = 0; idx < expr.length; idx++) {
+                    const ch = expr[idx];
+                    if (ch === '(' || ch === '[' || ch === '{') depth++;
+                    else if (ch === ')' || ch === ']' || ch === '}') depth = Math.max(0, depth - 1);
+                    else if (ch === '?' && depth === 0) { question = idx; break; }
+                  }
+                  if (question < 0) return null;
+                  depth = 0;
+                  for (let idx = question + 1; idx < expr.length; idx++) {
+                    const ch = expr[idx];
+                    if (ch === '(' || ch === '[' || ch === '{') depth++;
+                    else if (ch === ')' || ch === ']' || ch === '}') depth = Math.max(0, depth - 1);
+                    else if (ch === ':' && depth === 0) {
+                      return {
+                        cond: expr.slice(0, question).trim(),
+                        yes: expr.slice(question + 1, idx).trim(),
+                        no: expr.slice(idx + 1).trim(),
+                      };
+                    }
+                  }
+                  return null;
+                };
                 const replaceFunctionCall = (expr: string, fn: string, render: (content: string) => string) => {
                   let s = expr;
                   let guard = 0;
@@ -1681,11 +1772,17 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                   }
                   return s;
                 };
-                const jsExprToLatex = (expr: string, replacements: Record<string, string>) => {
+                const jsExprToLatex = (expr: string, replacements: Record<string, string>): string => {
                   let s = expr || '';
                   for (const [key, value] of Object.entries(replacements).sort((a, b) => b[0].length - a[0].length)) {
                     s = s.replace(new RegExp(`(?<![\\w$])${escapeRe(key)}(?![\\w$])`, 'g'), value);
                   }
+                  const ternary = splitTopLevelTernary(s);
+                  if (ternary) {
+                    return `\\begin{cases} ${jsExprToLatex(ternary.yes, {})} & ${jsExprToLatex(ternary.cond, {})} \\\\ ${jsExprToLatex(ternary.no, {})} & \\text{sonst} \\end{cases}`;
+                  }
+                  s = replaceFunctionCall(s, 'Math.min', content => `\\min\\left(${splitTopLevelComma(content).map(part => jsExprToLatex(part, {})).join(', ')}\\right)`);
+                  s = replaceFunctionCall(s, 'min', content => `\\min\\left(${splitTopLevelComma(content).map(part => jsExprToLatex(part, {})).join(', ')}\\right)`);
                   s = replaceFunctionCall(s, 'Math.sqrt', content => `\\sqrt{${content}}`);
                   s = replaceFunctionCall(s, 'sqrt', content => `\\sqrt{${content}}`);
                   return s
@@ -1693,6 +1790,8 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                     .replace(/\*/g, '\\cdot ')
                     .replace(/<=/g, '\\le ')
                     .replace(/>=/g, '\\ge ')
+                    .replace(/(?<![<>=!])>(?![=])/g, '>')
+                    .replace(/(?<![<>=!])<(?![=])/g, '<')
                     .replace(/\s+/g, ' ')
                     .trim();
                 };
@@ -1781,19 +1880,29 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                     </div>
 
                     {/* Per-Schicht-Variablen */}
-                    {layerVars.length > 0 && (
+                    {scopedLayerVars.filter(v => v.scope !== 'last' || i === countVal - 1).length > 0 && (
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
-                        {layerVars.map(v => {
+                        {scopedLayerVars.filter(v => v.scope !== 'last' || i === countVal - 1).map(v => {
                           const rawVal = item[v.id] ?? item[v.name] ?? v.default_value ?? '';
                           return (
                             <div key={v.id} style={{ display: 'flex', alignItems: 'center', gap: 4, flex: '0 0 auto' }}>
                               <MathDisplay latex={v.name} />
-                              <input
-                                type="number"
-                                value={rawVal}
-                                onChange={e => setItem(i, { [v.id]: e.target.value })}
-                                style={{ width: 64, border: '1px solid #fed7aa', borderRadius: 4, padding: '3px 5px', fontSize: 12, textAlign: 'right' }}
-                              />
+                              {v.inputKind === 'dropdown' ? (
+                                <select
+                                  value={rawVal}
+                                  onChange={e => setItem(i, { [v.id]: e.target.value })}
+                                  style={{ minWidth: 96, border: '1px solid #fed7aa', borderRadius: 4, padding: '3px 5px', fontSize: 12, background: '#fff' }}
+                                >
+                                  {(v.options || []).map(o => <option key={`${o.label}_${o.value}`} value={o.value}>{o.label}</option>)}
+                                </select>
+                              ) : (
+                                <input
+                                  type="number"
+                                  value={rawVal}
+                                  onChange={e => setItem(i, { [v.id]: e.target.value })}
+                                  style={{ width: 64, border: '1px solid #fed7aa', borderRadius: 4, padding: '3px 5px', fontSize: 12, textAlign: 'right' }}
+                                />
+                              )}
                               {v.unit && <span style={{ fontSize: 10, color: '#9ca3af' }}>[{v.unit}]</span>}
                             </div>
                           );
@@ -1815,18 +1924,18 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                       const symbolFormula = !isLatexFormula ? buildLoopFormulaLatex(jsFormula, 'symbols') : '';
                       const valueFormula = !isLatexFormula ? buildLoopFormulaLatex(jsFormula, 'values') : '';
                       return (
-                        <div key={calc.id} style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 2, padding: '4px 7px', marginTop: 4, overflowX: 'auto' }}>
-                          <div style={{ fontSize: 9, color: '#c2410c', fontWeight: 700, marginBottom: 1 }}>
+                        <div key={calc.id} style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 2, padding: '8px 12px', marginTop: 6, overflowX: 'auto', minHeight: 72 }}>
+                          <div style={{ fontSize: 12, color: '#c2410c', fontWeight: 700, marginBottom: 4 }}>
                             {calc.name && <MathDisplay latex={calc.name} />}
                           </div>
-                          <div style={{ color: '#111827', fontSize: 13, fontWeight: 500 }}>
+                          <div style={{ color: '#111827', fontSize: 17, fontWeight: 500, lineHeight: 1.6 }}>
                             {isLatexFormula
                               ? <MathDisplay
                                   latex={`${calc.label || ''}${calc.label ? ' = ' : ''}${subLatex || formula}${isFinite(val) ? ` = \\underline{${formatNumber(val)}${loopUnit(calc.unit)}}` : ''}`}
                                   display
                                 />
                               : <>
-                                  <MathDisplay latex={`${calc.label || ''}${calc.label ? ' = ' : ''}${symbolFormula}`} display />
+                                  <MathDisplay latex={`${calc.label ? `\\text{${calc.label}} = ` : ''}${symbolFormula}`} display />
                                   <MathDisplay latex={`= ${valueFormula}${isFinite(val) ? ` = \\underline{${formatNumber(val)}${loopUnit(calc.unit)}}` : ''}`} display />
                                 </>
                             }
@@ -1837,6 +1946,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
 
                     {/* Ausgaben dieser Iteration — mit Formelzeile */}
                     {selLabel && (lb.outputs || []).map(out => {
+                      if (!outputApplies(out)) return null;
                       const val = iterOutVals[out.id];
                       const formula = perIterFormulas[out.id]?.[i] ?? selectedOpt?.formulas?.[out.id] ?? '';
                       const isLatexFormula = isLatex(formula);
@@ -1851,11 +1961,11 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                       const symbolFormula = !isLatexFormula ? buildLoopFormulaLatex(jsFormula, 'symbols') : '';
                       const valueFormula = !isLatexFormula ? buildLoopFormulaLatex(jsFormula, 'values') : '';
                       return (
-                        <div key={out.id} style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 2, padding: '4px 7px', marginTop: 4, overflowX: 'auto' }}>
-                          <div style={{ fontSize: 9, color: '#c2410c', fontWeight: 700, marginBottom: 1 }}>
+                        <div key={out.id} style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 2, padding: '8px 12px', marginTop: 6, overflowX: 'auto', minHeight: 82 }}>
+                          <div style={{ fontSize: 12, color: '#c2410c', fontWeight: 700, marginBottom: 4 }}>
                             {out.name && <MathDisplay latex={out.name} />}
                           </div>
-                          <div style={{ color: '#111827', fontSize: 13, fontWeight: 500 }}>
+                          <div style={{ color: '#111827', fontSize: 18, fontWeight: 500, lineHeight: 1.6 }}>
                             {formula
                               ? isLatexFormula
                                 ? <MathDisplay
@@ -1863,7 +1973,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                                     display
                                   />
                                 : <>
-                                    <MathDisplay latex={`${out.label || ''}${out.label ? ' = ' : ''}${symbolFormula}`} display />
+                                    <MathDisplay latex={`${out.label ? `\\text{${out.label}} = ` : ''}${symbolFormula}`} display />
                                     <MathDisplay latex={`= ${valueFormula}${isFinite(val) ? ` = \\underline{${formatNumber(val)}${loopUnit(out.unit)}}` : ''}`} display />
                                   </>
                               : <span style={{ color: isFinite(val) ? '#111827' : '#6b7280', fontWeight: 800 }}>
@@ -1885,7 +1995,27 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                   <div style={{ fontSize: 11, fontWeight: 700, color: '#c2410c', marginBottom: 6 }}>Gesamtergebnis</div>
                   {(lb.aggregations || []).map((ag, ai) => {
                     const val = aggrVals[ag.output_id];
+                    const tprotVals = (perIterVals.tprot || []).slice(0, Math.max(0, countVal - 1)).filter(isFinite);
+                    const lastTins = (perIterVals.tins || [])[countVal - 1];
+                    const isTotal = ag.output_id === 't_total' || ag.name === 't_{ins}';
+                    const agUnit = (unit?: string) => {
+                      const u = unitLatex(unit);
+                      return u ? `\\;${u}` : '';
+                    };
                     const methodLabel = ag.method === 'sum' ? 'Σ' : ag.method === 'last' ? 'letzte Schicht' : ag.method === 'expr' ? 'Ausdruck' : ag.method;
+                    if (isTotal) {
+                      const valueTerms = [...tprotVals.map(v => formatNumber(v)), ...(isFinite(lastTins) ? [formatNumber(lastTins)] : [])];
+                      const valueFormula = valueTerms.length ? valueTerms.join(' + ') : '0';
+                      return (
+                        <div key={ai} style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 4, padding: '10px 12px', marginBottom: 8, overflowX: 'auto' }}>
+                          <div style={{ fontSize: 12, color: '#c2410c', fontWeight: 700, marginBottom: 4 }}>{ag.label}</div>
+                          <div style={{ color: '#111827', fontSize: 18, fontWeight: 500, lineHeight: 1.6 }}>
+                            <MathDisplay latex={`${ag.name || 't_{ins}'} = \\sum_{i=1}^{n-1} t_{prot,i} + t_{ins,n}`} display />
+                            <MathDisplay latex={`= ${valueFormula}${isFinite(val) ? ` = \\underline{${formatNumber(val)}${agUnit(ag.unit)}}` : ''}`} display />
+                          </div>
+                        </div>
+                      );
+                    }
                     return (
                       <div key={ai} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                         <div>

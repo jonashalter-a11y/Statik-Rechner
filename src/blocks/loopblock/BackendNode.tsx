@@ -32,6 +32,26 @@ export function LoopBlockNode({ id, data, selected }: NodeProps) {
   const addVar = () => set({ vars: [...(d.vars || []), { id: uid(), name: '', label: '', unit: '', default_value: '0' }] });
   const setVar = (i: number, p: Partial<GroupCalcVar>) => { const a = [...(d.vars || [])]; a[i] = { ...a[i], ...p }; set({ vars: a }); };
   const delVar = (i: number) => set({ vars: (d.vars || []).filter((_, j) => j !== i) });
+  const nextVarScope = (scope?: GroupCalcVar['scope']): GroupCalcVar['scope'] => scope === 'global' ? 'layer' : scope === 'last' ? 'global' : 'last';
+  const nextOutScope = (scope?: GroupCalcOutput['scope']): GroupCalcOutput['scope'] => scope === 'last' ? 'layer' : 'last';
+  const scopeButtonStyle = (scope?: 'layer' | 'last' | 'global') => {
+    if (scope === 'global') return { background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' };
+    if (scope === 'last') return { background: '#eff6ff', borderColor: '#93c5fd', color: '#1d4ed8' };
+    return { background: '#f0fdf4', borderColor: '#86efac', color: '#166534' };
+  };
+  const scopeLabel = (scope?: 'layer' | 'last' | 'global') => scope === 'global' ? '🌐 Global' : scope === 'last' ? '🔚 letzte' : '🔁 /Schicht';
+  const optionsToText = (options?: { label: string; value: string }[]) =>
+    (options || []).map(o => `${o.label}=${o.value}`).join('\n');
+  const textToOptions = (text: string) =>
+    text
+      .split(/\r?\n/)
+      .map(line => line.trim())
+      .filter(Boolean)
+      .map(line => {
+        const [label, ...rest] = line.split('=');
+        const value = rest.length ? rest.join('=').trim() : label.trim();
+        return { label: label.trim(), value };
+      });
   // Outputs
   const addOut = () => set({ outputs: [...(d.outputs || []), { id: uid(), name: '', label: '', unit: '' }] });
   const setOut = (i: number, p: Partial<GroupCalcOutput>) => { const a = [...(d.outputs || [])]; a[i] = { ...a[i], ...p }; set({ outputs: a }); };
@@ -202,18 +222,49 @@ export function LoopBlockNode({ id, data, selected }: NodeProps) {
       </div>
       <div style={{ fontSize: 8, color: '#9ca3af', marginBottom: 2 }}>Name · Bezeichnung · Einheit · Standard · Scope</div>
       {(d.vars || []).map((v, i) => (
-        <div key={v.id} style={{ display: 'flex', gap: 2, alignItems: 'center', marginBottom: 2 }}>
-          <F value={v.name} placeholder="d" onChange={e => setVar(i, { name: e.target.value })} style={{ flex: 1 }} />
-          <F value={v.label} placeholder="Dicke" onChange={e => setVar(i, { label: e.target.value })} style={{ flex: 2 }} />
-          <F value={v.unit} placeholder="mm" onChange={e => setVar(i, { unit: e.target.value })} style={{ flex: 0.8 }} />
-          <F value={v.default_value} placeholder="15" onChange={e => setVar(i, { default_value: e.target.value })} style={{ flex: 0.8 }} />
-          <button
-            className="nodrag"
-            title={v.scope === 'global' ? 'Global (einmal für alle Schichten) — klicken für per-Schicht' : 'Pro Schicht — klicken für Global'}
-            onClick={() => setVar(i, { scope: v.scope === 'global' ? 'layer' : 'global' })}
-            style={{ flex: '0 0 auto', fontSize: 9, border: '1px solid', borderRadius: 3, padding: '1px 4px', cursor: 'pointer', background: v.scope === 'global' ? '#fef3c7' : '#f0fdf4', borderColor: v.scope === 'global' ? '#f59e0b' : '#86efac', color: v.scope === 'global' ? '#92400e' : '#166534', whiteSpace: 'nowrap' }}
-          >{v.scope === 'global' ? '🌐 Global' : '🔁 /Schicht'}</button>
-          <button className="nodrag" onClick={() => delVar(i)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 11, padding: '0 2px' }}>✕</button>
+        <div key={v.id} style={{ marginBottom: 3 }}>
+          <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <F value={v.name} placeholder="d" onChange={e => setVar(i, { name: e.target.value })} style={{ flex: 1 }} />
+            <F value={v.label} placeholder="Dicke" onChange={e => setVar(i, { label: e.target.value })} style={{ flex: 2 }} />
+            <F value={v.unit} placeholder="mm" onChange={e => setVar(i, { unit: e.target.value })} style={{ flex: 0.8 }} />
+            {v.inputKind === 'dropdown' ? (
+              <select className="nodrag" value={v.default_value} onChange={e => setVar(i, { default_value: e.target.value })} style={{ ...inp, flex: 0.8 }}>
+                {(v.options || []).map(o => <option key={`${o.label}_${o.value}`} value={o.value}>{o.label}</option>)}
+              </select>
+            ) : (
+              <F value={v.default_value} placeholder="15" onChange={e => setVar(i, { default_value: e.target.value })} style={{ flex: 0.8 }} />
+            )}
+            <select
+              className="nodrag"
+              value={v.inputKind || 'number'}
+              onChange={e => {
+                const inputKind = e.target.value as GroupCalcVar['inputKind'];
+                setVar(i, inputKind === 'dropdown'
+                  ? { inputKind, options: v.options?.length ? v.options : [{ label: 'Decke', value: '0' }, { label: 'Wand', value: '1' }], default_value: v.default_value || '1' }
+                  : { inputKind });
+              }}
+              style={{ ...inp, flex: '0 0 74px' }}
+            >
+              <option value="number">Zahl</option>
+              <option value="dropdown">Dropdown</option>
+            </select>
+            <button
+              className="nodrag"
+              title="Scope umschalten: pro Schicht → nur letzte → Global"
+              onClick={() => setVar(i, { scope: nextVarScope(v.scope) })}
+              style={{ flex: '0 0 auto', fontSize: 9, border: '1px solid', borderRadius: 3, padding: '1px 4px', cursor: 'pointer', ...scopeButtonStyle(v.scope), whiteSpace: 'nowrap' }}
+            >{scopeLabel(v.scope)}</button>
+            <button className="nodrag" onClick={() => delVar(i)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 11, padding: '0 2px' }}>✕</button>
+          </div>
+          {v.inputKind === 'dropdown' && (
+            <textarea
+              className="nodrag"
+              value={optionsToText(v.options)}
+              onChange={e => setVar(i, { options: textToOptions(e.target.value) })}
+              placeholder={'Decke=0\nWand=1'}
+              style={{ ...inp, width: '100%', minHeight: 38, marginTop: 2, fontSize: 10, resize: 'vertical' }}
+            />
+          )}
         </div>
       ))}
       {(d.vars || []).length > 0 && <div style={{ fontSize: 7, color: '#9ca3af', marginBottom: 2 }}>Name · Bezeichnung · Einheit · Standard</div>}
@@ -228,6 +279,12 @@ export function LoopBlockNode({ id, data, selected }: NodeProps) {
           <F value={o.name} placeholder="t_{prot,0,i}" onChange={e => setOut(i, { name: e.target.value })} style={{ flex: 2 }} />
           <F value={o.label} placeholder="Schutzzeit" onChange={e => setOut(i, { label: e.target.value })} style={{ flex: 2 }} />
           <F value={o.unit} placeholder="min" onChange={e => setOut(i, { unit: e.target.value })} style={{ flex: 0.8 }} />
+          <button
+            className="nodrag"
+            title="Scope umschalten: pro Schicht → nur letzte"
+            onClick={() => setOut(i, { scope: nextOutScope(o.scope) })}
+            style={{ flex: '0 0 auto', fontSize: 9, border: '1px solid', borderRadius: 3, padding: '1px 4px', cursor: 'pointer', ...scopeButtonStyle(o.scope), whiteSpace: 'nowrap' }}
+          >{scopeLabel(o.scope)}</button>
           <button className="nodrag" onClick={() => delOut(i)} style={{ background: 'none', border: 'none', color: '#d1d5db', cursor: 'pointer', fontSize: 11, padding: '0 2px' }}>✕</button>
         </div>
       ))}

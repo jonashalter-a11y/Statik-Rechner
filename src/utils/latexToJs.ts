@@ -52,6 +52,38 @@ function replaceCmdBrace(s: string, cmd: string, js: string): string {
   return out;
 }
 
+function replaceCmdParen(s: string, cmd: string, js: string): string {
+  let out = '';
+  let i = 0;
+  const tag = '\\' + cmd;
+  while (i < s.length) {
+    if (s.startsWith(tag, i)) {
+      let j = i + tag.length;
+      while (s[j] === ' ') j++;
+      if (s[j] === '(') {
+        let depth = 0;
+        let replaced = false;
+        for (let k = j; k < s.length; k++) {
+          if (s[k] === '(') depth++;
+          else if (s[k] === ')') {
+            depth--;
+            if (depth === 0) {
+              out += js + '(' + s.slice(j + 1, k) + ')';
+              i = k + 1;
+              replaced = true;
+              break;
+            }
+          }
+        }
+        if (replaced) continue;
+      }
+    }
+    out += s[i];
+    i++;
+  }
+  return out;
+}
+
 function convertSubscripts(s: string): string {
   // f_{m,k} → f_m_k ; q_{p0} → q_p0
   return s.replace(/_\{([^{}]*)\}/g, (_m, p1: string) => '_' + p1.trim().replace(/[,\s]+/g, '_'));
@@ -98,6 +130,8 @@ function latexExprToJs(tex: string): string {
   s = s.replace(/\\cdot|\\times|\\ast/g, '*');
   s = replaceFrac(s);
   s = replaceCmdBrace(s, 'sqrt', 'Math.sqrt');
+  s = replaceCmdBrace(s, 'log', 'Math.log10');
+  s = replaceCmdParen(s, 'log', 'Math.log10');
   for (const g of GREEK) {
     s = s.replace(new RegExp('\\\\' + g + '(?=\\b|_|\\{|$)', 'g'), g);
     s = s.replace(new RegExp('\\\\' + g[0].toUpperCase() + g.slice(1) + '(?=\\b|_|\\{|$)', 'g'), g);
@@ -208,6 +242,8 @@ export function latexToJs(tex: string): string {
   s = s.replace(/\\cdot|\\times|\\ast/g, '*');
   s = replaceFrac(s);
   s = replaceCmdBrace(s, 'sqrt', 'Math.sqrt');
+  s = replaceCmdBrace(s, 'log', 'Math.log10');
+  s = replaceCmdParen(s, 'log', 'Math.log10');
   for (const g of GREEK) {
     s = s.replace(new RegExp('\\\\' + g + '(?=\\b|_|\\{|$)', 'g'), g);
     s = s.replace(new RegExp('\\\\' + g[0].toUpperCase() + g.slice(1) + '(?=\\b|_|\\{|$)', 'g'), g);
