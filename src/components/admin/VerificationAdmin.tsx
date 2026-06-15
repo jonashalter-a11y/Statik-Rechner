@@ -492,7 +492,7 @@ export default function VerificationAdmin() {
       let id = editingToSave.id;
       const originalId = editingToSave.originalId || editingToSave.id;
       if (!originalId) {
-        const r = await api.createVerification({ id, norm_id: normId, chapter_id: editingToSave.chapter_id, title: editingToSave.title, formula_latex, formula_description: '', compute_expr: '', graph_json });
+        const r = await api.createVerification({ id, norm_id: normId, chapter_id: editingToSave.chapter_id, title: editingToSave.title, formula_latex, formula_description: '', compute_expr: '', graph_json, notes: serializeNotes(editingToSave.notes) });
         id = r.id;
       } else {
         const r = await api.updateVerification(originalId, { id, title: editingToSave.title, chapter_id: editingToSave.chapter_id, formula_latex, formula_description: '', compute_expr: '', graph_json, notes: serializeNotes(editingToSave.notes) });
@@ -731,7 +731,7 @@ export default function VerificationAdmin() {
             {msg && <span style={{ fontSize: 12, color: msg.startsWith('✓') ? '#15803d' : '#b91c1c', alignSelf: 'flex-end', paddingBottom: 6 }}>{msg}</span>}
             <button onClick={copyCurrent} style={{ alignSelf: 'flex-end', background: '#f1f5f9', color: '#374151', border: '1px solid #d1d5db', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontSize: 12 }}>Kopieren</button>
             <button onClick={exportCurrentJson} style={{ alignSelf: 'flex-end', background: '#f1f5f9', color: '#374151', border: '1px solid #d1d5db', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontSize: 12 }}>Export JSON</button>
-            {editing.id && <button onClick={() => deleteV(editing.id)} style={{ alignSelf: 'flex-end', background: '#fee2e2', border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', color: '#b91c1c', fontSize: 12 }}>🗑</button>}
+            {editing.id && <button onClick={() => deleteV(editing.originalId || editing.id)} style={{ alignSelf: 'flex-end', background: '#fee2e2', border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', color: '#b91c1c', fontSize: 12 }}>🗑</button>}
             <button onClick={save} disabled={saving} style={{ alignSelf: 'flex-end', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
               {saving ? 'Speichern…' : '💾 Speichern'}
             </button>

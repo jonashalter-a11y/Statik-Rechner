@@ -6,6 +6,8 @@ import Splitter from './components/Splitter';
 import { api } from './api';
 import { useStore } from './store/useStore';
 
+type HistoryEntry = { verifId: string; inputs: Record<string, string> };
+
 const AdminPage = lazy(() => import('./components/admin/AdminPage'));
 const PrintPanel = lazy(() => import('./components/PrintPanel'));
 
@@ -19,7 +21,7 @@ const DEFAULT_PRINT   = 360;
 export default function App() {
   const [showPrint, setShowPrint] = useState(false);
   const [pathname, setPathname] = useState(window.location.pathname);
-  const { setVerificationsFromApi, setChaptersFromApi, setWoodTypesFromApi, normId, setNormId, setGlobalUnits } = useStore();
+  const { setVerificationsFromApi, setChaptersFromApi, setWoodTypesFromApi, normId, setNormId, setGlobalUnits, activeVerificationId, graphInputsByVerif, setGraphInputs } = useStore();
 
   const [sidebarW, setSidebarW] = useState(DEFAULT_SIDEBAR);
   const [printW,   setPrintW]   = useState(DEFAULT_PRINT);
@@ -27,6 +29,8 @@ export default function App() {
   const toggleSidebar = useCallback(() => setShowSidebar(v => { localStorage.setItem('sia-sidebar', String(!v)); return !v; }), []);
   const [containerW, setContainerW] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const historyStackRef = useRef<HistoryEntry[]>([]);
+  const prevInputsRef = useRef<Record<string, string> | null>(null);
 
   // Containerbreite live tracken — alle Panels haben dann explizite Breiten
   useEffect(() => {
@@ -43,6 +47,52 @@ export default function App() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  useEffect(() => {
+    if (pathname === '/') {
+      navigateTo('/benutzer');
+    }
+  }, []);
+
+  // History-Tracking für Undo (Shift+Z)
+  useEffect(() => {
+    if (!activeVerificationId) {
+      prevInputsRef.current = null;
+      return;
+    }
+
+    const currentInputs = graphInputsByVerif[activeVerificationId] || {};
+    const prevInputs = prevInputsRef.current;
+
+    // Wenn sich die Eingaben geändert haben, den vorherigen Zustand speichern
+    if (prevInputs && JSON.stringify(prevInputs) !== JSON.stringify(currentInputs)) {
+      historyStackRef.current.push({ verifId: activeVerificationId, inputs: prevInputs });
+      // Max 50 Einträge im Stack halten
+      if (historyStackRef.current.length > 50) {
+        historyStackRef.current.shift();
+      }
+    }
+
+    prevInputsRef.current = { ...currentInputs };
+  }, [activeVerificationId, graphInputsByVerif]);
+
+  // Keyboard-Listener für Shift+Z (Undo)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.shiftKey && e.key === 'Z') || (e.ctrlKey && e.key === 'z') || (e.metaKey && e.key === 'z')) {
+        e.preventDefault();
+        if (historyStackRef.current.length > 0 && activeVerificationId) {
+          const lastEntry = historyStackRef.current.pop();
+          if (lastEntry && lastEntry.verifId === activeVerificationId) {
+            setGraphInputs(lastEntry.verifId, lastEntry.inputs);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeVerificationId, setGraphInputs]);
 
   const navigateTo = useCallback((path: string) => {
     if (window.location.pathname !== path) {
@@ -137,7 +187,7 @@ export default function App() {
     }}>
       {showAdmin && (
         <Suspense fallback={null}>
-          <AdminPage onClose={() => navigateTo('/')} />
+          <AdminPage onClose={() => navigateTo('/benutzer')} />
         </Suspense>
       )}
 

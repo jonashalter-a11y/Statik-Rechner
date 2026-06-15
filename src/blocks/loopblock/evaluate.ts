@@ -83,6 +83,15 @@ export function evaluateLoopBlock(node: GraphNode, runtime: BlockEvalRuntime) {
               while (j >= 0 && isIgnoredHollow(j)) j--;
               return j;
             };
+            const previousNonHollowMaterialIndex = (idx: number) => {
+              let j = idx - 1;
+              while (j >= 0) {
+                const opt = optionForItem(items[j]);
+                if (!isHollowOption(opt)) return j;
+                j--;
+              }
+              return j;
+            };
             const nextMaterialIndex = (idx: number) => {
               let j = idx + 1;
               while (j < n && isIgnoredHollow(j)) j++;
@@ -90,11 +99,12 @@ export function evaluateLoopBlock(node: GraphNode, runtime: BlockEvalRuntime) {
             };
             const outputApplies = (out: any, idx: number, opt: any) => {
               const key = `${out?.id || ''} ${out?.name || ''} ${out?.label || ''}`.toLowerCase();
+              if (isHollowOption(opt)) return false;
               if (out?.scope === 'last' && idx !== n - 1) return false;
+              if (out?.scope === 'allButLast' && idx === n - 1) return false;
               if (out?.id === 'tprot') return idx < n - 1;
               if (out?.id === 'tins') return idx === n - 1;
               if (!key.includes('hohlraum') && !key.includes('_hl_') && !key.includes('pos,h')) return true;
-              if (isHollowOption(opt)) return false;
               if (key.includes('brandzugewandt')) return isEffectiveHollow(idx + 1);
               if (key.includes('brandabgewandt') || key.includes('pos,h')) return isEffectiveHollow(idx - 1);
               return isEffectiveHollow(idx - 1) || isEffectiveHollow(idx + 1);
@@ -123,11 +133,12 @@ export function evaluateLoopBlock(node: GraphNode, runtime: BlockEvalRuntime) {
               const selLabel = item['__sel__'] ?? '';
               const opt = (d.options || []).find((o: any) => optionMatches(o, selLabel));
               const prevOpt = optionForItem(items[previousMaterialIndex(i)]);
+              const prevNonHollowOpt = optionForItem(items[previousNonHollowMaterialIndex(i)]);
               const nextOpt = optionForItem(items[nextMaterialIndex(i)]);
               setSymbol(localSym, 'prev_is_bekleidung', isCoverOption(prevOpt) ? 1 : 0);
               setSymbol(localSym, 'prev_is_daemmung', isInsulationOption(prevOpt) ? 1 : 0);
               setSymbol(localSym, 'prev_is_hohlraum', isEffectiveHollow(i - 1) ? 1 : 0);
-              setSymbol(localSym, 'prev_is_gips', isGypsumOption(prevOpt) ? 1 : 0);
+              setSymbol(localSym, 'prev_is_gips', isGypsumOption(prevNonHollowOpt) ? 1 : 0);
               setSymbol(localSym, 'next_is_bekleidung', isCoverOption(nextOpt) ? 1 : 0);
               setSymbol(localSym, 'next_is_daemmung', isInsulationOption(nextOpt) ? 1 : 0);
               setSymbol(localSym, 'next_is_hohlraum', isEffectiveHollow(i + 1) ? 1 : 0);
@@ -217,6 +228,7 @@ export function evaluateLoopBlock(node: GraphNode, runtime: BlockEvalRuntime) {
               let agg = NaN;
               if (ag.method === 'sum') agg = finite.reduce((a, b) => a + b, 0);
               else if (ag.method === 'last') agg = finite.length ? finite[finite.length - 1] : NaN;
+              else if (ag.method === 'allButLast') agg = finite.slice(0, Math.max(0, finite.length - 1)).reduce((a, b) => a + b, 0);
               else if (ag.method === 'max') agg = finite.length ? Math.max(...finite) : NaN;
               else if (ag.method === 'min') agg = finite.length ? Math.min(...finite) : NaN;
               else if (ag.method === 'expr') agg = evalBestEffortFormula(ag.expr || '', aggrSym);

@@ -119,9 +119,13 @@ function normalizeVerificationPayload(payload: AnyRecord | null | undefined) {
   if (!payload) return null;
   if (payload.verification) {
     const verification = { ...payload.verification };
+    if (payload.id) verification.id = payload.id;
+    if (payload.norm_id) verification.norm_id = payload.norm_id;
+    if (payload.chapter_id) verification.chapter_id = payload.chapter_id;
     if (payload.graph) verification.graph_json = JSON.stringify(payload.graph);
     return {
       ...payload,
+      id: verification.id,
       verification,
       variables: payload.variables || [],
       tables: payload.tables || [],
@@ -226,13 +230,17 @@ function toVerificationPayload(data: AnyRecord, existing?: AnyRecord) {
   };
   const graph = safeJson(data.graph_json) || data.graph || existing?.graph || safeJson(verification.graph_json);
   if (graph) verification.graph_json = JSON.stringify(graph);
-  return normalizeVerificationPayload({
+  const payload = normalizeVerificationPayload({
     ...(existing || {}),
+    id: verification.id,
     verification,
     variables: data.variables || existing?.variables || [],
     tables: data.tables || existing?.tables || [],
     graph,
-  })!;
+  })! as AnyRecord;
+  payload.verification.id = verification.id;
+  payload.id = verification.id;
+  return payload;
 }
 
 async function ok(value: any): Promise<any> {
@@ -315,8 +323,10 @@ export const api = {
     const index = state.verifications.findIndex(item => item.verification?.id === id);
     const existing = index >= 0 ? state.verifications[index] : undefined;
     const payload = toVerificationPayload(data, existing);
-    if (index >= 0) state.verifications.splice(index, 1, payload);
-    else state.verifications.push(payload);
+    state.verifications = state.verifications.filter(item =>
+      item.verification?.id !== id && item.verification?.id !== payload.verification.id
+    );
+    state.verifications.push(payload);
     persist();
     return ok(makeVerificationRow(payload));
   },

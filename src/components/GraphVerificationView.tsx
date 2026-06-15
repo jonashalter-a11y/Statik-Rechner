@@ -1566,6 +1566,80 @@ export default function GraphVerificationView({ verification, readOnly = false, 
           const perIterFormulas: Record<string, string[]> = res?.loopFormulas ?? {};
           const perIterCalcFormulas: Record<string, string[]> = res?.loopCalcFormulas ?? {};
           const aggrVals: Record<string, number> = res?.matrixVals ?? {};
+          const optionMatchesLoop = (opt: any, selected: string) =>
+            opt?.id === selected || opt?.label === selected || (Array.isArray(opt?.aliases) && opt.aliases.includes(selected));
+          const optionForLoopItem = (loopItem: Record<string, string> | undefined) => {
+            const selected = loopItem?.['__sel__'] ?? '';
+            return (lb.options || []).find(opt => optionMatchesLoop(opt, selected));
+          };
+          const normalizeLoopVarName = (name: string) =>
+            name
+              .replace(/\\/g, '')
+              .replace(/_\{([^{}]+)\}/g, (_m, sub: string) => '_' + sub.replace(/[,\s.]+/g, '_'))
+              .replace(/[{},\s.]+/g, '_')
+              .replace(/_+/g, '_')
+              .replace(/^_|_$/g, '');
+          const loopOptionTextKey = (opt: any) =>
+            String(opt?.category || opt?.label || '')
+              .toLowerCase()
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, '');
+          const isLoopHollowOption = (opt: any) => loopOptionTextKey(opt).includes('hohlraum');
+          const isLoopDeltaProtectingOption = (opt: any) => {
+            if (!opt) return false;
+            if (Object.prototype.hasOwnProperty.call(opt, 'protects_deltat')) return opt.protects_deltat === true;
+            return loopOptionTextKey(opt).includes('gips');
+          };
+          const loopLayerThickness = (loopItem: Record<string, string> | undefined) => {
+            if (!loopItem) return NaN;
+            for (const v of layerVars) {
+              const key = normalizeLoopVarName(v.name || '');
+              const isThickness = key === 'd_i' || key === 'd' || key === 'd_n' || String(v.label || '').toLowerCase().includes('dicke');
+              if (!isThickness) continue;
+              const raw = loopItem[v.id] ?? loopItem[v.name] ?? v.default_value ?? '';
+              const num = parseFloat(String(raw).replace(',', '.'));
+              if (isFinite(num)) return num;
+            }
+            return NaN;
+          };
+          const isEffectiveLoopHollow = (idx: number) => {
+            if (idx < 0 || idx >= countVal) return false;
+            return isLoopHollowOption(optionForLoopItem(items[idx])) && loopLayerThickness(items[idx]) >= 40;
+          };
+          const nearestNonHollowIndex = (idx: number, step: -1 | 1) => {
+            let j = idx + step;
+            while (j >= 0 && j < countVal) {
+              if (!isLoopHollowOption(optionForLoopItem(items[j]))) return j;
+              j += step;
+            }
+            return -1;
+          };
+          const hollowNotes = Array.from({ length: countVal }, (_, i) => i)
+            .filter(isEffectiveLoopHollow)
+            .map(hollowIdx => {
+              const beforeIdx = nearestNonHollowIndex(hollowIdx, -1);
+              const afterIdx = nearestNonHollowIndex(hollowIdx, 1);
+              const beforeOpt = optionForLoopItem(items[beforeIdx]);
+              const afterOpt = optionForLoopItem(items[afterIdx]);
+              const afterIsLast = afterIdx === countVal - 1;
+              const deltaId = afterIsLast ? 'deltatn' : 'deltat';
+              const deltaVal = afterIdx >= 0 ? perIterVals[deltaId]?.[afterIdx] : NaN;
+              const hollowThickness = loopLayerThickness(items[hollowIdx]);
+              return {
+                hollowIdx,
+                beforeIdx,
+                afterIdx,
+                beforeLabel: beforeOpt?.label || 'vorherige Schicht',
+                afterLabel: afterOpt?.label || 'nachfolgende Schicht',
+                afterIsLast,
+                afterProtectsDelta: isLoopDeltaProtectingOption(afterOpt),
+                deltaVal,
+                hollowThickness,
+              };
+            });
+          const ignoredHollowNotes = Array.from({ length: countVal }, (_, i) => i)
+            .filter(i => isLoopHollowOption(optionForLoopItem(items[i])) && !isEffectiveLoopHollow(i))
+            .map(i => ({ idx: i, thickness: loopLayerThickness(items[i]) }));
 
           return (
             <div key={n.id} style={{ ...card, background: '#fff7f0', borderColor: '#c2410c', padding: '10px 14px' }}>
@@ -1619,6 +1693,34 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                 />
               </div>
 
+              {(hollowNotes.length > 0 || ignoredHollowNotes.length > 0) && (
+                <div style={{ background: '#fff', border: '1px solid #fed7aa', borderRadius: 6, padding: '8px 10px', marginBottom: 10 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#92400e', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sonderbedingungen Hohlraum</div>
+                  {hollowNotes.map(note => (
+                    <div key={note.hollowIdx} style={{ fontSize: 12, color: '#374151', lineHeight: 1.45, marginBottom: 8 }}>
+                      <div><strong>Schicht {note.hollowIdx + 1}: Hohlraum {formatNumber(note.hollowThickness)} mm.</strong> Ab 40 mm wird der Hohlraum nach Tab. 236-1 berücksichtigt.</div>
+                      {note.beforeIdx >= 0 && (
+                        <div>Brandzugewandte Seite: Schicht {note.beforeIdx + 1} ({note.beforeLabel}) verwendet <MathDisplay latex="k_{pos,unexp}" /> gemäss Tab. 233-1. Auf dieser Seite wird kein Faktor <MathDisplay latex="1.6" /> und kein <MathDisplay latex="3 \cdot \Delta t" /> angesetzt.</div>
+                      )}
+                      {note.afterIdx >= 0 && (
+                        <div>
+                          Brandabgewandte Seite: Schicht {note.afterIdx + 1} ({note.afterLabel}) verwendet <MathDisplay latex="1.6 \cdot k_{pos,exp}" /> und <MathDisplay latex={note.afterIsLast ? '3 \\cdot \\Delta t_n' : '3 \\cdot \\Delta t_i'} />.
+                          {isFinite(note.deltaVal) && <> Aktuell: <MathDisplay latex={`${note.afterIsLast ? '\\Delta t_n' : '\\Delta t_i'} = ${formatNumber(note.deltaVal)}\\;\\mathrm{min}`} />.</>}
+                        </div>
+                      )}
+                      {note.afterIdx >= 0 && note.afterProtectsDelta && (
+                        <div><MathDisplay latex="\Delta t" /> wird nur angesetzt, weil die Bedingung aus Kap. 2.3.4 mit Gipsplatte Typ F bzw. Gipsfaserplatte erfüllt ist.</div>
+                      )}
+                    </div>
+                  ))}
+                  {ignoredHollowNotes.map(note => (
+                    <div key={note.idx} style={{ fontSize: 12, color: '#6b7280', lineHeight: 1.45 }}>
+                      Schicht {note.idx + 1}: Hohlraum {isFinite(note.thickness) ? formatNumber(note.thickness) : '-'} mm ist kleiner als 40 mm und wird gemäss Kap. 2.3.6 vernachlässigt.
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Iterationen */}
               {Array.from({ length: countVal }, (_, i) => {
                 const item = items[i] ?? {};
@@ -1656,11 +1758,12 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                 };
                 const outputApplies = (out: import('../types/graph').GroupCalcOutput) => {
                   const key = `${out.id || ''} ${out.name || ''} ${out.label || ''}`.toLowerCase();
+                  if (out.id === 'kpos_hl_brandzugewandt' || out.id === 'kpos_hl_brandabgewandt') return false;
+                  if (isHollowOption(selectedOpt)) return false;
                   if (out.scope === 'last' && i !== countVal - 1) return false;
                   if (out.id === 'tprot') return i < countVal - 1;
                   if (out.id === 'tins') return i === countVal - 1;
                   if (!key.includes('hohlraum') && !key.includes('_hl_') && !key.includes('pos,h')) return true;
-                  if (isHollowOption(selectedOpt)) return false;
                   if (key.includes('brandzugewandt')) return isEffectiveHollow(i + 1);
                   if (key.includes('brandabgewandt') || key.includes('pos,h')) return isEffectiveHollow(i - 1);
                   return isEffectiveHollow(i - 1) || isEffectiveHollow(i + 1);
@@ -1700,6 +1803,8 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                     if (out.name) varVals[normalizeVarName(out.name)] = currentVal;
                   }
                 }
+                varVals.prev_is_hohlraum = isEffectiveHollow(i - 1) ? 1 : 0;
+                varVals.next_is_hohlraum = isEffectiveHollow(i + 1) ? 1 : 0;
 
                 const isLatex = (s: string) => s.includes('\\') || s.includes('^{');
 
@@ -1774,6 +1879,39 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                   }
                   return s;
                 };
+                const resolveConditionalExpression = (cond: string) => {
+                  const replaced = substituteValues(cond, varVals)
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                  const match = replaced.match(/^(-?\d+(?:\.\d+)?)\s*(>=|<=|>|<|==|===|!=|!==)\s*(-?\d+(?:\.\d+)?)$/);
+                  if (!match) return null;
+                  const left = Number(match[1]);
+                  const right = Number(match[3]);
+                  switch (match[2]) {
+                    case '>=': return left >= right;
+                    case '<=': return left <= right;
+                    case '>': return left > right;
+                    case '<': return left < right;
+                    case '==':
+                    case '===': return left === right;
+                    case '!=':
+                    case '!==': return left !== right;
+                    default: return null;
+                  }
+                };
+                const resolveSimpleTernaries = (expr: string) => {
+                  let s = expr;
+                  let guard = 0;
+                  const ternaryGroup = /\(([^()?:]+?)\?([^()?:]+?):([^()?:]+?)\)/;
+                  while (guard++ < 20) {
+                    const match = s.match(ternaryGroup);
+                    if (!match) break;
+                    const decision = resolveConditionalExpression(match[1]);
+                    if (decision == null) break;
+                    s = s.slice(0, match.index) + `(${decision ? match[2].trim() : match[3].trim()})` + s.slice((match.index || 0) + match[0].length);
+                  }
+                  return s;
+                };
                 const jsExprToLatex = (expr: string, replacements: Record<string, string>): string => {
                   let s = expr || '';
                   for (const [key, value] of Object.entries(replacements).sort((a, b) => b[0].length - a[0].length)) {
@@ -1798,7 +1936,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                     .trim();
                 };
 
-                const buildLoopFormulaLatex = (expr: string, mode: 'symbols' | 'values') => {
+                const buildLoopFormulaLatex = (expr: string, mode: 'symbols' | 'values', currentOutputId?: string) => {
                   const replacements: Record<string, string> = {};
                   for (const v of globalVars) {
                     const raw = stateGlobals[v.id] ?? stateGlobals[v.name] ?? v.default_value ?? '0';
@@ -1823,7 +1961,12 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                     replacements[`sum_${out.id}_prev`] = sumText;
                     replacements[`sum_${out.id}_before`] = sumText;
                     const prevLast = prevVals.length ? prevVals[prevVals.length - 1] : NaN;
-                    if (isFinite(prevLast)) replacements[`prev_${out.id}`] = mode === 'values' ? formatNumber(prevLast) : (prevSymbolTerms[prevSymbolTerms.length - 1] || `prev_${out.id}`);
+                    if (isFinite(prevLast)) {
+                      let prevSymbol = prevSymbolTerms[prevSymbolTerms.length - 1] || `prev_${out.id}`;
+                      if (out.id === 'tprot' && currentOutputId === 'deltat') prevSymbol = 't_{prot,i-1}';
+                      if (out.id === 'tprot' && currentOutputId === 'deltatn') prevSymbol = 't_{prot,n-1}';
+                      replacements[`prev_${out.id}`] = mode === 'values' ? formatNumber(prevLast) : prevSymbol;
+                    }
                     replacements[out.id] = mode === 'values'
                       ? (isFinite(currentVal) ? formatNumber(currentVal) : '?')
                       : (indexLatexName(out.name, i + 1) || `${out.id}_{${i + 1}}`);
@@ -1831,7 +1974,13 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                       replacements[normalizeVarName(out.name)] = replacements[out.id];
                     }
                   }
-                  return jsExprToLatex(expr, replacements);
+                  if (mode === 'values') {
+                    for (const [key, value] of Object.entries(varVals)) {
+                      if (!(key in replacements)) replacements[key] = formatNumber(value);
+                    }
+                  }
+                  const displayExpr = resolveSimpleTernaries(expr);
+                  return jsExprToLatex(displayExpr, replacements);
                 };
                 const loopUnit = (unit?: string) => {
                   const u = unitLatex(unit);
@@ -1960,8 +2109,10 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                       const hasSubstitution = isLatexFormula
                         ? (subLatex !== formula && subLatex.trim() !== '')
                         : (subJs !== jsFormula && subJs.trim() !== '');
-                      const symbolFormula = !isLatexFormula ? buildLoopFormulaLatex(jsFormula, 'symbols') : '';
-                      const valueFormula = !isLatexFormula ? buildLoopFormulaLatex(jsFormula, 'values') : '';
+                      const symbolFormula = !isLatexFormula ? buildLoopFormulaLatex(jsFormula, 'symbols', out.id) : '';
+                      const valueFormula = !isLatexFormula ? buildLoopFormulaLatex(jsFormula, 'values', out.id) : '';
+                      const isHollowAdjustedKpos = varVals.prev_is_hohlraum >= 1 && (out.id === 'kposn' || out.id === 'kposi');
+                      const adjustedKposName = out.id === 'kposn' ? 'k_{pos,exp,n}' : `k_{pos,exp,${i + 1}}`;
                       return (
                         <div key={out.id} style={{ background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 2, padding: '8px 12px', marginTop: 6, overflowX: 'auto', minHeight: 82 }}>
                           <div style={{ fontSize: 12, color: '#c2410c', fontWeight: 700, marginBottom: 4 }}>
@@ -1983,6 +2134,11 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                                   {isFinite(val) ? formatNumber(val) : '—'} {out.unit}
                                 </span>
                             }
+                            {isHollowAdjustedKpos && isFinite(val) && (
+                              <div style={{ marginTop: 6, fontSize: 15 }}>
+                                <MathDisplay latex={`\\text{Hohlraum brandabgewandt: } 1.6 \\cdot ${adjustedKposName} = 1.6 \\cdot ${formatNumber(val)} = \\underline{${formatNumber(1.6 * val)}}`} display />
+                              </div>
+                            )}
                           </div>
                         </div>
                       );

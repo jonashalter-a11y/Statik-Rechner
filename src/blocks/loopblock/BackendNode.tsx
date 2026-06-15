@@ -33,13 +33,14 @@ export function LoopBlockNode({ id, data, selected }: NodeProps) {
   const setVar = (i: number, p: Partial<GroupCalcVar>) => { const a = [...(d.vars || [])]; a[i] = { ...a[i], ...p }; set({ vars: a }); };
   const delVar = (i: number) => set({ vars: (d.vars || []).filter((_, j) => j !== i) });
   const nextVarScope = (scope?: GroupCalcVar['scope']): GroupCalcVar['scope'] => scope === 'global' ? 'layer' : scope === 'last' ? 'global' : 'last';
-  const nextOutScope = (scope?: GroupCalcOutput['scope']): GroupCalcOutput['scope'] => scope === 'last' ? 'layer' : 'last';
-  const scopeButtonStyle = (scope?: 'layer' | 'last' | 'global') => {
+  const nextOutScope = (scope?: GroupCalcOutput['scope']): GroupCalcOutput['scope'] => scope === 'last' ? 'allButLast' : scope === 'allButLast' ? 'layer' : 'last';
+  const scopeButtonStyle = (scope?: 'layer' | 'last' | 'global' | 'allButLast') => {
     if (scope === 'global') return { background: '#fef3c7', borderColor: '#f59e0b', color: '#92400e' };
     if (scope === 'last') return { background: '#eff6ff', borderColor: '#93c5fd', color: '#1d4ed8' };
+    if (scope === 'allButLast') return { background: '#fce7f3', borderColor: '#ec4899', color: '#831843' };
     return { background: '#f0fdf4', borderColor: '#86efac', color: '#166534' };
   };
-  const scopeLabel = (scope?: 'layer' | 'last' | 'global') => scope === 'global' ? '🌐 Global' : scope === 'last' ? '🔚 letzte' : '🔁 /Schicht';
+  const scopeLabel = (scope?: 'layer' | 'last' | 'global' | 'allButLast') => scope === 'global' ? '🌐 Global' : scope === 'last' ? '🔚 letzte' : scope === 'allButLast' ? '📊 außer letzte' : '🔁 /Schicht';
   const optionsToText = (options?: { label: string; value: string }[]) =>
     (options || []).map(o => `${o.label}=${o.value}`).join('\n');
   const textToOptions = (text: string) =>
@@ -451,6 +452,7 @@ export function LoopBlockNode({ id, data, selected }: NodeProps) {
           <select className="nodrag" value={ag.method} onChange={e => setAggr(i, { method: e.target.value as any })} style={{ ...inp, flex: 1 }}>
             <option value="sum">Σ Summe</option>
             <option value="last">Letzte</option>
+            <option value="allButLast">Alle außer letzte</option>
             <option value="max">Max</option>
             <option value="min">Min</option>
             <option value="expr">Ausdruck</option>

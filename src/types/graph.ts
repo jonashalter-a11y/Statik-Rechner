@@ -388,7 +388,7 @@ export interface CommentData {
 // zu einem Gesamtwert zusammen (z.B. Σ t_prot,0,i).
 export interface LoopBlockAggr {
   output_id: string;         // ID des GroupCalcOutput, der aggregiert wird
-  method: 'sum' | 'last' | 'max' | 'min' | 'expr';
+  method: 'sum' | 'last' | 'allButLast' | 'max' | 'min' | 'expr';
   expr?: string;             // method='expr': JS-Ausdruck, z.B. sum_tprot_before_last + last_tins
   name: string;              // LaTeX-Symbol des Gesamtwerts (z.B. "t_{prot,0}")
   label: string;             // Anzeigetext
@@ -449,7 +449,7 @@ export interface GroupCalcOutput {
   name: string;  // LaTeX-Variablenname (z.B. "t_{prot,0,i}")
   label: string; // Anzeigetext
   unit: string;
-  scope?: 'layer' | 'last';
+  scope?: 'layer' | 'last' | 'allButLast';
 }
 export interface GroupCalcData {
   kind: 'groupcalc';
