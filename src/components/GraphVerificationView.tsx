@@ -5,6 +5,7 @@ import { nameToLatex } from '../utils/formatName';
 import { getGraph } from '../utils/legacyToGraph';
 import { evalGraph, topoSort, collectTableRefs, DbTableData } from '../utils/evalGraph';
 import { formatNumber, substituteValues } from '../utils/substituteFormula';
+import { substituteLatexValues } from '../utils/evalGraphShared';
 import { evalCondExpr } from '../utils/evalFormula';
 import { latexCondToJs, latexToJs } from '../utils/latexToJs';
 import { api } from '../api';
@@ -1061,14 +1062,54 @@ export default function GraphVerificationView({ verification, readOnly = false, 
     }
 
     return (
-      <div key={`cond_after_${condId}`} style={{ ...card, background: '#fefce8', borderColor: '#fde68a' }}>
-        <div style={lbl}>🔶 {d.label || 'Bedingung'}</div>
-        {(d.conditions || []).map((c: any) => (
-          <div key={c.id} style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0', color: activeCondId === c.id ? '#15803d' : '#9ca3af' }}>
-            <span>{activeCondId === c.id ? '✓' : '○'}</span>
-            <MathDisplay latex={c.latex || c.expr} />
-          </div>
-        ))}
+      <div key={`cond_after_${condId}`} style={{ marginBottom: 6 }}>
+        {/* Header */}
+        <div style={{ ...card, background: '#fff', marginBottom: 6 }}>
+          <div style={lbl}>🔶 {d.label || 'Bedingung'}</div>
+        </div>
+        {/* Einzelne Bedingungen */}
+        {(d.conditions || []).map((c: any, idx: number) => {
+          const isPassed = activeCondId === c.id;
+          const latexFormula = c.latex || c.expr || '';
+          const numSymbols = ev.symbols;
+          const substitutedLatex = substituteLatexValues(latexFormula, numSymbols);
+
+          return (
+            <div key={c.id} style={{ marginBottom: idx < (d.conditions || []).length - 1 ? 6 : 0 }}>
+              {/* LaTeX-Formel (weiße Box oben) */}
+              <div style={{ ...card, background: '#fff', marginBottom: 4 }}>
+                <MathDisplay latex={latexFormula} />
+              </div>
+              {/* Gelbe Substitutions-Box mit eingesetzten Werten + Status */}
+              <div style={{
+                ...card,
+                background: '#fefce8',
+                borderColor: '#fde68a',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+                {/* Status-Icon: Grün (✓) wenn bestanden, Rot (✗) wenn nicht */}
+                <span style={{
+                  fontSize: 16,
+                  fontWeight: 700,
+                  color: isPassed ? '#15803d' : '#dc2626',
+                  minWidth: 24,
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  flexShrink: 0,
+                }}>
+                  {isPassed ? '✓' : '✗'}
+                </span>
+                {/* Substitutierte Formel mit Werten */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <MathDisplay latex={substitutedLatex} />
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -1445,14 +1486,15 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                     </div>
                   );
                 })()}
-                {r.substitutedLatex && (
+                {(r.substitutedLatex || d.latex) && (
                   <div className="formula-block" style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '5px 8px', marginBottom: 4, overflowX: 'auto' }}>
                     {(() => {
-                      const sub = r.substitutedLatex.trimStart().startsWith('=') && d.name
-                        ? `${nameToLatex(d.name)} ${r.substitutedLatex.trimStart()}`
-                        : r.substitutedLatex;
-                      // GELBE BOX: Zeige immer Original-Berechnung
-                      return <MathDisplay latex={isFiniteNumber(r.value) ? `${sub} = ${resultLatex(r.value, d.unit)}` : sub} display />;
+                      const sub = (r.substitutedLatex || d.latex || '').trimStart().startsWith('=') && d.name
+                        ? `${nameToLatex(d.name)} ${(r.substitutedLatex || d.latex || '').trimStart()}`
+                        : (r.substitutedLatex || d.latex || '');
+                      // GELBE BOX: Zeige substituierte Werte + Ergebnis wenn vorhanden
+                      const resultPart = isFiniteNumber(r.value) ? ` = ${resultLatex(r.value, d.unit)}` : '';
+                      return <MathDisplay latex={`${sub}${resultPart}`} display />;
                     })()}
                   </div>
                 )}
