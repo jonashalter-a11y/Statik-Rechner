@@ -29,6 +29,7 @@ export interface NodeResult {
   matrixLatex?: Record<string, string>;  // matrix: LaTeX-Formel pro Spalte (mit eingesetzten Werten)
   selectedLabel?: string;         // matrix: gewählte Zeile
   passed?: boolean;               // check: Nachweis erfüllt (true) oder nicht (false)
+  eta?: number;                   // check: automatische Ausnutzung links/rechts
   skipped?: boolean;              // inaktiver Bedingungszweig
   error?: string;
 }
@@ -59,6 +60,7 @@ export function stripLatexText(s: string): string {
 export function normalizeMaterialKey(name: string): string {
   return stripLatexText(name)
     .trim()
+    .replace(/\\(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|lambda|mu|nu|xi|pi|rho|sigma|tau|phi|chi|psi|omega)\b/g, '$1')
     .replace(/_\{([^{}]+)\}/g, (_m, sub: string) => '_' + sub.replace(/[,\s]+/g, '_'))
     .replace(/[{},\s]+/g, '_')
     .replace(/_+/g, '_')

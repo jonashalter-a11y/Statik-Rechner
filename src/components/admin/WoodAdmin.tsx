@@ -13,9 +13,11 @@ const defaultProps: Property[] = [
   { key: 'f_m_k', label: 'Biegefestigkeit', value: 24, unit: 'N/mm²' },
   { key: 'f_t_0_k', label: 'Zugfestigkeit parallel', value: 14, unit: 'N/mm²' },
   { key: 'f_c_0_k', label: 'Druckfestigkeit parallel', value: 21, unit: 'N/mm²' },
+  { key: 'f_c_0_d', label: 'Druckfestigkeit parallel Bemessung', value: 12.4, unit: 'N/mm²' },
   { key: 'f_v_k', label: 'Scherfestigkeit', value: 2.5, unit: 'N/mm²' },
   { key: 'E_0_mean', label: 'E-Modul', value: 11000, unit: 'N/mm²' },
   { key: 'rho_k', label: 'Rohdichte', value: 350, unit: 'kg/m³' },
+  { key: 'beta_c', label: 'Hilfswert βc', value: 0.2, unit: '-' },
 ];
 
 interface UnitEntry { id: number; latex: string; sort_order: number; }

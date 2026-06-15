@@ -81,8 +81,13 @@ export function Shell({ id, type, children, extraHandles, selected }: { id: stri
 }
 
 // Uncontrolled input: kein Cursor-Springen beim Tippen in der Mitte
-export function F({ value, onChange, style, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
-  const ref = useRef<HTMLInputElement>(null);
+export const F = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(function F({ value, onChange, style, ...props }, forwardedRef) {
+  const ref = useRef<HTMLInputElement | null>(null);
+  const setRefs = (el: HTMLInputElement | null) => {
+    ref.current = el;
+    if (typeof forwardedRef === 'function') forwardedRef(el);
+    else if (forwardedRef) (forwardedRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+  };
   useEffect(() => {
     const el = ref.current;
     if (!el || document.activeElement === el) return;
@@ -91,7 +96,7 @@ export function F({ value, onChange, style, ...props }: React.InputHTMLAttribute
   }, [value]);
   return (
     <input
-      ref={ref}
+      ref={setRefs}
       className="nodrag"
       defaultValue={String(value ?? '')}
       onChange={onChange}
@@ -99,7 +104,7 @@ export function F({ value, onChange, style, ...props }: React.InputHTMLAttribute
       style={{ ...inp, ...(style || {}) }}
     />
   );
-}
+});
 
 // Uncontrolled textarea: React setzt den DOM-Wert nur wenn das Feld nicht fokussiert ist,
 // damit der Cursor beim Tippen in der Mitte nicht springt.
@@ -343,23 +348,46 @@ export function updateLatexNamePrefix(currentLatex: string, oldName: string, new
   return currentLatex;
 }
 
-export function NameChips({ targetId, onInsert }: { targetId: string; onInsert?: (name: string) => void }) {
+const FORMULA_OPERATORS = [
+  { latex: '\\frac{}{}', label: '\\frac' },
+  { latex: '\\cdot ', label: '\\cdot' },
+  { latex: '\\sqrt{}', label: '\\sqrt' },
+  { latex: '\\leq ', label: '\\leq' },
+  { latex: '\\sum ', label: '\\sum' },
+  { latex: '\\geq ', label: '\\geq' },
+];
+
+export function NameChips({ targetId, onInsert, operators = Boolean(onInsert) }: { targetId: string; onInsert?: (name: string) => void; operators?: boolean }) {
   const { allNames, insertName } = useGraphCtx();
   const others = allNames.filter(n => n.id !== targetId && n.name);
-  if (!others.length) return null;
+  if (!others.length && !operators) return null;
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 3 }}>
-      {others.map(n => {
-        const latexToken = formulaName(n.name);
-        return (
-          <button key={n.id} className="nodrag" onClick={() => onInsert ? onInsert(n.name) : insertName(targetId, n.name)}
-            title={n.label || n.name}
-            style={{ border: '1px solid #cbd5e1', background: '#fff', borderRadius: 3, padding: '1px 5px', cursor: 'pointer', lineHeight: 1.2 }}>
-            <MathDisplay latex={latexToken} />
-          </button>
-        );
-      })}
+    <div style={{ marginTop: 3 }}>
+      {others.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+          {others.map(n => {
+            const latexToken = formulaName(n.name);
+            return (
+              <button key={n.id} className="nodrag" onClick={() => onInsert ? onInsert(n.name) : insertName(targetId, n.name)}
+                title={n.label || n.name}
+                style={{ border: '1px solid #cbd5e1', background: '#fff', borderRadius: 3, padding: '1px 5px', cursor: 'pointer', lineHeight: 1.2 }}>
+                <MathDisplay latex={latexToken} />
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {operators && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 3 }}>
+          {FORMULA_OPERATORS.map(op => (
+            <button key={op.latex} className="nodrag" onClick={() => onInsert ? onInsert(op.latex) : insertName(targetId, op.latex)}
+              title={op.label}
+              style={{ border: '1px solid #fed7aa', background: '#fff7ed', borderRadius: 3, padding: '1px 5px', cursor: 'pointer', lineHeight: 1.2 }}>
+              <MathDisplay latex={op.label} />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
-

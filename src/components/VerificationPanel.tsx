@@ -52,11 +52,12 @@ export default function VerificationPanel() {
   const currentWoodType = woodTypeByVerif[verification.id] || '';
   const currentWoodClassId = woodClassIdByVerif[verification.id] || '';
   const woodTypeOptions = apiWoodTypes?.map((t: any) => t.name) || [];
+  const classesForWoodType = (woodTypeName: string) => {
+    const woodTypeId = apiWoodTypes?.find((t: any) => t.name === woodTypeName)?.id;
+    return woodTypeId ? (apiWoodClasses?.filter((c: any) => c.wood_type_id === woodTypeId) || []) : [];
+  };
   const filteredWoodClasses = currentWoodType
-    ? apiWoodClasses?.filter((c: any) => {
-        const woodTypeId = apiWoodTypes?.find((t: any) => t.name === currentWoodType)?.id;
-        return c.wood_type_id === woodTypeId;
-      }) || []
+    ? classesForWoodType(currentWoodType)
     : [];
 
   return (
@@ -82,9 +83,16 @@ export default function VerificationPanel() {
             <select
               value={currentWoodType}
               onChange={e => {
-                setWoodTypeForVerif(verification.id, e.target.value);
-                // Holzklasse zurücksetzen wenn Holzart wechselt
-                setWoodClassIdForVerif(verification.id, '');
+                const nextWoodType = e.target.value;
+                if (!nextWoodType) {
+                  setWoodTypeForVerif(verification.id, '');
+                  setWoodClassIdForVerif(verification.id, '');
+                  return;
+                }
+                const matchingClasses = classesForWoodType(nextWoodType);
+                const preferredClass = matchingClasses.find((c: any) => c.name === 'C24' || c.name === 'GL24h') || matchingClasses[1] || matchingClasses[0];
+                setWoodTypeForVerif(verification.id, nextWoodType);
+                setWoodClassIdForVerif(verification.id, preferredClass?.id || '');
               }}
               style={{
                 width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4,

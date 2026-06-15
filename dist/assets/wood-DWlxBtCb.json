@@ -50,6 +50,13 @@
         },
         {
           "wood_class_id": "C16",
+          "key": "f_c_0_d",
+          "label": "Druckfestigkeit parallel Bemessung",
+          "value": 7.6,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C16",
           "key": "f_t_90_k",
           "label": "Zug ⊥",
           "value": 0.4,
@@ -89,6 +96,13 @@
           "label": "Rohdichte",
           "value": 310,
           "unit": "kg/m³"
+        },
+        {
+          "wood_class_id": "C16",
+          "key": "beta_c",
+          "label": "Hilfswert βc",
+          "value": 0.2,
+          "unit": "-"
         }
       ]
     },
@@ -118,6 +132,13 @@
           "key": "f_c_0_k",
           "label": "Druck ‖",
           "value": 23,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "D30",
+          "key": "f_c_0_d",
+          "label": "Druckfestigkeit parallel Bemessung",
+          "value": 13.5,
           "unit": "N/mm²"
         },
         {
@@ -154,6 +175,13 @@
           "label": "Rohdichte",
           "value": 530,
           "unit": "kg/m³"
+        },
+        {
+          "wood_class_id": "D30",
+          "key": "beta_c",
+          "label": "Hilfswert βc",
+          "value": 0.2,
+          "unit": "-"
         }
       ]
     },
@@ -183,6 +211,13 @@
           "key": "f_c_0_k",
           "label": "Druck ‖",
           "value": 16,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL20h",
+          "key": "f_c_0_d",
+          "label": "Druckfestigkeit parallel Bemessung",
+          "value": 10.7,
           "unit": "N/mm²"
         },
         {
@@ -219,6 +254,13 @@
           "label": "Rohdichte",
           "value": 340,
           "unit": "kg/m³"
+        },
+        {
+          "wood_class_id": "GL20h",
+          "key": "beta_c",
+          "label": "Hilfswert βc",
+          "value": 0.1,
+          "unit": "-"
         }
       ]
     },
@@ -248,6 +290,13 @@
           "key": "f_c_0_k",
           "label": "Druck ‖",
           "value": 21,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C24",
+          "key": "f_c_0_d",
+          "label": "Druckfestigkeit parallel Bemessung",
+          "value": 12.4,
           "unit": "N/mm²"
         },
         {
@@ -298,6 +347,13 @@
           "label": "Biegefestigkeit",
           "value": 14.1,
           "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C24",
+          "key": "beta_c",
+          "label": "Hilfswert βc",
+          "value": 0.2,
+          "unit": "-"
         }
       ]
     },
@@ -327,6 +383,13 @@
           "key": "f_c_0_k",
           "label": "Druck ‖",
           "value": 24,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL24h",
+          "key": "f_c_0_d",
+          "label": "Druckfestigkeit parallel Bemessung",
+          "value": 16,
           "unit": "N/mm²"
         },
         {
@@ -363,6 +426,13 @@
           "label": "Rohdichte",
           "value": 380,
           "unit": "kg/m³"
+        },
+        {
+          "wood_class_id": "GL24h",
+          "key": "beta_c",
+          "label": "Hilfswert βc",
+          "value": 0.1,
+          "unit": "-"
         }
       ]
     },
@@ -392,6 +462,13 @@
           "key": "f_c_0_k",
           "label": "Druck ‖",
           "value": 23,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C30",
+          "key": "f_c_0_d",
+          "label": "Druckfestigkeit parallel Bemessung",
+          "value": 13.5,
           "unit": "N/mm²"
         },
         {
@@ -435,6 +512,13 @@
           "label": "Rohdichte",
           "value": 380,
           "unit": "kg/m³"
+        },
+        {
+          "wood_class_id": "C30",
+          "key": "beta_c",
+          "label": "Hilfswert βc",
+          "value": 0.2,
+          "unit": "-"
         }
       ]
     },
@@ -464,6 +548,13 @@
           "key": "f_c_0_k",
           "label": "Druck ‖",
           "value": 21.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL24c",
+          "key": "f_c_0_d",
+          "label": "Druckfestigkeit parallel Bemessung",
+          "value": 14.3,
           "unit": "N/mm²"
         },
         {
@@ -507,6 +598,13 @@
           "label": "Biegefestigkeit",
           "value": 16,
           "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL24c",
+          "key": "beta_c",
+          "label": "Hilfswert βc",
+          "value": 0.1,
+          "unit": "-"
         }
       ]
     },
@@ -536,6 +634,13 @@
           "key": "f_c_0_k",
           "label": "Druck ‖",
           "value": 26.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL28h",
+          "key": "f_c_0_d",
+          "label": "Druckfestigkeit parallel Bemessung",
+          "value": 17.7,
           "unit": "N/mm²"
         },
         {
@@ -572,6 +677,13 @@
           "label": "Rohdichte",
           "value": 410,
           "unit": "kg/m³"
+        },
+        {
+          "wood_class_id": "GL28h",
+          "key": "beta_c",
+          "label": "Hilfswert βc",
+          "value": 0.1,
+          "unit": "-"
         }
       ]
     },
@@ -601,6 +713,13 @@
           "key": "f_c_0_k",
           "label": "Druck ‖",
           "value": 24,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL28c",
+          "key": "f_c_0_d",
+          "label": "Druckfestigkeit parallel Bemessung",
+          "value": 16,
           "unit": "N/mm²"
         },
         {
@@ -651,6 +770,13 @@
           "label": "E_0,05",
           "value": 10400,
           "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL28c",
+          "key": "beta_c",
+          "label": "Hilfswert βc",
+          "value": 0.1,
+          "unit": "-"
         }
       ]
     },
@@ -680,6 +806,13 @@
           "key": "f_c_0_k",
           "label": "Druck ‖",
           "value": 29.3,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL32h",
+          "key": "f_c_0_d",
+          "label": "Druckfestigkeit parallel Bemessung",
+          "value": 19.5,
           "unit": "N/mm²"
         },
         {
@@ -716,6 +849,13 @@
           "label": "Rohdichte",
           "value": 440,
           "unit": "kg/m³"
+        },
+        {
+          "wood_class_id": "GL32h",
+          "key": "beta_c",
+          "label": "Hilfswert βc",
+          "value": 0.1,
+          "unit": "-"
         }
       ]
     }

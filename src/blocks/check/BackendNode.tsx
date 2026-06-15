@@ -23,9 +23,24 @@ export function CheckNode({ id, data, selected }: NodeProps) {
   const d = data as unknown as CheckData;
   const { updateNodeData } = useGraphCtx();
   const set = (p: Partial<CheckData>) => updateNodeData(id, p);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const setLatex = (latex: string) => {
     const expr = latexCondToJs(latex);
     set({ latex, expr });
+  };
+  const insertFormulaToken = (token: string) => {
+    const raw = token.startsWith('\\') ? token : formulaName(token);
+    const base = d.latex || '';
+    const input = inputRef.current;
+    const start = input?.selectionStart ?? base.length;
+    const end = input?.selectionEnd ?? start;
+    const next = base.slice(0, start) + raw + base.slice(end);
+    setLatex(next);
+    window.setTimeout(() => {
+      inputRef.current?.focus();
+      const pos = start + raw.length;
+      inputRef.current?.setSelectionRange(pos, pos);
+    }, 0);
   };
   return (
     <Shell id={id} type="check" selected={selected} extraHandles={<span />}>
@@ -36,11 +51,13 @@ export function CheckNode({ id, data, selected }: NodeProps) {
       <F value={d.label} placeholder="Biegenachweis" onChange={e => set({ label: e.target.value })} />
       <div style={lbl}>Bedingung (LaTeX)</div>
       <F
+        ref={inputRef}
         value={d.latex}
         placeholder="\sigma_{m,d} \leq f_{m,d,eff}"
         onChange={e => setLatex(e.target.value)}
         style={{ fontFamily: 'monospace' }}
       />
+      <NameChips targetId={id} onInsert={insertFormulaToken} />
       {d.latex && (
         <div style={{ background: '#fff', borderRadius: 3, padding: 3, marginTop: 2, overflowX: 'auto', fontSize: 10 }}>
           <MathDisplay latex={d.latex} display />

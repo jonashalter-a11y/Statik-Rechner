@@ -199,6 +199,14 @@ export function MatrixNode({ id, data, selected }: NodeProps) {
                       onChange={v => updCellLatex(ri, ci, v)}
                       style={{ ...minp, width: '100%', fontFamily: 'monospace', fontSize: 8, resize: 'vertical', marginBottom: 3 }}
                     />
+                    <NameChips
+                      targetId={id}
+                      onInsert={token => {
+                        const raw = token.startsWith('\\') ? token : formulaName(token);
+                        const base = row.cells_latex?.[ci] || '';
+                        updCellLatex(ri, ci, `${base}${base && !/\s$/.test(base) ? ' ' : ''}${raw}`);
+                      }}
+                    />
                     <div style={{ fontSize: 7, color: '#6b7280', marginBottom: 1 }}>JS (Berechnung)</div>
                     <LatexArea
                       value={row.cells?.[ci] || ''}

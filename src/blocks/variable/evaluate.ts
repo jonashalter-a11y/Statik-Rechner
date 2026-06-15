@@ -9,7 +9,7 @@ import {
 export function evaluateVariable(node: GraphNode, runtime: BlockEvalRuntime) {
   const d: any = node.data;
   const { graph, inputs, tables, materialProps, context, results, symbols, strSymbols, incomingFrom, getSelectionValue } = runtime;
-  const raw = inputs[node.id] ?? d.default_value ?? '';
+  const raw = inputs[node.id] ?? (d.hasDefault === false ? '' : d.default_value) ?? '';
             const val = parseNum(raw);
             results[node.id] = { value: val };
             if (d.name) setSymbol(symbols, d.name, val);

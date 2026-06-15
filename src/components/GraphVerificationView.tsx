@@ -15,6 +15,7 @@ import {
 } from 'recharts';
 import { computeBeam, BeamLoad, SupportKind } from '../utils/beamAnalysis';
 import { computeSection, CSShape, ShapeKind } from '../utils/sectionAnalysis';
+import { GraphNode, VerificationGraph } from '../types/graph';
 
 const CHART_COLORS = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#7c3aed', '#0891b2'];
 
@@ -786,9 +787,37 @@ function BeamCalcPanel({ label }: { label: string }) {
 }
 const sel: React.CSSProperties = { border: '1px solid #d1d5db', borderRadius: 5, padding: '4px 8px', fontSize: 13, width: '100%', background: '#fff' };
 
+function defaultInputForNode(n: GraphNode, graph: VerificationGraph, tables: Record<string, DbTableData>): string | undefined {
+  const d: any = n.data;
+  if (n.type === 'variable') {
+    if (d.hasDefault === false) return '';
+    if (d.inputKind === 'dropdown') return String(d.options?.[0]?.value ?? d.default_value ?? '');
+    if (d.inputKind === 'table_column') {
+      const t = d.table_ref ? tables[d.table_ref] : null;
+      return t ? String(t.rows?.[0]?.[d.table_col] ?? d.default_value ?? '') : String(d.default_value ?? '');
+    }
+    return String(d.default_value ?? '');
+  }
+  if (n.type === 'dropdown') {
+    if (d.mode === 'custom') return String(d.options?.[0]?.label ?? '');
+    const t = d.table_ref ? tables[d.table_ref] : null;
+    return t ? String(t.rows?.[0]?.[d.label_col ?? 0] ?? '') : '';
+  }
+  if (n.type === 'matrix') return String((d as any).rows?.[0]?.label ?? '');
+  if (n.type === 'stdcalc') {
+    const srcEdge = graph.edges.find((e) => e.target === n.id);
+    const tc = graph.nodes.find((x) => x.type === 'tablecalc' && srcEdge && x.id === srcEdge.source)
+      || graph.nodes.find((x) => x.type === 'tablecalc');
+    return (tc?.data as any)?.zones?.[0] ?? '';
+  }
+  return undefined;
+}
+
 export default function GraphVerificationView({ verification, readOnly = false, initialInputs, onInputsChange }: { verification: Verification; readOnly?: boolean; initialInputs?: Record<string, string>; onInputsChange?: (inputs: Record<string, string>) => void }) {
-  const woodType = useStore(s => s.woodType);
-  const woodClassId = useStore(s => s.woodClassId);
+  const woodTypeByVerif = useStore(s => s.woodTypeByVerif);
+  const woodClassIdByVerif = useStore(s => s.woodClassIdByVerif);
+  const setWoodTypeForVerif = useStore(s => s.setWoodTypeForVerif);
+  const setWoodClassIdForVerif = useStore(s => s.setWoodClassIdForVerif);
   const apiWoodClasses = useStore(s => s.apiWoodClasses);
   const setGraphInputs = useStore(s => s.setGraphInputs);
   const graph = useMemo(() => getGraph(toLegacyShape(verification)), [verification.id, verification.graph_json]);
@@ -799,10 +828,16 @@ export default function GraphVerificationView({ verification, readOnly = false, 
   const [chartModal, setChartModal] = useState<string | null>(null); // Node-ID
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const toggleSection = (id: string) => setCollapsedSections(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  const effectiveWoodType = woodTypeByVerif[verification.id] || '';
+  const effectiveWoodClassId = woodClassIdByVerif[verification.id] || '';
   const materialProps = useMemo(() => {
-    const woodClass = apiWoodClasses.find(c => c.id === woodClassId);
-    return Object.fromEntries((woodClass?.properties || []).map(p => [p.key, p.value]));
-  }, [apiWoodClasses, woodClassId]);
+    if (!effectiveWoodType || !effectiveWoodClassId) return {};
+    const woodClass = apiWoodClasses.find(c => c.id === effectiveWoodClassId);
+    if (!woodClass) return {};
+    const props = Object.fromEntries((woodClass?.properties || []).map(p => [p.key, p.value]));
+    if (props.beta_c != null && props.b_c == null) props.b_c = props.beta_c;
+    return props;
+  }, [apiWoodClasses, effectiveWoodType, effectiveWoodClassId]);
 
   // Referenzierte Tabellen vorladen
   useEffect(() => {
@@ -822,32 +857,41 @@ export default function GraphVerificationView({ verification, readOnly = false, 
     if (readOnly && !onInputsChange) return;
     setInputs(prev => {
       const next = { ...prev };
+      let changed = false;
       for (const n of graph.nodes) {
-        if (next[n.id] != null) continue;
         const d: any = n.data;
-        if (n.type === 'variable') {
-          if (d.inputKind === 'dropdown') next[n.id] = String(d.options?.[0]?.value ?? d.default_value ?? '');
-          else if (d.inputKind === 'table_column') {
-            const t = d.table_ref ? tables[d.table_ref] : null;
-            next[n.id] = t ? String(t.rows?.[0]?.[d.table_col] ?? d.default_value ?? '') : String(d.default_value ?? '');
-          } else next[n.id] = d.hasDefault === false ? '' : String(d.default_value ?? '');
-        } else if (n.type === 'dropdown') {
-          if (d.mode === 'custom') next[n.id] = String(d.options?.[0]?.label ?? '');
-          else { const t = d.table_ref ? tables[d.table_ref] : null; next[n.id] = t ? String(t.rows?.[0]?.[d.label_col ?? 0] ?? '') : ''; }
-        } else if (n.type === 'matrix') {
-          next[n.id] = String((d as any).rows?.[0]?.label ?? '');
-        } else if (n.type === 'stdcalc') {
-          const srcEdge = graph.edges.find(e => e.target === n.id);
-          const tc = graph.nodes.find(x => x.type === 'tablecalc' && srcEdge && x.id === srcEdge.source)
-            || graph.nodes.find(x => x.type === 'tablecalc');
-          next[n.id] = (tc?.data as any)?.zones?.[0] ?? '';
+        if (n.type === 'variable' && d.hasDefault === false && next[n.id] === String(d.default_value ?? '')) {
+          next[n.id] = '';
+          changed = true;
+        }
+        if (next[n.id] != null) continue;
+        const defaultValue = defaultInputForNode(n, graph, tables);
+        if (defaultValue !== undefined) {
+          next[n.id] = defaultValue;
+          changed = true;
         }
       }
       // Store aktualisieren (nur wenn nicht Print-Item — Print-Items tracken ihre Inputs selbst)
-      if (!onInputsChange) setGraphInputs(verification.id, next);
+      if (changed && !onInputsChange) setGraphInputs(verification.id, next);
       return next;
     });
   }, [graph, tables]);
+
+  const resetInputs = () => {
+    const next: Record<string, string> = {};
+    for (const n of graph.nodes) {
+      const defaultValue = defaultInputForNode(n, graph, tables);
+      if (defaultValue !== undefined) next[n.id] = defaultValue;
+    }
+    setInputs(next);
+    if (onInputsChange) {
+      onInputsChange(next);
+    } else if (!readOnly) {
+      setGraphInputs(verification.id, next);
+      setWoodTypeForVerif(verification.id, '');
+      setWoodClassIdForVerif(verification.id, '');
+    }
+  };
 
   const setInput = (id: string, val: string) => setInputs(prev => {
     const next = { ...prev, [id]: val };
@@ -858,7 +902,10 @@ export default function GraphVerificationView({ verification, readOnly = false, 
     }
     return next;
   });
-  const ev = useMemo(() => evalGraph(graph, inputs, tables, materialProps, { woodType, woodClassId }), [graph, inputs, tables, materialProps, woodType, woodClassId]);
+  const ev = useMemo(
+    () => evalGraph(graph, inputs, tables, materialProps, { woodType: effectiveWoodType, woodClassId: effectiveWoodClassId }),
+    [graph, inputs, tables, materialProps, effectiveWoodType, effectiveWoodClassId],
+  );
   const ordered = useMemo(() => {
     const sorted = topoSort(graph);
     const order = graph.display_order;
@@ -1036,6 +1083,23 @@ export default function GraphVerificationView({ verification, readOnly = false, 
     <div>
       {!readOnly && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            onClick={resetInputs}
+            style={{
+              marginRight: 8,
+              padding: '3px 10px',
+              fontSize: 12,
+              borderRadius: 4,
+              border: '1px solid #cbd5e1',
+              background: '#fff',
+              color: '#334155',
+              cursor: 'pointer',
+              fontWeight: 600,
+            }}
+          >
+            Reset
+          </button>
           <span style={{ fontSize: 11, color: '#6b7280', fontWeight: 600 }}>Kommastellen:</span>
           {[1, 2, 3, 4].map(d => (
             <button key={d} onClick={() => setDecimals(d)} style={{
@@ -1468,6 +1532,11 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                   <div style={{ fontWeight: 700, fontSize: 13, color: textColor }}>
                     {unknown ? 'Berechnung läuft…' : passed ? 'Nachweis erfüllt' : 'Nachweis nicht erfüllt'}
                   </div>
+                  {isFiniteNumber(r.eta) && (
+                    <div style={{ marginTop: 3, fontSize: 12, color: textColor, fontWeight: 700 }}>
+                      <MathDisplay latex={`\\eta = ${num(r.eta)} ${r.eta! <= 1 ? '\\leq 1' : '> 1'}`} />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

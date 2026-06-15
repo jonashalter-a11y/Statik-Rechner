@@ -115,6 +115,14 @@ export function GroupCalcNode({ id, data, selected }: NodeProps) {
                 placeholder="0.3 \cdot d_i^{0.75 \cdot \log(\rho_i) - \rho_i/400}"
                 style={{ ...inp, fontFamily: 'monospace', fontSize: 8.5, minHeight: 32 }}
               />
+              <NameChips
+                targetId={id}
+                onInsert={token => {
+                  const raw = token.startsWith('\\') ? token : formulaName(token);
+                  const base = opt.formulas?.[o.id] ?? '';
+                  setOptFormula(oi, o.id, `${base}${base && !/\s$/.test(base) ? ' ' : ''}${raw}`);
+                }}
+              />
             </div>
           ))}
           {outputs.length === 0 && <div style={{ fontSize: 8, color: '#9ca3af' }}>Erst Ausgaben definieren</div>}

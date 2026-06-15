@@ -130,6 +130,14 @@ export function CasesNode({ id, data, selected }: NodeProps) {
             placeholder="1.6 \cdot \left[\left(\frac{5}{z_g}\right)^{\alpha_r} + 0{,}375\right]^2"
             onChange={v => updCase(i, { formula_latex: v })}
             style={{ ...inp, minHeight: 30, fontFamily: 'monospace', resize: 'vertical' }} />
+          <NameChips
+            targetId={id}
+            onInsert={token => {
+              const raw = token.startsWith('\\') ? token : formulaName(token);
+              const base = c.formula_latex || '';
+              updCase(i, { formula_latex: `${base}${base && !/\s$/.test(base) ? ' ' : ''}${raw}` });
+            }}
+          />
           {c.formula_latex && (
             <div style={{ background: '#faf5ff', borderRadius: 3, padding: '2px 4px', marginTop: 2, overflowX: 'auto', fontSize: 10 }}>
               <MathDisplay latex={c.formula_latex} display />
