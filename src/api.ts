@@ -8,6 +8,7 @@ const woodUrls = import.meta.glob('../data/wood.json', { eager: true, query: '?u
 const verificationUrls = import.meta.glob('../nachweise/*/*.json', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
 
 const STORAGE_KEY = 'statik-rechner-json-api-state-v1';
+const JSON_WRITE_ENDPOINT = '/__statik-rechner/write-json';
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 
@@ -106,13 +107,33 @@ async function getState() {
   return statePromise;
 }
 
-function persist() {
+async function writeJsonFiles(current: LocalState) {
+  if (typeof window === 'undefined') return;
+  try {
+    const response = await fetch(JSON_WRITE_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(current),
+    });
+    if (!response.ok) {
+      const detail = await response.text();
+      throw new Error(detail || `HTTP ${response.status}`);
+    }
+  } catch (error: any) {
+    // In einem statischen Build gibt es keinen lokalen Schreib-Endpunkt.
+    if (error instanceof TypeError) return;
+    throw new Error(`JSON-Dateien konnten nicht geschrieben werden: ${error?.message || error}`);
+  }
+}
+
+async function persist() {
   try {
     if (!state) return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
     // Die App bleibt auch dann benutzbar, wenn der Browser Storage blockiert.
   }
+  if (state) await writeJsonFiles(state);
 }
 
 function normalizeVerificationPayload(payload: AnyRecord | null | undefined) {
@@ -258,7 +279,7 @@ export const api = {
     state.norms = [...state.norms.filter(n => n.id !== norm.id), norm];
     state.chaptersByNorm[norm.id] ||= [];
     state.tablesByNorm[norm.id] ||= [];
-    persist();
+    await persist();
     return ok(norm);
   },
 
@@ -272,7 +293,7 @@ export const api = {
     const chapters = state.chaptersByNorm[norm] || [];
     const chapter = { id: data.id || `${norm}_${slugify(data.number || data.title || 'kapitel')}`, sort_order: nextSort(chapters), ...data, norm_id: norm };
     state.chaptersByNorm[norm] = [...chapters.filter(c => c.id !== chapter.id), chapter].sort(bySort);
-    persist();
+    await persist();
     return ok(chapter);
   },
   updateChapter: async (id: string, data: AnyRecord) => {
@@ -285,7 +306,7 @@ export const api = {
         return updated;
       });
     });
-    persist();
+    await persist();
     return ok(updated || { id, ...data });
   },
   deleteChapter: async (id: string) => {
@@ -294,7 +315,7 @@ export const api = {
       state.chaptersByNorm[norm] = state.chaptersByNorm[norm].filter(chapter => chapter.id !== id && chapter.parent_id !== id);
     });
     state.verifications = state.verifications.filter(payload => getChapterOfVerification(payload) !== id);
-    persist();
+    await persist();
     return ok({ ok: true });
   },
 
@@ -315,7 +336,7 @@ export const api = {
     const state = await getState();
     const payload = toVerificationPayload(data);
     state.verifications = [...state.verifications.filter(item => item.verification?.id !== payload.verification.id), payload];
-    persist();
+    await persist();
     return ok(makeVerificationRow(payload));
   },
   updateVerification: async (id: string, data: AnyRecord) => {
@@ -327,13 +348,13 @@ export const api = {
       item.verification?.id !== id && item.verification?.id !== payload.verification.id
     );
     state.verifications.push(payload);
-    persist();
+    await persist();
     return ok(makeVerificationRow(payload));
   },
   deleteVerification: async (id: string) => {
     const state = await getState();
     state.verifications = state.verifications.filter(item => item.verification?.id !== id);
-    persist();
+    await persist();
     return ok({ ok: true });
   },
   importVerification: async (data: AnyRecord) => {
@@ -343,7 +364,7 @@ export const api = {
     if (data.norm_id) payload.verification.norm_id = data.norm_id;
     if (data.chapter_id) payload.verification.chapter_id = data.chapter_id;
     state.verifications = [...state.verifications.filter(item => item.verification?.id !== payload.verification.id), payload];
-    persist();
+    await persist();
     return ok({ ok: true, id: payload.verification.id, verification: makeVerificationRow(payload) });
   },
   exportVerification: async (id: string) => {
@@ -364,7 +385,7 @@ export const api = {
     if (!payload) throw new Error(`Nachweis nicht gefunden: ${vid}`);
     const variable = { id: data.id || `${vid}_${slugify(data.name || 'variable')}`, ...data };
     payload.variables = [...(payload.variables || []).filter((v: AnyRecord) => v.id !== variable.id), variable];
-    persist();
+    await persist();
     return ok(variable);
   },
   updateVariable: async (id: string, data: AnyRecord) => {
@@ -377,7 +398,7 @@ export const api = {
         return updated;
       });
     });
-    persist();
+    await persist();
     return ok(updated || { id, ...data });
   },
   deleteVariable: async (id: string) => {
@@ -385,7 +406,7 @@ export const api = {
     state.verifications.forEach(payload => {
       payload.variables = (payload.variables || []).filter((variable: AnyRecord) => variable.id !== id);
     });
-    persist();
+    await persist();
     return ok({ ok: true });
   },
 
@@ -397,20 +418,20 @@ export const api = {
     const state = await getState();
     const item = { id: data.id || slugify(data.name || data.label || 'holzart'), sort_order: nextSort(state.woodTypes), ...data };
     state.woodTypes = [...state.woodTypes.filter(x => x.id !== item.id), item];
-    persist();
+    await persist();
     return ok(item);
   },
   updateWoodType: async (id: string, data: AnyRecord) => {
     const state = await getState();
     state.woodTypes = state.woodTypes.map(item => item.id === id ? { ...item, ...data } : item);
-    persist();
+    await persist();
     return ok(state.woodTypes.find(item => item.id === id) || { id, ...data });
   },
   deleteWoodType: async (id: string) => {
     const state = await getState();
     state.woodTypes = state.woodTypes.filter(item => item.id !== id);
     state.woodClasses = state.woodClasses.filter(item => item.wood_type_id !== id);
-    persist();
+    await persist();
     return ok({ ok: true });
   },
 
@@ -422,19 +443,19 @@ export const api = {
     const state = await getState();
     const item = { id: data.id || slugify(data.name || data.label || 'holzklasse'), sort_order: nextSort(state.woodClasses), properties: [], ...data };
     state.woodClasses = [...state.woodClasses.filter(x => x.id !== item.id), item];
-    persist();
+    await persist();
     return ok(item);
   },
   updateWoodClass: async (id: string, data: AnyRecord) => {
     const state = await getState();
     state.woodClasses = state.woodClasses.map(item => item.id === id ? { ...item, ...data } : item);
-    persist();
+    await persist();
     return ok(state.woodClasses.find(item => item.id === id) || { id, ...data });
   },
   deleteWoodClass: async (id: string) => {
     const state = await getState();
     state.woodClasses = state.woodClasses.filter(item => item.id !== id);
-    persist();
+    await persist();
     return ok({ ok: true });
   },
 
@@ -455,7 +476,7 @@ export const api = {
     const tables = state.tablesByNorm[norm] || [];
     const table = { id: data.id || `${norm}_${slugify(data.title || 'tabelle')}`, sort_order: nextSort(tables), ...data, norm_id: norm };
     state.tablesByNorm[norm] = [...tables.filter(item => item.id !== table.id), table].sort(bySort);
-    persist();
+    await persist();
     return ok(table);
   },
   updateTable: async (id: string, data: AnyRecord) => {
@@ -468,7 +489,7 @@ export const api = {
         return updated;
       });
     });
-    persist();
+    await persist();
     return ok(updated || { id, ...data });
   },
   deleteTable: async (id: string) => {
@@ -476,7 +497,7 @@ export const api = {
     Object.keys(state.tablesByNorm).forEach(norm => {
       state.tablesByNorm[norm] = state.tablesByNorm[norm].filter(table => table.id !== id);
     });
-    persist();
+    await persist();
     return ok({ ok: true });
   },
 
@@ -489,19 +510,19 @@ export const api = {
     const id = data.id ?? Math.max(0, ...state.units.map(unit => Number(unit.id || 0))) + 1;
     const unit = { id, sort_order: nextSort(state.units), ...data };
     state.units = [...state.units.filter(item => item.id !== id), unit].sort(bySort);
-    persist();
+    await persist();
     return ok(unit);
   },
   updateUnit: async (id: number, data: AnyRecord) => {
     const state = await getState();
     state.units = state.units.map(unit => Number(unit.id) === Number(id) ? { ...unit, ...data } : unit);
-    persist();
+    await persist();
     return ok(state.units.find(unit => Number(unit.id) === Number(id)) || { id, ...data });
   },
   deleteUnit: async (id: number) => {
     const state = await getState();
     state.units = state.units.filter(unit => Number(unit.id) !== Number(id));
-    persist();
+    await persist();
     return ok({ ok: true });
   },
 };
