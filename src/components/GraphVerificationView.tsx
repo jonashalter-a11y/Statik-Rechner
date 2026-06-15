@@ -815,6 +815,51 @@ function defaultInputForNode(n: GraphNode, graph: VerificationGraph, tables: Rec
   return undefined;
 }
 
+function graphInputKeys(graph: VerificationGraph): Set<string> {
+  const keys = new Set<string>();
+  for (const n of graph.nodes) {
+    if (defaultInputForNode(n, graph, {}) !== undefined || ['variable', 'dropdown', 'matrix', 'stdcalc', 'loopblock'].includes(n.type)) {
+      keys.add(n.id);
+    }
+  }
+  return keys;
+}
+
+function graphInputSignature(graph: VerificationGraph): string {
+  return JSON.stringify(graph.nodes.map(n => {
+    const d: any = n.data || {};
+    return {
+      id: n.id,
+      type: n.type,
+      name: d.name || '',
+      inputKind: d.inputKind || '',
+      default_value: d.default_value ?? '',
+      table_ref: d.table_ref || '',
+      chart_ref: d.chart_ref || '',
+      table_col: d.table_col ?? '',
+      label_col: d.label_col ?? '',
+      options: d.options || null,
+      rows: n.type === 'matrix' ? d.rows?.map((r: any) => ({ id: r.id, label: r.label })) : null,
+      zones: n.type === 'stdcalc' || n.type === 'tablecalc' ? d.zones || null : null,
+    };
+  }));
+}
+
+function sanitizeGraphInputs(inputs: Record<string, string> | undefined, graph: VerificationGraph): Record<string, string> {
+  const allowed = graphInputKeys(graph);
+  const nodeIds = new Set(graph.nodes.map(n => n.id));
+  const next: Record<string, string> = {};
+  for (const [key, value] of Object.entries(inputs || {})) {
+    if (key.endsWith('_override')) {
+      const baseKey = key.replace(/_override$/, '');
+      if (nodeIds.has(baseKey)) next[key] = value;
+      continue;
+    }
+    if (allowed.has(key)) next[key] = value;
+  }
+  return next;
+}
+
 export default function GraphVerificationView({ verification, readOnly = false, initialInputs, onInputsChange }: { verification: Verification; readOnly?: boolean; initialInputs?: Record<string, string>; onInputsChange?: (inputs: Record<string, string>) => void }) {
   const woodTypeByVerif = useStore(s => s.woodTypeByVerif);
   const woodClassIdByVerif = useStore(s => s.woodClassIdByVerif);
@@ -823,8 +868,9 @@ export default function GraphVerificationView({ verification, readOnly = false, 
   const apiWoodClasses = useStore(s => s.apiWoodClasses);
   const setGraphInputs = useStore(s => s.setGraphInputs);
   const graph = useMemo(() => getGraph(toLegacyShape(verification)), [verification.id, verification.graph_json]);
+  const inputSignature = useMemo(() => graphInputSignature(graph), [graph]);
   const [tables, setTables] = useState<Record<string, DbTableData>>({});
-  const [inputs, setInputs] = useState<Record<string, string>>(initialInputs || {});
+  const [inputs, setInputs] = useState<Record<string, string>>(() => sanitizeGraphInputs(initialInputs, graph));
   const [decimals, setDecimals] = useState(3);
   const [imageModal, setImageModal] = useState<{ src: string; label?: string; source?: string } | null>(null);
   const [chartModal, setChartModal] = useState<string | null>(null); // Node-ID
@@ -858,6 +904,14 @@ export default function GraphVerificationView({ verification, readOnly = false, 
       .then(pairs => { if (!alive) return; const m: Record<string, DbTableData> = {}; pairs.forEach(p => { m[p[0]] = p[1]; }); setTables(m); });
     return () => { alive = false; };
   }, [tableRefs]);
+
+  useEffect(() => {
+    const cleaned = sanitizeGraphInputs(initialInputs, graph);
+    setInputs(cleaned);
+    if (!readOnly && !onInputsChange && JSON.stringify(cleaned) !== JSON.stringify(initialInputs || {})) {
+      setGraphInputs(verification.id, cleaned);
+    }
+  }, [verification.id, inputSignature]);
 
   // Default-Eingaben setzen (nur für Felder, die noch nicht belegt sind)
   useEffect(() => {
