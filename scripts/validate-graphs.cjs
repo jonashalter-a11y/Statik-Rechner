@@ -98,6 +98,129 @@ function collectDependencies(graph) {
   return deps;
 }
 
+function jsSymbolName(name) {
+  return String(name || '')
+    .replace(/\\(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|lambda|mu|nu|xi|pi|rho|sigma|tau|phi|chi|psi|omega)\b/g, '$1')
+    .replace(/[ä]/g, 'ae').replace(/[ö]/g, 'oe').replace(/[ü]/g, 'ue')
+    .replace(/[Ä]/g, 'Ae').replace(/[Ö]/g, 'Oe').replace(/[Ü]/g, 'Ue')
+    .replace(/[ß]/g, 'ss')
+    .replace(/\\/g, '')
+    .replace(/([A-Za-z0-9_])'+/g, '$1')
+    .replace(/_\{([^{}]+)\}/g, (_m, sub) => '_' + sub.replace(/[,\s.]+/g, '_'))
+    .replace(/[{},\s.]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+}
+
+function addSymbol(symbols, name) {
+  const jsName = jsSymbolName(name);
+  if (/^[A-Za-z_$][\w$]*$/.test(jsName)) {
+    symbols.add(jsName);
+    const compact = jsName.replace(/_([A-Za-z]+)_(\d+)(?=_|$)/g, '_$1$2');
+    symbols.add(compact);
+  }
+}
+
+function extractMissingSymbols(expr, symbols) {
+  const cleaned = String(expr || '')
+    .replace(/\\pi\b/g, '')
+    .replace(/\bpi\b/g, '')
+    .replace(/\\e\b/g, '')
+    .replace(/\be\b/g, '')
+    .replace(/Math\.[A-Za-z_$][\w$]*/g, '');
+  const ids = cleaned.match(/[A-Za-z_$][\w$]*/g) || [];
+  const ignored = new Set(['Math', 'NaN', 'Infinity', 'undefined', 'null', 'true', 'false', 'pi', 'e']);
+  return [...new Set(ids.filter(id => !ignored.has(id) && !symbols.has(id)))];
+}
+
+function topoSort(graph) {
+  const nodes = graph.nodes || [];
+  const nodeById = new Map(nodes.map((node, index) => [node.id, { node, index }]));
+  const indeg = new Map(nodes.map(node => [node.id, 0]));
+  const adj = new Map(nodes.map(node => [node.id, []]));
+  for (const dep of collectDependencies(graph)) {
+    if (!adj.has(dep.source) || !indeg.has(dep.target)) continue;
+    adj.get(dep.source).push(dep.target);
+    indeg.set(dep.target, (indeg.get(dep.target) || 0) + 1);
+  }
+
+  const inputTypes = new Set(['variable', 'dropdown', 'woodclass', 'tablevalue', 'chartlookup']);
+  const priority = (id) => {
+    const entry = nodeById.get(id);
+    return [(entry && inputTypes.has(entry.node.type)) ? 0 : 1, entry?.index ?? 0];
+  };
+  const sortQueue = (items) => items.sort((a, b) => {
+    const pa = priority(a), pb = priority(b);
+    return (pa[0] - pb[0]) || (pa[1] - pb[1]);
+  });
+
+  const queue = sortQueue(nodes.filter(node => (indeg.get(node.id) || 0) === 0).map(node => node.id));
+  const order = [];
+  const seen = new Set();
+  while (queue.length) {
+    const id = queue.shift();
+    if (seen.has(id)) continue;
+    seen.add(id);
+    order.push(id);
+    for (const target of adj.get(id) || []) {
+      indeg.set(target, (indeg.get(target) || 0) - 1);
+      if ((indeg.get(target) || 0) <= 0 && !seen.has(target)) {
+        queue.push(target);
+        sortQueue(queue);
+      }
+    }
+  }
+  for (const node of nodes) if (!seen.has(node.id)) order.push(node.id);
+  return order.map(id => nodeById.get(id)?.node).filter(Boolean);
+}
+
+function validateFormulaSymbols(graph, addWarning) {
+  const symbols = new Set();
+  const check = (node, label, expr, local = symbols) => {
+    const missing = extractMissingSymbols(expr, local);
+    if (missing.length) addWarning(`${label} nutzt fehlende Symbole: ${missing.join(', ')} (${node.id})`);
+  };
+
+  for (const node of topoSort(graph)) {
+    const data = node.data || {};
+    const local = new Set(symbols);
+    if (node.type === 'stdcalc' && data.picker_name) addSymbol(local, data.picker_name);
+    if (node.type === 'tablecalc') addSymbol(local, 'cell');
+
+    if (['calc', 'stdcalc', 'check', 'minmax'].includes(node.type) && String(data.expr || '').trim()) {
+      check(node, 'Formel', data.expr, local);
+    }
+    if (node.type === 'condition') {
+      for (const condition of Array.isArray(data.conditions) ? data.conditions : []) {
+        if (String(condition?.expr || '').trim()) check(node, 'Bedingung', condition.expr, local);
+      }
+    }
+    if (node.type === 'cases') {
+      for (const item of Array.isArray(data.cases) ? data.cases : []) {
+        const cond = String(item?.cond_expr || '').trim();
+        if (cond && !/^(else|sonst|\(leer\s*[=:]\s*else\))$/i.test(cond)) check(node, 'Fall-Bedingung', cond, local);
+      }
+    }
+    if (node.type === 'matrix') {
+      for (const row of Array.isArray(data.rows) ? data.rows : []) {
+        for (const cell of Array.isArray(row?.cells) ? row.cells : []) {
+          const expr = String(cell || '').trim();
+          if (expr && !expr.includes('\\')) check(node, 'Matrix-Zelle', expr, local);
+        }
+      }
+    }
+
+    if (['variable', 'dropdown', 'tablevalue', 'calc', 'stdcalc', 'minmax', 'cases'].includes(node.type)) addSymbol(symbols, data.name);
+    if (node.type === 'chartlookup' && !data.all_series) addSymbol(symbols, data.name);
+    if (node.type === 'matrix') {
+      for (const col of Array.isArray(data.columns) ? data.columns : []) addSymbol(symbols, col?.name);
+    }
+    if (node.type === 'loopblock') {
+      for (const ag of Array.isArray(data.aggregations) ? data.aggregations : []) addSymbol(symbols, ag?.name);
+    }
+  }
+}
+
 function findCycles(graph) {
   const ids = new Set((graph.nodes || []).map(node => node.id));
   const adj = new Map([...ids].map(id => [id, []]));
@@ -186,6 +309,7 @@ function validateGraph(graph, tables) {
   }
 
   for (const cycle of findCycles(graph)) addError(`Zyklische Abhängigkeit: ${cycle.join(' -> ')}`);
+  validateFormulaSymbols(graph, addWarning);
   for (const id of graph.display_order || []) if (!nodeIds.has(id)) addWarning(`display_order enthält fehlenden Block "${id}"`);
   for (const id of graph.hidden_nodes || []) if (!nodeIds.has(id)) addWarning(`hidden_nodes enthält fehlenden Block "${id}"`);
 

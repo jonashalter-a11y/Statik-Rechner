@@ -13,6 +13,7 @@ import {
   VerificationGraph, BlockType, BlockData, GraphNode, GraphEdge,
 } from '../../../types/graph';
 import { topoSort } from '../../../utils/evalGraph';
+import { validateGraph } from '../../../utils/validateGraph';
 import { createDefaultBlockData, PALETTE } from '../../../blocks';
 
 interface Props {
@@ -135,24 +136,26 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
   useEffect(() => { nodesRef.current = nodes; }, [nodes]);
   useEffect(() => { edgesRef.current = edges; }, [edges]);
 
+  const currentGraph = useMemo<VerificationGraph>(() => ({
+    version: 1,
+    nodes: nodes.map(n => {
+      const gn: GraphNode = { id: n.id, type: n.type as BlockType, position: n.position, data: n.data as any };
+      const w = (n.style as any)?.width ?? n.width;
+      const h = (n.style as any)?.height ?? n.height;
+      if (w || h) gn.style = { ...(w ? { width: w } : {}), ...(h ? { height: h } : {}) };
+      return gn;
+    }) as GraphNode[],
+    edges: edges.map(e => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle ?? null, targetHandle: e.targetHandle ?? null, data: (e.data as any) || { kind: 'workflow' } })) as GraphEdge[],
+    ...(displayOrder ? { display_order: displayOrder } : {}),
+    ...(hiddenNodes.size > 0 ? { hidden_nodes: [...hiddenNodes] } : {}),
+  }), [nodes, edges, displayOrder, hiddenNodes]);
+
+  const graphValidation = useMemo(() => validateGraph(currentGraph), [currentGraph]);
 
   // Serialisieren → an Parent melden SOFORT (kein Debounce - Auto-Save handled das)
   useEffect(() => {
-    const g: VerificationGraph = {
-      version: 1,
-      nodes: nodes.map(n => {
-        const gn: GraphNode = { id: n.id, type: n.type as BlockType, position: n.position, data: n.data as any };
-        const w = (n.style as any)?.width ?? n.width;
-        const h = (n.style as any)?.height ?? n.height;
-        if (w || h) gn.style = { ...(w ? { width: w } : {}), ...(h ? { height: h } : {}) };
-        return gn;
-      }) as GraphNode[],
-      edges: edges.map(e => ({ id: e.id, source: e.source, target: e.target, sourceHandle: e.sourceHandle ?? null, targetHandle: e.targetHandle ?? null, data: (e.data as any) || { kind: 'workflow' } })) as GraphEdge[],
-      ...(displayOrder ? { display_order: displayOrder } : {}),
-      ...(hiddenNodes.size > 0 ? { hidden_nodes: [...hiddenNodes] } : {}),
-    };
-    onChange(g);
-  }, [nodes, edges, displayOrder, hiddenNodes, onChange]);
+    onChange(currentGraph);
+  }, [currentGraph, onChange]);
 
   // Sync: neue Nodes ans Ende der Reihenfolge hängen, gelöschte entfernen
   useEffect(() => {
@@ -550,7 +553,41 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
         </div>
 
         {/* Canvas */}
-        <div style={{ flex: 1, minWidth: 0, background: 'rgba(219, 234, 254, 0.25)' }} onDragOver={onDragOver} onDrop={onDrop}>
+        <div style={{ flex: 1, minWidth: 0, background: 'rgba(219, 234, 254, 0.25)', position: 'relative' }} onDragOver={onDragOver} onDrop={onDrop}>
+          <div style={{
+            position: 'absolute',
+            top: 10,
+            left: 10,
+            zIndex: 10,
+            width: 360,
+            maxWidth: 'calc(100% - 20px)',
+            border: `1px solid ${graphValidation.errors.length ? '#fecaca' : graphValidation.warnings.length ? '#fde68a' : '#bbf7d0'}`,
+            background: graphValidation.errors.length ? '#fef2f2' : graphValidation.warnings.length ? '#fffbeb' : '#f0fdf4',
+            color: graphValidation.errors.length ? '#991b1b' : graphValidation.warnings.length ? '#92400e' : '#166534',
+            borderRadius: 6,
+            padding: '7px 9px',
+            fontSize: 11,
+            lineHeight: 1.45,
+            boxShadow: '0 8px 24px rgba(15,23,42,0.08)',
+            pointerEvents: 'none',
+          }}>
+            <div style={{ fontWeight: 700, marginBottom: graphValidation.issues.length ? 3 : 0 }}>
+              {graphValidation.errors.length
+                ? `${graphValidation.errors.length} Fehler im Graph`
+                : graphValidation.warnings.length
+                  ? `${graphValidation.warnings.length} Hinweise im Graph`
+                  : 'Graph sauber'}
+            </div>
+            {graphValidation.issues.slice(0, 4).map((issue, i) => (
+              <div key={i}>
+                {issue.severity === 'error' ? 'Fehler' : 'Hinweis'}
+                {issue.nodeId ? ` (${issue.nodeId})` : ''}: {issue.message}
+              </div>
+            ))}
+            {graphValidation.issues.length > 4 && (
+              <div>+ {graphValidation.issues.length - 4} weitere Meldungen</div>
+            )}
+          </div>
           <ReactFlow
             nodes={nodes} edges={edges}
             onNodesChange={handleNodesChange} onEdgesChange={onEdgesChange}

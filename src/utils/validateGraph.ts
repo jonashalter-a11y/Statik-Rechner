@@ -1,6 +1,7 @@
 import { BLOCK_EVALUATORS } from '../blocks/evaluators';
 import { VerificationGraph } from '../types/graph';
-import { collectGraphDependencies, collectTableRefs, DbTableData } from './evalGraph';
+import { collectGraphDependencies, collectTableRefs, DbTableData, topoSort } from './evalGraph';
+import { extractMissingSymbols, latexCondToJs, latexToJs, setSymbol } from './evalGraphShared';
 
 export type GraphValidationSeverity = 'error' | 'warning';
 
@@ -29,6 +30,91 @@ function labelNode(graph: VerificationGraph, nodeId?: string) {
 
 function asArray(value: unknown): unknown[] {
   return Array.isArray(value) ? value : [];
+}
+
+function addSymbol(symbols: Record<string, number>, name?: unknown) {
+  const key = String(name || '').trim();
+  if (key) setSymbol(symbols, key, 1);
+}
+
+function checkExpressionSymbols(
+  expr: string,
+  symbols: Record<string, number>,
+  add: (severity: GraphValidationSeverity, message: string, nodeId?: string) => void,
+  nodeId: string,
+  label: string,
+) {
+  const missing = extractMissingSymbols(expr, symbols);
+  if (missing.length) {
+    add('warning', `${label} nutzt fehlende Symbole: ${missing.join(', ')}.`, nodeId);
+  }
+}
+
+function validateFormulaSymbols(
+  graph: VerificationGraph,
+  add: (severity: GraphValidationSeverity, message: string, nodeId?: string) => void,
+) {
+  const symbols: Record<string, number> = {};
+
+  for (const node of topoSort(graph)) {
+    const d: any = node.data || {};
+    const localSymbols = { ...symbols };
+
+    if (node.type === 'stdcalc' && d.picker_name) addSymbol(localSymbols, d.picker_name);
+    if (node.type === 'tablecalc') addSymbol(localSymbols, 'cell');
+
+    if (node.type === 'calc' || node.type === 'stdcalc' || node.type === 'check' || node.type === 'minmax') {
+      const expr = String(d.expr || (d.latex ? latexToJs(d.latex) : '') || '').trim();
+      if (expr) checkExpressionSymbols(expr, localSymbols, add, node.id, 'Formel');
+    }
+
+    if (node.type === 'condition') {
+      for (const condition of asArray(d.conditions) as any[]) {
+        const expr = String(latexCondToJs(condition?.latex || '') || condition?.expr || '').trim();
+        if (expr) checkExpressionSymbols(expr, localSymbols, add, node.id, 'Bedingung');
+      }
+    }
+
+    if (node.type === 'cases') {
+      for (const entry of asArray(d.cases) as any[]) {
+        const formulaExpr = String(entry?.formula_latex ? latexToJs(entry.formula_latex) : '').trim();
+        if (formulaExpr) checkExpressionSymbols(formulaExpr, localSymbols, add, node.id, 'Fall-Formel');
+        const condExpr = String(entry?.cond_expr || '').trim();
+        if (condExpr && !/^(else|sonst|\(leer\s*[=:]\s*else\))$/i.test(condExpr)) {
+          checkExpressionSymbols(condExpr, localSymbols, add, node.id, 'Fall-Bedingung');
+        }
+      }
+    }
+
+    if (node.type === 'matrix') {
+      for (const row of asArray(d.rows) as any[]) {
+        const cells = asArray(row?.cells);
+        const latexCells = asArray(row?.cells_latex);
+        cells.forEach((cell, i) => {
+          const raw = String(cell || latexCells[i] || '').trim();
+          const expr = raw.includes('\\') ? latexToJs(raw) : raw;
+          if (expr) checkExpressionSymbols(expr, localSymbols, add, node.id, 'Matrix-Zelle');
+        });
+      }
+    }
+
+    if (node.type === 'variable' || node.type === 'dropdown' || node.type === 'tablevalue' || node.type === 'calc' || node.type === 'stdcalc' || node.type === 'minmax' || node.type === 'cases') {
+      addSymbol(symbols, d.name);
+    }
+    if (node.type === 'chartlookup') {
+      if (d.all_series) {
+        // Kurvennamen sind erst mit geladener Tabelle bekannt; Laufzeitprüfung deckt das ab.
+      } else {
+        addSymbol(symbols, d.name);
+      }
+    }
+    if (node.type === 'matrix') {
+      for (const col of asArray(d.columns) as any[]) addSymbol(symbols, col?.name);
+    }
+    if (node.type === 'loopblock') {
+      for (const ag of asArray(d.aggregations) as any[]) addSymbol(symbols, ag?.name);
+    }
+  }
 }
 
 function findCycles(graph: VerificationGraph): string[][] {
@@ -144,6 +230,8 @@ export function validateGraph(graph: VerificationGraph, options: ValidateGraphOp
       symbolOwners.set(name, node.id);
     }
   }
+
+  validateFormulaSymbols(graph, add);
 
   for (const cycle of findCycles(graph)) {
     add('error', `Zyklische Abhängigkeit: ${cycle.join(' -> ')}.`);

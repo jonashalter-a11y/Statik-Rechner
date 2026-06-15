@@ -5,6 +5,7 @@ import GraphEditor from './graph/GraphEditor';
 import { DbTableMeta } from './graph/graphContext';
 import { VerificationGraph, emptyGraph } from '../../types/graph';
 import { getGraph } from '../../utils/legacyToGraph';
+import { validateGraph } from '../../utils/validateGraph';
 
 interface Variable {
   id?: string; name: string; label: string; unit: string;
@@ -485,6 +486,12 @@ export default function VerificationAdmin() {
       // Aber: Speichern erzwingen alle 2 Sekunden (wegen Positions-Updates)
       if (Date.now() - (window as any).__lastAutoSave < 2000) return;
     }
+    const validation = validateGraph(editingToSave.graph);
+    if (validation.errors.length > 0) {
+      const first = validation.errors[0];
+      setMsg(`${auto ? '⚠ Auto-Speichern pausiert' : '⚠ Speichern blockiert'}: ${first.nodeId ? `${first.nodeId}: ` : ''}${first.message}`);
+      return;
+    }
     (window as any).__lastAutoSave = Date.now();
     setSaving(true);
     try {
@@ -653,6 +660,7 @@ export default function VerificationAdmin() {
 
   const flatChapters = chapters.map(c => ({ ...c, display: `${c.number} ${c.title}` }));
   const tree = buildTree(chapters, verifications);
+  const editingValidation = editing ? validateGraph(editing.graph) : null;
 
   return (
     <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -745,6 +753,11 @@ export default function VerificationAdmin() {
               </select>
             </div>
             {msg && <span style={{ fontSize: 12, color: msg.startsWith('✓') ? '#15803d' : '#b91c1c', alignSelf: 'flex-end', paddingBottom: 6 }}>{msg}</span>}
+            {!msg && editingValidation?.warnings.length ? (
+              <span style={{ fontSize: 12, color: '#92400e', alignSelf: 'flex-end', paddingBottom: 6 }}>
+                ⚠ {editingValidation.warnings.length} Hinweise
+              </span>
+            ) : null}
             <button onClick={copyCurrent} style={{ alignSelf: 'flex-end', background: '#f1f5f9', color: '#374151', border: '1px solid #d1d5db', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontSize: 12 }}>Kopieren</button>
             <button onClick={exportCurrentJson} style={{ alignSelf: 'flex-end', background: '#f1f5f9', color: '#374151', border: '1px solid #d1d5db', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontSize: 12 }}>Export JSON</button>
             {editing.id && <button onClick={() => deleteV(editing.originalId || editing.id)} style={{ alignSelf: 'flex-end', background: '#fee2e2', border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', color: '#b91c1c', fontSize: 12 }}>🗑</button>}

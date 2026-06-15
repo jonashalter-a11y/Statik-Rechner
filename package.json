@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "npm run validate",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "validate": "node scripts/validate-graphs.cjs",
