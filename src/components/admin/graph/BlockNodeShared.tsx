@@ -349,12 +349,12 @@ export function updateLatexNamePrefix(currentLatex: string, oldName: string, new
 }
 
 const FORMULA_OPERATORS = [
-  { latex: '\\frac{}{}', label: '\\frac' },
-  { latex: '\\cdot ', label: '\\cdot' },
-  { latex: '\\sqrt{}', label: '\\sqrt' },
-  { latex: '\\leq ', label: '\\leq' },
-  { latex: '\\sum ', label: '\\sum' },
-  { latex: '\\geq ', label: '\\geq' },
+  { latex: '\\frac{}{}', label: '\\frac', icon: '÷' },
+  { latex: '\\cdot ', label: '\\cdot', icon: '·' },
+  { latex: '\\sqrt{}', label: '\\sqrt', icon: '√' },
+  { latex: '\\leq ', label: '\\leq', icon: '≤' },
+  { latex: '\\sum ', label: '\\sum', icon: 'Σ' },
+  { latex: '\\geq ', label: '\\geq', icon: '≥' },
 ];
 
 export function NameChips({ targetId, onInsert, operators = Boolean(onInsert) }: { targetId: string; onInsert?: (name: string) => void; operators?: boolean }) {
@@ -378,12 +378,35 @@ export function NameChips({ targetId, onInsert, operators = Boolean(onInsert) }:
         </div>
       )}
       {operators && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginTop: 3 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 3 }}>
           {FORMULA_OPERATORS.map(op => (
             <button key={op.latex} className="nodrag" onClick={() => onInsert ? onInsert(op.latex) : insertName(targetId, op.latex)}
               title={op.label}
-              style={{ border: '1px solid #fed7aa', background: '#fff7ed', borderRadius: 3, padding: '1px 5px', cursor: 'pointer', lineHeight: 1.2 }}>
-              <MathDisplay latex={op.label} />
+              style={{
+                border: 'none',
+                background: 'linear-gradient(135deg, #f87171 0%, #ef4444 100%)',
+                color: '#fff',
+                borderRadius: 5,
+                padding: '6px 10px',
+                cursor: 'pointer',
+                lineHeight: 1,
+                fontSize: '18px',
+                fontWeight: 500,
+                fontFamily: 'monospace',
+                minWidth: '36px',
+                textAlign: 'center',
+                transition: 'all 0.15s ease',
+                boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.1) translateY(-2px)';
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 8px rgba(220, 38, 38, 0.35)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1) translateY(0)';
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 2px 4px rgba(220, 38, 38, 0.2)';
+              }}>
+              {op.icon}
             </button>
           ))}
         </div>
