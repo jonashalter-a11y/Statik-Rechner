@@ -6,6 +6,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "validate": "node scripts/validate-graphs.cjs",
     "generate-blocks": "node scripts/generate-blocks.cjs",
     "create-block": "node scripts/create-block.cjs"
   },

@@ -8,6 +8,7 @@ import { formatNumber, substituteValues } from '../utils/substituteFormula';
 import { substituteLatexValues } from '../utils/evalGraphShared';
 import { evalCondExpr } from '../utils/evalFormula';
 import { latexCondToJs, latexToJs } from '../utils/latexToJs';
+import { validateGraph } from '../utils/validateGraph';
 import { api } from '../api';
 import { useStore } from '../store/useStore';
 import {
@@ -840,18 +841,23 @@ export default function GraphVerificationView({ verification, readOnly = false, 
     if (props.beta_c != null && props.b_c == null) props.b_c = props.beta_c;
     return props;
   }, [apiWoodClasses, effectiveWoodType, effectiveWoodClassId]);
+  const tableRefs = useMemo(() => collectTableRefs(graph), [graph]);
+  const tablesReady = tableRefs.every(id => tables[id]);
+  const graphValidation = useMemo(
+    () => validateGraph(graph, { tables: tablesReady ? tables : undefined }),
+    [graph, tables, tablesReady]
+  );
 
   // Referenzierte Tabellen vorladen
   useEffect(() => {
     let alive = true;
-    const refs = collectTableRefs(graph);
-    if (!refs.length) { setTables({}); return; }
-    Promise.all(refs.map(id => api.getTableFull(id)
+    if (!tableRefs.length) { setTables({}); return; }
+    Promise.all(tableRefs.map(id => api.getTableFull(id)
       .then((t: any) => [id, { headers: t.headers || [], rows: t.rows || [], chart_json: t.chart_json ?? null }] as const)
-      .catch(() => null)))
-      .then(pairs => { if (!alive) return; const m: Record<string, DbTableData> = {}; pairs.forEach(p => { if (p) m[p[0]] = p[1]; }); setTables(m); });
+      .catch(() => [id, { headers: [] as string[], rows: [] as string[][], chart_json: null }] as const)))
+      .then(pairs => { if (!alive) return; const m: Record<string, DbTableData> = {}; pairs.forEach(p => { m[p[0]] = p[1]; }); setTables(m); });
     return () => { alive = false; };
-  }, [graph]);
+  }, [tableRefs]);
 
   // Default-Eingaben setzen (nur für Felder, die noch nicht belegt sind)
   useEffect(() => {
@@ -904,7 +910,20 @@ export default function GraphVerificationView({ verification, readOnly = false, 
     }
     return next;
   });
+  const inputsReady = useMemo(() => {
+    if (!tablesReady) return false;
+    if (readOnly && !onInputsChange) return true;
+    return graph.nodes.every(n => {
+      const d: any = n.data;
+      if (n.type === 'variable' && d.hasDefault === false) return true;
+      return defaultInputForNode(n, graph, tables) === undefined || inputs[n.id] != null;
+    });
+  }, [graph, inputs, tables, tablesReady, readOnly, onInputsChange]);
+  const graphReady = tablesReady && inputsReady && graphValidation.isValid;
+
   const ev = useMemo(() => {
+    if (!graphReady) return { results: {}, symbols: {} };
+
     // Normale Evaluation
     const result = evalGraph(graph, inputs, tables, materialProps, { woodType: effectiveWoodType, woodClassId: effectiveWoodClassId });
 
@@ -939,7 +958,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
     }
 
     return result;
-  }, [graph, inputs, tables, materialProps, effectiveWoodType, effectiveWoodClassId]);
+  }, [graphReady, graph, inputs, tables, materialProps, effectiveWoodType, effectiveWoodClassId]);
   const ordered = useMemo(() => {
     const sorted = topoSort(graph);
     const order = graph.display_order;
@@ -1153,8 +1172,46 @@ export default function GraphVerificationView({ verification, readOnly = false, 
     return hidden;
   }, [sections, collapsedSections]);
 
+  const validationNotice = graphValidation.issues.length > 0 && !readOnly ? (
+    <div style={{
+      ...card,
+      background: graphValidation.errors.length ? '#fef2f2' : '#fffbeb',
+      borderColor: graphValidation.errors.length ? '#fecaca' : '#fde68a',
+      color: graphValidation.errors.length ? '#991b1b' : '#92400e',
+      fontSize: 12,
+      lineHeight: 1.45,
+    }}>
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>
+        {graphValidation.errors.length ? 'Graph-Fehler' : 'Graph-Hinweise'}
+      </div>
+      {graphValidation.issues.slice(0, 5).map((issue, i) => (
+        <div key={i}>
+          {issue.severity === 'error' ? 'Fehler' : 'Hinweis'}
+          {issue.nodeId ? ` (${issue.nodeId})` : ''}: {issue.message}
+        </div>
+      ))}
+      {graphValidation.issues.length > 5 && (
+        <div>+ {graphValidation.issues.length - 5} weitere Hinweise</div>
+      )}
+    </div>
+  ) : null;
+
+  if (!graphReady) {
+    return (
+      <>
+        {validationNotice}
+        {!graphValidation.errors.length && (
+          <div style={{ ...card, background: '#f8fafc', color: '#64748b', fontSize: 12 }}>
+            Nachweis wird vorbereitet...
+          </div>
+        )}
+      </>
+    );
+  }
+
   return (
     <div>
+      {validationNotice}
       {!readOnly && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, justifyContent: 'flex-end' }}>
           <button

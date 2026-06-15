@@ -5,34 +5,79 @@ import { BlockEvalRuntime, DbTableData, EvalContext, EvalResult, NodeResult } fr
 
 export type { ChartJsonData, ChartSeriesData, DbTableData, EvalContext, EvalResult, NodeResult } from './evalGraphShared';
 
+export interface GraphDependency {
+  source: string;
+  target: string;
+  reason: 'edge' | 'data';
+}
+
+export function collectGraphDependencies(graph: VerificationGraph): GraphDependency[] {
+  const nodes = graph.nodes;
+  const nodeById = new Map(nodes.map(n => [n.id, n]));
+  const flowEdges = graph.edges.filter(e => ['workflow', 'condition'].includes(e.data?.kind ?? 'workflow'));
+  const dependencies: GraphDependency[] = [];
+  const seen = new Set<string>();
+
+  const addDependency = (sourceId?: unknown, targetId?: unknown, reason: GraphDependency['reason'] = 'data') => {
+    const source = String(sourceId || '');
+    const target = String(targetId || '');
+    if (!source || !target || source === target) return;
+    const key = `${source}->${target}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    dependencies.push({ source, target, reason });
+  };
+
+  flowEdges.forEach(e => addDependency(e.source, e.target, 'edge'));
+
+  // Einige Blöcke speichern ihre Quelle zusätzlich in data.*. Diese Abhängigkeiten
+  // müssen auch ohne sichtbare Kante stabil vor dem Zielblock ausgewertet werden.
+  nodes.forEach(n => {
+    const d: any = n.data || {};
+    addDependency(d.source_id, n.id);
+    addDependency(d.source_dropdown, n.id);
+    addDependency(d.source_tablecalc, n.id);
+
+    if ((n.type === 'condition' || n.type === 'cases') && d.source && !['woodType', 'woodClass'].includes(String(d.source))) {
+      addDependency(d.source, n.id);
+    }
+
+    if (n.type === 'stdcalc' && !d.source_tablecalc) {
+      const wiredSource = flowEdges.find(e => e.target === n.id && nodeById.get(e.source)?.type === 'tablecalc')?.source;
+      if (wiredSource) addDependency(wiredSource, n.id);
+    }
+  });
+
+  return dependencies;
+}
+
 // Topologische Sortierung über Workflow-Kanten (Kahn). Bei Zyklen: Rest in Originalreihenfolge.
 export function topoSort(graph: VerificationGraph): GraphNode[] {
   const nodes = graph.nodes;
-  const flowEdges = graph.edges.filter(e => ['workflow', 'condition'].includes(e.data?.kind ?? 'workflow'));
   const indeg = new Map<string, number>();
   const adj = new Map<string, string[]>();
+  const nodeById = new Map(nodes.map(n => [n.id, n]));
   nodes.forEach(n => { indeg.set(n.id, 0); adj.set(n.id, []); });
-  // ref-Blöcke: implizite Abhängigkeit von source_id wenn keine echte Kante existiert
-  const hasIncoming = new Set(flowEdges.map(e => e.target));
-  nodes.forEach(n => {
-    if (n.type === 'ref' && !hasIncoming.has(n.id)) {
-      const srcId = (n.data as any).source_id;
-      if (srcId && adj.has(srcId) && indeg.has(n.id)) {
-        adj.get(srcId)!.push(n.id);
-        indeg.set(n.id, (indeg.get(n.id) || 0) + 1);
-      }
-    }
+
+  collectGraphDependencies(graph).forEach(({ source, target }) => {
+    if (!adj.has(source) || !indeg.has(target)) return;
+    adj.get(source)!.push(target);
+    indeg.set(target, (indeg.get(target) || 0) + 1);
   });
-  flowEdges.forEach(e => {
-    if (!adj.has(e.source) || !indeg.has(e.target)) return;
-    adj.get(e.source)!.push(e.target);
-    indeg.set(e.target, (indeg.get(e.target) || 0) + 1);
-  });
+
   // Eingabe-Blöcke immer zuerst: stellt sicher, dass symbols/strSymbols befüllt sind
   // bevor Berechnungsblöcke (calc, cases, …) ohne explizite Kanten ausgewertet werden.
   const INPUT_TYPES = new Set(['variable', 'dropdown', 'woodclass', 'tablevalue', 'chartlookup']);
+  const nodeIndex = new Map(nodes.map((n, i) => [n.id, i]));
+  const byStablePriority = (a: string, b: string) => {
+    const na = nodeById.get(a);
+    const nb = nodeById.get(b);
+    const pa = na && INPUT_TYPES.has(na.type) ? 0 : 1;
+    const pb = nb && INPUT_TYPES.has(nb.type) ? 0 : 1;
+    return (pa - pb) || ((nodeIndex.get(a) ?? 0) - (nodeIndex.get(b) ?? 0));
+  };
   const zeroNodes = nodes.filter(n => (indeg.get(n.id) || 0) === 0);
-  zeroNodes.sort((a, b) => (INPUT_TYPES.has(a.type) ? 0 : 1) - (INPUT_TYPES.has(b.type) ? 0 : 1));
+  zeroNodes.sort((a, b) => byStablePriority(a.id, b.id));
   const queue = zeroNodes.map(n => n.id);
   const order: string[] = [];
   const seen = new Set<string>();
@@ -42,7 +87,10 @@ export function topoSort(graph: VerificationGraph): GraphNode[] {
     seen.add(id); order.push(id);
     (adj.get(id) || []).forEach(t => {
       indeg.set(t, (indeg.get(t) || 0) - 1);
-      if ((indeg.get(t) || 0) <= 0 && !seen.has(t)) queue.push(t);
+      if ((indeg.get(t) || 0) <= 0 && !seen.has(t)) {
+        queue.push(t);
+        queue.sort(byStablePriority);
+      }
     });
   }
   // verbleibende (Zyklus) anhängen
