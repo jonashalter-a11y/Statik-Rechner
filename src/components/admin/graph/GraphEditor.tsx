@@ -28,9 +28,33 @@ interface GraphClipboard {
 
 type GraphSnapshot = GraphClipboard;
 
+const CLIPBOARD_STORAGE_KEY = 'graph_editor_clipboard';
+
 function cloneData<T>(value: T): T {
   if (value === undefined) return value;
   return JSON.parse(JSON.stringify(value));
+}
+
+function loadClipboardFromStorage(): GraphClipboard | null {
+  try {
+    const stored = localStorage.getItem(CLIPBOARD_STORAGE_KEY);
+    if (!stored) return null;
+    return JSON.parse(stored);
+  } catch {
+    return null;
+  }
+}
+
+function saveClipboardToStorage(clip: GraphClipboard | null): void {
+  try {
+    if (!clip) {
+      localStorage.removeItem(CLIPBOARD_STORAGE_KEY);
+    } else {
+      localStorage.setItem(CLIPBOARD_STORAGE_KEY, JSON.stringify(clip));
+    }
+  } catch {
+    // Fehler beim localStorage - ignorieren
+  }
 }
 
 function cloneGraphState(nodes: Node[], edges: Edge[]): GraphSnapshot {
@@ -85,7 +109,7 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
     })),
   );
   const [pickTargetId, setPickTargetId] = useState<string | null>(null);
-  const [clipboardCount, setClipboardCount] = useState(0);
+  const [clipboardVersion, setClipboardVersion] = useState(0);
   const [lassoMode, setLassoMode] = useState(false);
   const [, setHistoryVersion] = useState(0);
   const [showOrderPanel, setShowOrderPanel] = useState(false);
@@ -96,7 +120,7 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
   const [collapsedOrderSections, setCollapsedOrderSections] = useState<Set<string>>(new Set());
   const toggleOrderSection = (id: string) => setCollapsedOrderSections(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   const tableCache = useRef<Map<string, DbTableFull>>(new Map());
-  const clipboardRef = useRef<GraphClipboard | null>(null);
+  const clipboardRef = useRef<GraphClipboard | null>(loadClipboardFromStorage());
   const historyRef = useRef<GraphSnapshot[]>([]);
   const historyIndexRef = useRef(-1);
   const historyPausedRef = useRef(false);
@@ -108,6 +132,7 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
 
   useEffect(() => { nodesRef.current = nodes; }, [nodes]);
   useEffect(() => { edgesRef.current = edges; }, [edges]);
+
 
   // Serialisieren → an Parent melden SOFORT (kein Debounce - Auto-Save handled das)
   useEffect(() => {
@@ -173,6 +198,14 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
         return n;
       });
     });
+  }, [setNodes]);
+
+  const setNodeStyle = useCallback((id: string, style: Record<string, any>) => {
+    setNodes(nds =>
+      nds.map(n =>
+        n.id === id ? { ...n, style: { ...(n.style || {}), ...style } } : n,
+      ),
+    );
   }, [setNodes]);
 
   // Wrapper: bei Resize eines selektierten Blocks → gleiche Grösse an alle selektierten Blöcke
@@ -288,20 +321,26 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
     const selectedNodes = nodes.filter(n => n.selected);
     if (!selectedNodes.length) return;
     const selectedIds = new Set(selectedNodes.map(n => n.id));
-    clipboardRef.current = {
+    const clipboard: GraphClipboard = {
       nodes: selectedNodes.map(n => ({ ...n, data: cloneData(n.data) })),
       edges: edges
         .filter(e => selectedIds.has(e.source) && selectedIds.has(e.target))
         .map(e => ({ ...e, data: cloneData(e.data) })),
     };
-    setClipboardCount(selectedNodes.length);
+    clipboardRef.current = clipboard;
+    saveClipboardToStorage(clipboard);
+    setClipboardVersion(v => v + 1);
   }, [nodes, edges]);
 
   const pasteCopied = useCallback(() => {
     const clip = clipboardRef.current;
     if (!clip?.nodes.length) return;
+
+    // Create new IDs for pasted nodes (avoid ID collisions)
     const idMap = new Map<string, string>();
     clip.nodes.forEach(n => idMap.set(n.id, newId(String(n.type || 'node'))));
+
+    // Remap the pasted nodes with new IDs and offset positions
     const pastedNodes = clip.nodes.map(n => {
       const id = idMap.get(n.id)!;
       return {
@@ -312,6 +351,8 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
         data: remapCopiedNodeData(n.data, idMap),
       };
     });
+
+    // Remap edges to use new node IDs (only edges between pasted nodes)
     const pastedEdges = clip.edges
       .filter(e => idMap.has(e.source) && idMap.has(e.target))
       .map(e => ({
@@ -322,8 +363,19 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
         selected: false,
         data: cloneData(e.data),
       }));
-    setNodes(nds => [...nds.map(n => ({ ...n, selected: false })), ...pastedNodes]);
-    setEdges(eds => [...eds.map(e => ({ ...e, selected: false })), ...pastedEdges]);
+
+    // IMPORTANT: Merge existing nodes/edges with pasted ones (not replace)
+    // Always spread existing state first, then append new items
+    setNodes(nds => {
+      // Deselect all existing nodes, then append pasted nodes
+      const existingNodes = nds.map(n => ({ ...n, selected: false }));
+      return [...existingNodes, ...pastedNodes];
+    });
+    setEdges(eds => {
+      // Deselect all existing edges, then append pasted edges
+      const existingEdges = eds.map(e => ({ ...e, selected: false }));
+      return [...existingEdges, ...pastedEdges];
+    });
   }, [setNodes, setEdges]);
 
   const undoGraph = useCallback(() => {
@@ -370,8 +422,8 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
       // Delete ausgewählte Blöcke (Delete oder Backspace)
       if (event.key === 'Delete' || event.key === 'Backspace') {
         event.preventDefault();
-        const selectedNodes = nodes.filter(n => n.selected);
-        const selectedEdges = edges.filter(e => e.selected);
+        const selectedNodes = nodesRef.current.filter(n => n.selected);
+        const selectedEdges = edgesRef.current.filter(e => e.selected);
         selectedNodes.forEach(n => removeNode(n.id));
         selectedEdges.forEach(e => setEdges(es => es.filter(x => x.id !== e.id)));
         return;
@@ -394,12 +446,12 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [copySelected, pasteCopied, undoGraph, redoGraph, nodes, edges, removeNode, setEdges]);
+  }, [copySelected, pasteCopied, undoGraph, redoGraph, removeNode, setEdges]);
 
   const ctxValue = useMemo(() => ({
-    updateNodeData, removeNode, dbTables, loadTableFull,
+    updateNodeData, setNodeStyle, removeNode, dbTables, loadTableFull,
     allNames, graphNodes, allNodeData, sourceNodesMap, unitOptions, pickTargetId, setPickTargetId, insertName,
-  }), [updateNodeData, removeNode, dbTables, loadTableFull, allNames, graphNodes, allNodeData, sourceNodesMap, unitOptions, pickTargetId, insertName]);
+  }), [updateNodeData, setNodeStyle, removeNode, dbTables, loadTableFull, allNames, graphNodes, allNodeData, sourceNodesMap, unitOptions, pickTargetId, insertName]);
 
   return (
     <GraphCtx.Provider value={ctxValue}>
@@ -432,14 +484,22 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
             >
               Kopieren
             </button>
-            <button
-              type="button"
-              onClick={pasteCopied}
-              disabled={!clipboardCount}
-              style={{ border: '1px solid #cbd5e1', background: '#fff', borderRadius: 5, padding: '5px 4px', cursor: clipboardCount ? 'pointer' : 'not-allowed', fontSize: 11, color: clipboardCount ? '#334155' : '#94a3b8' }}
-            >
-              Einfügen
-            </button>
+            {(() => {
+              // Dummy dependency on clipboardVersion to trigger re-render
+              void clipboardVersion;
+              const hasClipboard = clipboardRef.current?.nodes.length ?? 0;
+              return (
+                <button
+                  type="button"
+                  onClick={pasteCopied}
+                  disabled={!hasClipboard}
+                  style={{ border: '1px solid #cbd5e1', background: '#fff', borderRadius: 5, padding: '5px 4px', cursor: hasClipboard ? 'pointer' : 'not-allowed', fontSize: 11, color: hasClipboard ? '#334155' : '#94a3b8' }}
+                  title={hasClipboard ? `${hasClipboard} Blöcke im Clipboard` : 'Nichts zum Einfügen'}
+                >
+                  Einfügen
+                </button>
+              );
+            })()}
             <button
               type="button"
               onClick={() => setLassoMode(m => !m)}

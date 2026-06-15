@@ -19,7 +19,7 @@ import {
 } from '../../components/admin/graph/BlockNodeShared';
 
 export function FrameNode({ id, data, selected }: NodeProps) {
-  const { removeNode, updateNodeData } = useGraphCtx();
+  const { removeNode, updateNodeData, setNodeStyle } = useGraphCtx();
   const d = data as unknown as FrameData;
   const set = (p: Partial<FrameData>) => updateNodeData(id, p as any);
   const color = d.color || '#2563eb';
@@ -27,7 +27,10 @@ export function FrameNode({ id, data, selected }: NodeProps) {
     <div style={{ width: '100%', height: '100%', background: `${color}0d`, border: `2px dashed ${color}`, borderRadius: 10, boxSizing: 'border-box', position: 'relative', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
       <NodeResizer isVisible={selected} minWidth={120} minHeight={60} color={color}
         lineStyle={{ borderWidth: 1.5, borderColor: color, opacity: 0.5 }}
-        handleStyle={{ width: 7, height: 7, borderRadius: 2, background: color }} />
+        handleStyle={{ width: 7, height: 7, borderRadius: 2, background: color }}
+        onResize={(_event, { width, height }) => {
+          setNodeStyle(id, { width: Math.round(width), height: Math.round(height) });
+        }} />
       {/* Label (immer sichtbar oben links) */}
       <div style={{ position: 'absolute', top: 5, left: 10, right: selected ? 130 : 10, fontSize: 10, color, fontWeight: 700, opacity: 0.8, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {d.label || ''}

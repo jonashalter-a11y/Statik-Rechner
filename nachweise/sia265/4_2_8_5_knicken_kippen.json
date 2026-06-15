@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "exported_at": "2026-06-15T19:25:36.708Z",
+  "verification": {
+    "id": "4.2.8.5_knicken+kippen",
+    "norm_id": "sia265",
+    "chapter_id": "sia265_4_2_8_mqe59n3c",
+    "title": "Knicken und Kippen",
+    "formula_latex": "",
+    "formula_description": "",
+    "compute_expr": "",
+    "graph_json": "{\"version\":1,\"nodes\":[{\"id\":\"variable_mqflipcz_1\",\"type\":\"variable\",\"position\":{\"x\":209.54491801747187,\"y\":177.6871200745535},\"data\":{\"kind\":\"variable\",\"name\":\"\\\\sigma_{c,0,d}\",\"label\":\"Spannung aus Normalkraft\",\"unit\":\"\\\\mathrm{N/mm^2}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"variable_mqflkdgb_2\",\"type\":\"variable\",\"position\":{\"x\":200.97967709045906,\"y\":390.6361675166152},\"data\":{\"kind\":\"variable\",\"name\":\"\\\\sigma_{m,d}\",\"label\":\"Biegespannung\",\"unit\":\"\\\\mathrm{N/mm^2}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false},\"style\":{\"width\":150,\"height\":195}}],\"edges\":[]}",
+    "notes": "",
+    "active": 1
+  },
+  "chapter": {
+    "id": "sia265_4_2_8_mqe59n3c",
+    "norm_id": "sia265",
+    "parent_id": "4.2",
+    "number": "4.2.8",
+    "title": "Knicken (Stabilität von Druckstäben)",
+    "sort_order": 50
+  },
+  "variables": [],
+  "tables": [],
+  "graph": {
+    "version": 1,
+    "nodes": [
+      {
+        "id": "variable_mqflipcz_1",
+        "type": "variable",
+        "position": {
+          "x": 209.54491801747187,
+          "y": 177.6871200745535
+        },
+        "data": {
+          "kind": "variable",
+          "name": "\\sigma_{c,0,d}",
+          "label": "Spannung aus Normalkraft",
+          "unit": "\\mathrm{N/mm^2}",
+          "default_value": "0",
+          "inputKind": "number",
+          "options": [],
+          "hasDefault": false
+        }
+      },
+      {
+        "id": "variable_mqflkdgb_2",
+        "type": "variable",
+        "position": {
+          "x": 200.97967709045906,
+          "y": 390.6361675166152
+        },
+        "data": {
+          "kind": "variable",
+          "name": "\\sigma_{m,d}",
+          "label": "Biegespannung",
+          "unit": "\\mathrm{N/mm^2}",
+          "default_value": "0",
+          "inputKind": "number",
+          "options": [],
+          "hasDefault": false
+        },
+        "style": {
+          "width": 150,
+          "height": 195
+        }
+      }
+    ],
+    "edges": []
+  }
+}

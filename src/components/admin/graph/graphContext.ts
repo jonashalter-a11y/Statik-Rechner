@@ -6,6 +6,7 @@ export interface DbTableFull { id: string; title: string; headers: string[]; row
 
 export interface GraphCtxValue {
   updateNodeData: (id: string, patch: Partial<BlockData>) => void;
+  setNodeStyle: (id: string, style: Record<string, any>) => void;
   removeNode: (id: string) => void;
   dbTables: DbTableMeta[];
   loadTableFull: (id: string) => Promise<DbTableFull | null>;
