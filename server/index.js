@@ -22,6 +22,12 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '20mb' }));
 
+// Auto-reload JSON-Dateien in Entwicklung (vor jedem API-Request)
+app.use('/api', (req, res, next) => {
+  safeImportVerificationJsons({ forceReload: true });
+  next();
+});
+
 function safeExportVerification(id) {
   try {
     exportVerificationById(db, id);
@@ -39,9 +45,9 @@ function safeExportNorm(normId) {
   }
 }
 
-function safeImportVerificationJsons() {
+function safeImportVerificationJsons(options = {}) {
   try {
-    return importActiveVerificationExports(db);
+    return importActiveVerificationExports(db, options);
   } catch (err) {
     console.error('Nachweis-JSON-Sync fehlgeschlagen:', err);
     return null;

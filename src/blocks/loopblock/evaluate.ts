@@ -32,9 +32,11 @@ export function evaluateLoopBlock(node: GraphNode, runtime: BlockEvalRuntime) {
             const perIterCalcVals: Record<string, number[]> = {};
             const perIterFormulas: Record<string, string[]> = {};
             const perIterCalcFormulas: Record<string, string[]> = {};
+            const optionMatches = (opt: any, selected: string) =>
+              opt?.id === selected || opt?.label === selected || (Array.isArray(opt?.aliases) && opt.aliases.includes(selected));
             const optionForItem = (item: Record<string, string> | undefined) => {
               const sel = item?.['__sel__'] ?? '';
-              return (d.options || []).find((o: any) => o.id === sel || o.label === sel);
+              return (d.options || []).find((o: any) => optionMatches(o, sel));
             };
             const isHollowOption = (opt: any) =>
               String(opt?.category || opt?.label || '').toLowerCase().includes('hohlraum');
@@ -48,7 +50,11 @@ export function evaluateLoopBlock(node: GraphNode, runtime: BlockEvalRuntime) {
               return key.includes('bekleidung') || key.includes('beplankung');
             };
             const isInsulationOption = (opt: any) => categoryKey(opt).includes('damm');
-            const isGypsumOption = (opt: any) => categoryKey(opt).includes('gips');
+            const isGypsumOption = (opt: any) => {
+              if (!opt) return false;
+              if (Object.prototype.hasOwnProperty.call(opt, 'protects_deltat')) return opt.protects_deltat === true;
+              return categoryKey(opt).includes('gips');
+            };
             const layerThickness = (item: Record<string, string> | undefined) => {
               if (!item) return NaN;
               for (const v of (d.vars || [])) {
@@ -66,6 +72,21 @@ export function evaluateLoopBlock(node: GraphNode, runtime: BlockEvalRuntime) {
               if (idx < 0 || idx >= n) return false;
               const opt = optionForItem(items[idx]);
               return isHollowOption(opt) && layerThickness(items[idx]) >= 40;
+            };
+            const isIgnoredHollow = (idx: number) => {
+              if (idx < 0 || idx >= n) return false;
+              const opt = optionForItem(items[idx]);
+              return isHollowOption(opt) && !isEffectiveHollow(idx);
+            };
+            const previousMaterialIndex = (idx: number) => {
+              let j = idx - 1;
+              while (j >= 0 && isIgnoredHollow(j)) j--;
+              return j;
+            };
+            const nextMaterialIndex = (idx: number) => {
+              let j = idx + 1;
+              while (j < n && isIgnoredHollow(j)) j++;
+              return j;
             };
             const outputApplies = (out: any, idx: number, opt: any) => {
               const key = `${out?.id || ''} ${out?.name || ''} ${out?.label || ''}`.toLowerCase();
@@ -100,9 +121,9 @@ export function evaluateLoopBlock(node: GraphNode, runtime: BlockEvalRuntime) {
                 }
               }
               const selLabel = item['__sel__'] ?? '';
-              const opt = (d.options || []).find((o: any) => o.id === selLabel || o.label === selLabel);
-              const prevOpt = optionForItem(items[i - 1]);
-              const nextOpt = optionForItem(items[i + 1]);
+              const opt = (d.options || []).find((o: any) => optionMatches(o, selLabel));
+              const prevOpt = optionForItem(items[previousMaterialIndex(i)]);
+              const nextOpt = optionForItem(items[nextMaterialIndex(i)]);
               setSymbol(localSym, 'prev_is_bekleidung', isCoverOption(prevOpt) ? 1 : 0);
               setSymbol(localSym, 'prev_is_daemmung', isInsulationOption(prevOpt) ? 1 : 0);
               setSymbol(localSym, 'prev_is_hohlraum', isEffectiveHollow(i - 1) ? 1 : 0);

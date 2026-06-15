@@ -1628,10 +1628,12 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                   iterOutVals[out.id] = perIterVals[out.id]?.[i] ?? NaN;
                 }
 
-                const selectedOpt = (lb.options || []).find(opt => opt.id === selLabel || opt.label === selLabel);
+                const optionMatches = (opt: any, selected: string) =>
+                  opt?.id === selected || opt?.label === selected || (Array.isArray(opt?.aliases) && opt.aliases.includes(selected));
+                const selectedOpt = (lb.options || []).find(opt => optionMatches(opt, selLabel));
                 const optionForItem = (loopItem: Record<string, string> | undefined) => {
                   const selected = loopItem?.['__sel__'] ?? '';
-                  return (lb.options || []).find(opt => opt.id === selected || opt.label === selected);
+                  return (lb.options || []).find(opt => optionMatches(opt, selected));
                 };
                 const isHollowOption = (opt: typeof selectedOpt) =>
                   String(opt?.category || opt?.label || '').toLowerCase().includes('hohlraum');

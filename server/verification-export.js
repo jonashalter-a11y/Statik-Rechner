@@ -301,6 +301,12 @@ function importActiveVerificationExports(db, options = {}) {
   const importedIds = [];
   const errors = [];
 
+  // Für Entwicklung: Wenn forceReload=true, lösche alle alten Verifikationen zuerst
+  if (options.forceReload) {
+    // Deaktiviere alle bestehenden aktiven Verifikationen
+    db.prepare('UPDATE verifications SET active=0 WHERE active=1').run();
+  }
+
   for (const file of files) {
     try {
       const payload = JSON.parse(fs.readFileSync(file.filePath, 'utf8'));
