@@ -1193,24 +1193,27 @@ export default function GraphVerificationView({ verification, readOnly = false, 
     | { type: 'vars'; nodes: typeof ordered }
     | { type: 'single'; node: (typeof ordered)[0] }
     | { type: 'title'; node: (typeof ordered)[0] };
-  const sections: Sec[] = [];
-  for (const n of ordered) {
-    const r = ev.results[n.id] || {};
-    if (n.type === 'frame') continue;
-    const isHidden = (graph.hidden_nodes ?? []).includes(n.id);
-    if (isHidden || r.skipped || !activeNodeIds.has(n.id) || n.type === 'output' || n.type === 'woodclass' || n.type === 'condition') continue;
-    if (n.type === 'title') {
-      sections.push({ type: 'title', node: n });
-      continue;
+  const sections: Sec[] = useMemo(() => {
+    const secs: Sec[] = [];
+    for (const n of ordered) {
+      const r = ev.results[n.id] || {};
+      if (n.type === 'frame') continue;
+      const isHidden = (graph.hidden_nodes ?? []).includes(n.id);
+      if (isHidden || r.skipped || !activeNodeIds.has(n.id) || n.type === 'output' || n.type === 'woodclass' || n.type === 'condition') continue;
+      if (n.type === 'title') {
+        secs.push({ type: 'title', node: n });
+        continue;
+      }
+      if (n.type === 'variable' || n.type === 'dropdown' || n.type === 'ref') {
+        const last = secs[secs.length - 1];
+        if (last?.type === 'vars') last.nodes.push(n);
+        else secs.push({ type: 'vars', nodes: [n] });
+      } else {
+        secs.push({ type: 'single', node: n });
+      }
     }
-    if (n.type === 'variable' || n.type === 'dropdown' || n.type === 'ref') {
-      const last = sections[sections.length - 1];
-      if (last?.type === 'vars') last.nodes.push(n);
-      else sections.push({ type: 'vars', nodes: [n] });
-    } else {
-      sections.push({ type: 'single', node: n });
-    }
-  }
+    return secs;
+  }, [ordered, ev.results, graph.hidden_nodes, activeNodeIds]);
 
   // Berechne welche sections-Einträge durch einen eingeklappten Titel verdeckt sind
   const hiddenBySectionCollapse = useMemo(() => {
@@ -1315,8 +1318,9 @@ export default function GraphVerificationView({ verification, readOnly = false, 
           );
         }
         if (sec.type === 'vars') {
+          const varGroupId = `vars_${sec.nodes.map(n => n.id).join('_')}`;
           return (
-            <div key={`vars_${si}`} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
+            <div key={varGroupId} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
               {sec.nodes.map(n => {
                 const d: any = n.data;
 
@@ -1367,7 +1371,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                 return (
                   <div key={n.id} style={{ ...card, marginBottom: 0, ...(fullWidth ? { gridColumn: '1 / -1' } : {}) }}>
                     {d.inputKind === 'number_comment' && d.comment && (
-                      <div style={{ background: '#fefce8', border: '1px solid #fde047', borderRadius: 4, padding: '5px 8px', marginBottom: 6, fontSize: 11, color: '#713f12', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                      <div style={{ background: '#fee2e2', border: '2px solid #dc2626', borderRadius: 4, padding: '5px 8px', marginBottom: 6, fontSize: 11, color: '#991b1b', fontWeight: 600, lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
                         {d.comment}
                       </div>
                     )}
