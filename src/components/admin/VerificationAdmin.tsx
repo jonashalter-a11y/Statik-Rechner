@@ -428,16 +428,19 @@ export default function VerificationAdmin() {
       let verifications = Array.isArray(data) ? data : [data];
       // Norm und Kapitel-ID auf alle Nachweise überschreiben
       verifications = verifications.map((v: any) => ({ ...v, norm_id: importDialog.normId, chapter_id: importDialog.chapterId }));
-      const resp = await fetch('/api/verifications/import-batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(verifications),
-      });
-      const result = await resp.json();
-      if (resp.ok) {
-        const ok = (result.imported || []).filter((r: any) => r.ok).length;
-        const err = (result.imported || []).filter((r: any) => r.error).length;
-        const firstOkId = (result.imported || []).find((r: any) => r.ok)?.id;
+      const imported = [];
+      for (const verification of verifications) {
+        try {
+          const result = await api.importVerification({ payload: verification, norm_id: importDialog.normId, chapter_id: importDialog.chapterId });
+          imported.push({ ok: true, id: result.id || result.verification?.id });
+        } catch (error: any) {
+          imported.push({ ok: false, error: String(error?.message || error) });
+        }
+      }
+      {
+        const ok = imported.filter((r: any) => r.ok).length;
+        const err = imported.filter((r: any) => r.error).length;
+        const firstOkId = imported.find((r: any) => r.ok)?.id;
         setMsg(`✓ ${ok} importiert${err ? `, ${err} Fehler` : ''}`);
         setImportDialog({ open: false, normId, chapterId: '' });
         // Reload und dann Auto-select
@@ -461,8 +464,6 @@ export default function VerificationAdmin() {
           const imported = fresh.find((v: Verification) => v.id === firstOkId);
           if (imported) setTimeout(() => selectVerification(imported), 100);
         }
-      } else {
-        setMsg(`⚠ Import fehlgeschlagen: ${result.error || 'unbekannter Fehler'}`);
       }
     } catch (ex) {
       setMsg(`⚠ Fehler beim Lesen/Parsen: ${String(ex)}`);

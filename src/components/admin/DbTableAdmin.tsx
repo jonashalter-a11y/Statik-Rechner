@@ -229,15 +229,7 @@ function JsonImportModal({ normId, chapterId, chapters, onClose, onImported }: {
     if (!preview || !title.trim()) { setErr('Titel und JSON erforderlich'); return; }
     setSaving(true); setErr('');
     try {
-      const res = await fetch('/api/db-tables', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ norm_id: normId, chapter_id: chapterId, title: title.trim(), description, type: 'chart', headers: [], rows: [], chart_json: preview }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `HTTP ${res.status}`);
-      }
+      await api.createDbTable({ norm_id: normId, chapter_id: chapterId, title: title.trim(), description, type: 'chart', headers: [], rows: [], chart_json: preview });
       onImported(); onClose();
     } catch (e: any) {
       setErr(String(e.message || e));

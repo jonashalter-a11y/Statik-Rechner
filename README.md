@@ -1,6 +1,6 @@
 # SIA 265/261 Holzbau Rechner
 
-Interaktiver Statik-Rechner für Schweizer Baunormen. Unterstützt **SIA 265 (Holzbau)** und **SIA 261 (Einwirkungen auf Tragwerke)** mit automatischer Berechnungsformel-Auswertung, Anhang-C-Windtabellen und PDF-Export.
+Interaktiver Statik-Rechner für Schweizer Baunormen. Die Anwendung laedt ihre Normen, Kapitel, Tabellen, Holzwerte und Nachweise direkt aus JSON-Dateien und braucht fuer den normalen Betrieb keinen Backend-Server und keine SQLite-Datenbank mehr.
 
 ---
 
@@ -32,15 +32,18 @@ Interaktiver Statik-Rechner für Schweizer Baunormen. Unterstützt **SIA 265 (Ho
 ## Quick Start
 
 ```bash
-# Terminal 1 – Backend (Port 3002)
-cd server
-PORT=3002 node index.js
-
-# Terminal 2 – Frontend (Port 5173)
 npm run dev
 ```
 
 Browser: **http://localhost:5173**
+
+Production-Build:
+
+```bash
+npm run build
+```
+
+`npm run build` erzeugt nur das statische Frontend in `dist/`. Dabei wird keine DB neu aufgebaut.
 
 ---
 
@@ -49,23 +52,26 @@ Browser: **http://localhost:5173**
 ### Stack
 | Schicht | Technologie |
 |---------|-------------|
-| Backend | Node.js, Express 5, CommonJS |
-| Datenbank | SQLite (`better-sqlite3`) |
+| Datenquelle | JSON-Dateien im Repository |
 | Frontend | React 18, TypeScript, Vite |
 | State | Zustand |
 | Editor | React Flow (Node-Editor) |
 | Formeln | KaTeX (Rendering), `new Function()` (Auswertung) |
 | Export | jsPDF, html2canvas |
 
-### Datenspeicher: JSON-basierte Verifikationen
-**Verifikationen werden NICHT in der DB persistent gespeichert**, sondern als JSON-Objekte verwaltet:
+### Datenspeicher: JSON-first
+Die dauerhafte Quelle sind JSON-Dateien:
 
-1. **Admin erstellt Nachweis** im Node-Editor (Block-Graph mit 8 Block-Typen)
-2. **Export → JSON** oder direkter **JSON-Import** im Admin-UI
-3. **Speicherung in `verifications` Tabelle** mit `graph_json`-Spalte
-4. **Beim API-Abruf** (`/api/verifications`) werden alle Einträge ausgegeben
+- `server/data/norms.json`: Normen und Navigation
+- `server/data/units.json`: globale Einheiten
+- `server/data/wood.json`: Holzarten, Holzklassen und Materialwerte
+- `server/data/chapters/<norm>.json`: Kapitel pro Norm
+- `server/data/tables/<norm>.json`: Tabellen und Diagramm-Daten pro Norm
+- `server/nachweise/<norm>/*.json`: Nachweise inklusive Block-Graph
 
-**Kapitel und Referenztabellen** (Anhang C) bleiben in der DB.
+Das Frontend importiert diese Dateien ueber `src/api.ts` direkt mit Vite. Diese lokale API ersetzt die frueheren `/api`-Requests.
+
+Wichtig: Ein Browser kann ohne Backend nicht direkt in Projektdateien schreiben. Aenderungen im Admin werden deshalb im Browser-`localStorage` gehalten. Dauerhafte Aenderungen an Nachweisen machst du ueber JSON-Export/Import oder indem du die passende JSON-Datei im Repository ersetzt.
 
 ### Block-Typen (Node-Editor)
 `variable` 🟪 · `dropdown` 🟧 · `tablevalue` 🟩 · `calc` 🟥 · `stdcalc` 🟫 · `tablecalc` 🟦 · `condition` 🔶 · `output` ⬜
@@ -75,35 +81,16 @@ Kanten: `workflow` (Standard) und `condition` (bedingte Ausführung)
 ### Dual-Norm-System
 Der Norm-Switcher im Header schaltet zwischen SIA 265 und SIA 261:
 - `setNormId(id)` → Kapitelbaum aus Cache
-- `loadNormData(id)` → frischer API-Abruf (Kapitel + Verifikationen)
+- `loadNormData(id)` → Laden aus JSON-API (Kapitel + Verifikationen)
 - Verifikationen pro Norm gecacht in `_verifsByNorm`
 
 ---
 
-## Datenbank
+## Keine Datenbank mehr
 
-### Neu aufbauen
+Die SQLite-Dateien `server/sia265.db`, `server/sia265.db-shm` und `server/sia265.db-wal` werden nicht mehr benoetigt. Falls sie lokal wieder entstehen, sind sie nicht mehr die Quelle der Wahrheit fuer das Frontend.
 
-Nach Änderungen an `db.js` oder `seed-anhangc-full.js`:
-
-```bash
-rm -f server/sia265.db server/sia265.db-wal server/sia265.db-shm
-node server/db.js                  # Schema + Kapitel-Seeds
-node server/seed-anhangc-full.js   # Windtabellen Anhang C (Tab. 31–45)
-```
-
-`db.js` seedet nur beim ersten Start (wenn DB leer: `chapCount === 0`).
-
-### Schema (wichtigste Tabellen)
-```
-chapters        id, norm_id, parent_id, number, title, sort_order
-verifications   id, norm_id, chapter_id, title, formula_latex, formula_description, graph_json, active
-db_tables       id, norm_id, category, title, description, headers(JSON), rows(JSON)
-```
-
-**Legacy-Spalten** (`variables`, `variable_options`, `compute_expr`):
-- Alt-Nachweise rendern weiterhin via Adapter in `legacyToGraph.ts`
-- Neue Verifikationen speichern alles in `graph_json`
+Der alte Express-/SQLite-Code im Ordner `server/` kann noch als Archiv oder Migrationshilfe liegen bleiben. Die App selbst laeuft mit `npm run dev` nur ueber Vite.
 
 ---
 
@@ -113,8 +100,11 @@ db_tables       id, norm_id, category, title, description, headers(JSON), rows(J
 
 1. **Admin-UI öffnen** → Nachweise → **Neuer Nachweis**
 2. **Node-Editor**: Blöcke aus Palette ziehen → mit Workflow-Kanten verbinden
-3. **Speichern** → JSON-Export oder direkt in DB importieren
-4. **JSON-Import**: Admin → Nachweise → **JSON importieren** → Norm + Kapitel wählen
+3. **Speichern** → bleibt lokal im Browser erhalten
+4. **Export** → Nachweis als JSON sichern
+5. **JSON-Import**: Admin → Nachweise → **JSON importieren** → Norm + Kapitel wählen
+
+Wenn ein Nachweis dauerhaft in der App enthalten sein soll, lege die exportierte Datei unter `server/nachweise/<norm>/<id>.json` ab.
 
 ### JSON-Format
 ```json
@@ -136,20 +126,24 @@ db_tables       id, norm_id, category, title, description, headers(JSON), rows(J
 }
 ```
 
-**Batch-Import**: Array von Verifikationen oder einzelnes Objekt.
+**Import**: einzelnes Objekt oder Array von Nachweisen.
 
 ---
 
-## API-Endpunkte
+## Lokale API
 
-| Methode | Pfad | Beschreibung |
-|---------|------|--------------|
-| GET | `/api/chapters?norm=sia261` | Kapitelstruktur einer Norm |
-| GET | `/api/verifications?norm=sia261` | Nachweise mit Variablen (graph + legacy) |
-| GET | `/api/db-tables?norm=sia261` | Referenztabellen (Wind, Schnee, …) |
-| GET | `/api/db-tables/:id` | Einzelne Tabelle |
-| GET | `/api/wood-types` | Holzarten |
-| GET | `/api/wood-classes` | Holzklassen mit Materialkennwerten |
+`src/api.ts` stellt weiterhin dieselben Funktionen bereit wie frueher die Backend-API, zum Beispiel:
+
+- `api.getNorms()`
+- `api.getChapters(norm)`
+- `api.getVerifications(norm)`
+- `api.getDbTables(norm)`
+- `api.getDbTableFull(id)`
+- `api.getWoodTypes()`
+- `api.getWoodClasses()`
+- `api.getUnits()`
+
+Diese Funktionen lesen aber direkt aus den JSON-Dateien und speichern Bearbeitungen lokal im Browser.
 
 ---
 
@@ -194,14 +188,16 @@ Qk = cred · cd · cf · qp · Aref
 
 ```
 server/
-  index.js              API-Endpunkte (Express)
-  db.js                 Schema + Kapitel-Seed
-  seed-chapters.js      SIA 265 Kapitel (138)
-  seed-sia261.js        SIA 261 Kapitel (90)
-  seed-anhangc-full.js  Windtabellen Anhang C (Excel-verifiziert)
-  sia265.db             SQLite
+  data/
+    norms.json
+    units.json
+    wood.json
+    chapters/<norm>.json
+    tables/<norm>.json
+  nachweise/<norm>/*.json
 
 src/
+  api.ts                Lokale JSON-API statt Backend/DB
   App.tsx               Layout, Norm-Switcher, Resizable Columns
   store/useStore.ts     Zustand (normId, chapters, verifications, Cache)
   components/

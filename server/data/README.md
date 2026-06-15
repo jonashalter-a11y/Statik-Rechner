@@ -1,6 +1,6 @@
 # JSON-Datenablage
 
-Diese Dateien sind die dauerhafte Datenquelle fuer das Backend.
+Diese Dateien sind die dauerhafte Datenquelle fuer das Frontend. Die SQLite-DB wird nicht mehr benoetigt.
 
 - `norms.json`: Normen und Bereiche in der oberen Navigation
 - `units.json`: Einheiten-Auswahl
@@ -9,5 +9,6 @@ Diese Dateien sind die dauerhafte Datenquelle fuer das Backend.
 - `tables/<norm>.json`: Tabellen und Diagramm-Daten pro Norm
 - `../nachweise/<norm>/*.json`: einzelne Nachweise mit Block-Graph, Variablen und eingebundenen Tabellen
 
-Beim Start liest das Backend diese JSON-Dateien ein und baut daraus den SQLite-Cache `sia265.db`.
-Wenn du im Backend etwas bearbeitest, wird die passende JSON-Datei automatisch aktualisiert.
+Das Frontend liest diese Dateien direkt ueber `src/api.ts`.
+
+Wichtig: Ohne Backend kann der Browser nicht direkt in diese Dateien schreiben. Admin-Aenderungen werden lokal im Browser gespeichert. Fuer dauerhafte Aenderungen einen Nachweis als JSON exportieren und unter `server/nachweise/<norm>/` ablegen oder eine bestehende JSON-Datei ersetzen.
