@@ -15,6 +15,9 @@ export default function MathDisplay({ latex, display = false, style }: Props) {
       displayMode: display,
       throwOnError: false,
       output: 'html',
+      macros: {
+        '\\frac': '\\dfrac',  // \frac → \dfrac (bessere Größe)
+      },
     });
   } catch {
     html = `<span style="color:red">${latex}</span>`;
@@ -22,10 +25,7 @@ export default function MathDisplay({ latex, display = false, style }: Props) {
 
   return (
     <span
-      // Display-Math ist ein Block-Element (.katex-display). In einem inline <span>
-      // reserviert es seine Höhe nicht → es überläuft die Box und überlappt Nachbarn.
-      // Darum im Display-Modus selbst Block werden.
-      style={display ? { display: 'block', ...style } : style}
+      style={display ? { display: 'block', fontSize: '1.05em', ...style } : style}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

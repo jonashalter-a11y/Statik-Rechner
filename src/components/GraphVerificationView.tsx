@@ -1513,12 +1513,21 @@ export default function GraphVerificationView({ verification, readOnly = false, 
           const bg = unknown ? '#f9fafb' : passed ? '#d1fae5' : '#fee2e2';
           const borderColor = unknown ? '#d1d5db' : passed ? '#6ee7b7' : '#fca5a5';
           const textColor = unknown ? '#6b7280' : passed ? '#065f46' : '#991b1b';
+          const showEta = d.show_eta !== false;
+          const etaVar = d.eta_var || '\\eta';
           return (
             <div key={n.id} style={{ ...card, background: bg, borderColor, borderWidth: 2 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ fontSize: 20 }}>{unknown ? '⬜' : passed ? '✅' : '❌'}</span>
                 <div style={{ flex: 1 }}>
                   {d.label && <div style={{ fontWeight: 700, fontSize: 13, color: textColor, marginBottom: 4 }}>{d.label}</div>}
+
+                  {showEta && isFiniteNumber(r.eta) && (
+                    <div style={{ background: '#fff', border: `1px solid ${borderColor}`, borderRadius: 5, padding: '5px 8px', overflowX: 'auto', marginBottom: 4 }}>
+                      <MathDisplay latex={`${etaVar} = ${num(r.eta)}`} display />
+                    </div>
+                  )}
+
                   {d.latex && (
                     <div style={{ background: '#fff', border: `1px solid ${borderColor}`, borderRadius: 5, padding: '5px 8px', overflowX: 'auto', marginBottom: 4 }}>
                       <MathDisplay latex={d.latex} display />
@@ -1532,9 +1541,9 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                   <div style={{ fontWeight: 700, fontSize: 13, color: textColor }}>
                     {unknown ? 'Berechnung läuft…' : passed ? 'Nachweis erfüllt' : 'Nachweis nicht erfüllt'}
                   </div>
-                  {isFiniteNumber(r.eta) && (
-                    <div style={{ marginTop: 3, fontSize: 12, color: textColor, fontWeight: 700 }}>
-                      <MathDisplay latex={`\\eta = ${num(r.eta)} ${r.eta! <= 1 ? '\\leq 1' : '> 1'}`} />
+                  {showEta && isFiniteNumber(r.eta) && r.eta! > 1 && (
+                    <div style={{ marginTop: 3, fontSize: 11, color: textColor }}>
+                      <MathDisplay latex={`${etaVar} = ${num(r.eta)} > 1`} />
                     </div>
                   )}
                 </div>

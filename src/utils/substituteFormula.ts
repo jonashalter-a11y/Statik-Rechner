@@ -6,8 +6,13 @@
 
 export function substituteValues(expr: string, vars: Record<string, number>): string {
   if (!expr) return '';
+
+  // Ersetze LaTeX-Konstanten zuerst
+  let result = expr
+    .replace(/\\pi\b/g, formatNumber(Math.PI))
+    .replace(/\\e\b/g, formatNumber(Math.E));
+
   const names = Object.keys(vars).sort((a, b) => b.length - a.length);
-  let result = expr;
   for (const n of names) {
     // Whole-word boundary regex: avoid matching part of another identifier
     const re = new RegExp(`(?<![\\w$])${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w$])`, 'g');

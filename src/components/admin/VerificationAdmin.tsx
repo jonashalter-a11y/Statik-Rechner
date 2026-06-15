@@ -544,14 +544,17 @@ export default function VerificationAdmin() {
   }, [saveEditing]);
 
   // Direct Auto-Save wenn Graph sich ändert (für Positions-Speicherung)
+  const graphStrRef = useRef('');
   useEffect(() => {
     if (!editing) return;
     const graphStr = JSON.stringify(editing.graph);
+    if (graphStr === graphStrRef.current) return;
+    graphStrRef.current = graphStr;
     const timer = setTimeout(() => {
       saveEditing(editing, true);
-    }, 2000);
+    }, 3000);
     return () => clearTimeout(timer);
-  }, [editing?.id, JSON.stringify(editing?.graph)]);
+  }, [editing, saveEditing]);
 
   const deleteV = async (id: string) => {
     if (!confirm('Nachweis löschen?')) return;

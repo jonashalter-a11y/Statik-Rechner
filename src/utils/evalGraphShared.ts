@@ -157,7 +157,13 @@ export function substituteLatexValues(latex: string, symbols: Record<string, num
   if (!latex) return '';
   // Anzeige-Befehle vereinheitlichen, damit "\text{crit}" und "0{,}05"-Indizes
   // dieselben Symbolnamen treffen, die unten generiert werden.
-  const normalized = stripLatexText(latex).replace(/\{,\}/g, ',');
+  let normalized = stripLatexText(latex).replace(/\{,\}/g, ',');
+
+  // Ersetze LaTeX-Konstanten
+  normalized = normalized
+    .replace(/\\pi\b/g, formatLatexNumber(Math.PI))
+    .replace(/\\e\b/g, formatLatexNumber(Math.E));
+
   const entries = Object.entries(symbols)
     .filter(([, value]) => typeof value === 'number' && isFinite(value))
     .flatMap(([name, value]) => {
@@ -210,9 +216,13 @@ export function indexLoopLatexName(name: string, index: number | 'n') {
 
 export function extractMissingSymbols(expr: string, symbols: Record<string, number>): string[] {
   if (!expr) return [];
-  const cleaned = expr.replace(/Math\.[A-Za-z_$][\w$]*/g, '');
+  // Entferne LaTeX-Konstanten und Math-Funktionen
+  let cleaned = expr
+    .replace(/\\pi\b/g, '')
+    .replace(/\\e\b/g, '')
+    .replace(/Math\.[A-Za-z_$][\w$]*/g, '');
   const ids = cleaned.match(/[A-Za-z_$][\w$]*/g) || [];
-  const ignored = new Set(['Math', 'NaN', 'Infinity', 'undefined', 'null', 'true', 'false']);
+  const ignored = new Set(['Math', 'NaN', 'Infinity', 'undefined', 'null', 'true', 'false', 'pi', 'e']);
   return Array.from(new Set(ids.filter(id => !ignored.has(id) && !(id in symbols))));
 }
 

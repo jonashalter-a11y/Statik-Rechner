@@ -10,10 +10,16 @@ export function evalFormula(expr: string, vars: Record<string, number>): number 
   if (!expr || !expr.trim()) return null;
 
   try {
+    // Ersetze LaTeX-Konstanten mit ihren mathematischen Werten
+    let processedExpr = expr
+      .replace(/\\pi\b/g, String(Math.PI))
+      .replace(/\\e\b/g, String(Math.E))
+      .replace(/\\pi\b/g, String(Math.PI));
+
     const names = Object.keys(vars);
     const values = Object.values(vars);
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
-    const fn = new Function(...names, `"use strict"; return (${expr});`);
+    const fn = new Function(...names, `"use strict"; return (${processedExpr});`);
     const result = fn(...values);
     if (typeof result !== 'number' || !isFinite(result)) return null;
     return result;
