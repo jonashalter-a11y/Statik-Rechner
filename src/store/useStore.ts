@@ -21,8 +21,6 @@ export interface PrintProtocolExport {
   app: 'Statik-Rechner';
   kind: 'print-protocol';
   normId: string;
-  woodType: WoodType;
-  woodClassId: string;
   items: PrintItem[];
 }
 
@@ -40,6 +38,10 @@ interface AppState {
   printItems: PrintItem[];
   // Graph-Eingaben je Nachweis (Node-ID → Wert); wird beim Snapshot mitkapturiert
   graphInputsByVerif: Record<string, Record<string, string>>;
+  // Holzart pro Nachweis (nicht mehr global)
+  woodTypeByVerif: Record<string, string>;
+  // Holzklasse pro Nachweis (nicht mehr global)
+  woodClassIdByVerif: Record<string, string>;
   // Hochgezählt bei jedem restoreFromPrint → erzwingt Re-mount von GraphVerificationView
   restoreNonce: number;
 
@@ -55,6 +57,8 @@ interface AppState {
   setNormId:       (id: string)    => void;
   setWoodType:     (w: WoodType)   => void;
   setWoodClassId:  (id: string)    => void;
+  setWoodTypeForVerif: (verifId: string, woodType: string) => void;
+  setWoodClassIdForVerif: (verifId: string, classId: string) => void;
   toggleChapter:   (id: string)    => void;
   setActiveChapter:(id: string | null) => void;
   setActiveVerification:(id: string | null) => void;
@@ -216,6 +220,8 @@ export const useStore = create<AppState>((set, get) => ({
   verifications: [],
   printItems: readPrintProtocolItems(),
   graphInputsByVerif: readJsonStorage<Record<string, Record<string, string>>>(LS_GRAPH_INPUTS, {}),
+  woodTypeByVerif: {},
+  woodClassIdByVerif: {},
   restoreNonce: 0,
   apiWoodTypes:   [],
   apiWoodClasses: [],
@@ -271,6 +277,14 @@ export const useStore = create<AppState>((set, get) => ({
     const verifications = applyWoodClassToVerifications(state.verifications, woodClass);
     return { woodClassId: id, verifications };
   }),
+
+  setWoodTypeForVerif: (verifId, woodType) => set(state => ({
+    woodTypeByVerif: { ...state.woodTypeByVerif, [verifId]: woodType },
+  })),
+
+  setWoodClassIdForVerif: (verifId, classId) => set(state => ({
+    woodClassIdByVerif: { ...state.woodClassIdByVerif, [verifId]: classId },
+  })),
 
   toggleChapter: (id) =>
     set(state => ({ chapters: toggleChapterInTree(state.chapters, id) })),
@@ -384,8 +398,6 @@ export const useStore = create<AppState>((set, get) => ({
       app: 'Statik-Rechner',
       kind: 'print-protocol',
       normId: state.normId,
-      woodType: state.woodType,
-      woodClassId: state.woodClassId,
       items: state.printItems,
     };
   },

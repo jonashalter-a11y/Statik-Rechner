@@ -5,8 +5,19 @@ const GraphVerificationView = lazy(() => import('./GraphVerificationView'));
 
 const scrollKey = (verificationId: string) => `sia-verification-scroll:${verificationId}`;
 
+function hasWoodClassBlock(verification: any): boolean {
+  if (!verification?.graph_json) return false;
+  try {
+    const graph = typeof verification.graph_json === 'string' ? JSON.parse(verification.graph_json) : verification.graph_json;
+    const nodes = graph.nodes || [];
+    return nodes.some((n: any) => n.type === 'woodclass' || n.type === 'tablevalue');
+  } catch {
+    return false;
+  }
+}
+
 export default function VerificationPanel() {
-  const { verifications, activeVerificationId, updateComment, addVerificationToPrint, printItems, graphInputsByVerif, restoreNonce } = useStore() as any;
+  const { verifications, activeVerificationId, updateComment, addVerificationToPrint, printItems, graphInputsByVerif, restoreNonce, apiWoodTypes, apiWoodClasses, woodTypeByVerif, woodClassIdByVerif, setWoodTypeForVerif, setWoodClassIdForVerif } = useStore() as any;
   const verification = verifications.find((v: any) => v.id === activeVerificationId);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -37,6 +48,16 @@ export default function VerificationPanel() {
   }
 
   const printCount = printItems.filter((item: any) => item.snapshot.id === verification.id).length;
+  const hasWoodBlock = hasWoodClassBlock(verification);
+  const currentWoodType = woodTypeByVerif[verification.id] || '';
+  const currentWoodClassId = woodClassIdByVerif[verification.id] || '';
+  const woodTypeOptions = apiWoodTypes?.map((t: any) => t.name) || [];
+  const filteredWoodClasses = currentWoodType
+    ? apiWoodClasses?.filter((c: any) => {
+        const woodTypeId = apiWoodTypes?.find((t: any) => t.name === currentWoodType)?.id;
+        return c.wood_type_id === woodTypeId;
+      }) || []
+    : [];
 
   return (
     <div ref={scrollRef} onScroll={handleScroll} style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
@@ -49,6 +70,55 @@ export default function VerificationPanel() {
           + Zum Ausdruck{printCount > 0 ? ` (${printCount}×)` : ''}
         </button>
       </div>
+
+      {/* Holzart + Holzklasse — nur wenn der Nachweis einen woodclass/tablevalue Block hat */}
+      {hasWoodBlock && woodTypeOptions.length > 0 && (
+        <div style={{ marginBottom: 16, padding: 12, background: '#f3f4f6', borderRadius: 6 }}>
+          <div style={{ fontSize: 11, color: '#6b7280', fontWeight: 500, marginBottom: 8 }}>HOLZMATERIAL</div>
+
+          {/* Holzart */}
+          <div style={{ marginBottom: 10 }}>
+            <label style={{ fontSize: 10, color: '#6b7280', fontWeight: 500, display: 'block', marginBottom: 3 }}>Holzart</label>
+            <select
+              value={currentWoodType}
+              onChange={e => {
+                setWoodTypeForVerif(verification.id, e.target.value);
+                // Holzklasse zurücksetzen wenn Holzart wechselt
+                setWoodClassIdForVerif(verification.id, '');
+              }}
+              style={{
+                width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4,
+                fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', background: '#fff',
+              }}
+            >
+              <option value="">— Holzart wählen —</option>
+              {woodTypeOptions.map((t: string) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Holzklasse */}
+          {filteredWoodClasses.length > 0 && (
+            <div>
+              <label style={{ fontSize: 10, color: '#6b7280', fontWeight: 500, display: 'block', marginBottom: 3 }}>Holzklasse</label>
+              <select
+                value={currentWoodClassId}
+                onChange={e => setWoodClassIdForVerif(verification.id, e.target.value)}
+                style={{
+                  width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4,
+                  fontSize: 13, fontFamily: 'inherit', boxSizing: 'border-box', background: '#fff',
+                }}
+              >
+                <option value="">— Holzklasse wählen —</option>
+                {filteredWoodClasses.map((c: any) => (
+                  <option key={c.id} value={c.id}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+      )}
 
       <Suspense fallback={null}>
         <GraphVerificationView

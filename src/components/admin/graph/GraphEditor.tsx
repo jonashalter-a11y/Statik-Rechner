@@ -103,7 +103,7 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
   const idCounter = useRef(1);
   const newId = (t: string) => `${t}_${Date.now().toString(36)}_${idCounter.current++}`;
 
-  // Serialisieren → an Parent melden
+  // Serialisieren → an Parent melden SOFORT (kein Debounce - Auto-Save handled das)
   useEffect(() => {
     const g: VerificationGraph = {
       version: 1,
@@ -119,7 +119,7 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
       ...(hiddenNodes.size > 0 ? { hidden_nodes: [...hiddenNodes] } : {}),
     };
     onChange(g);
-  }, [nodes, edges, displayOrder, hiddenNodes]);
+  }, [nodes, edges, displayOrder, hiddenNodes, onChange]);
 
   // Sync: neue Nodes ans Ende der Reihenfolge hängen, gelöschte entfernen
   useEffect(() => {

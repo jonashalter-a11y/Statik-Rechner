@@ -481,8 +481,11 @@ export default function VerificationAdmin() {
   const saveEditing = useCallback(async (editingToSave: Editing | null, auto = false) => {
     if (!editingToSave || savingRef.current) return;
     const snapshot = editingSnapshot(editingToSave);
-    if (auto && snapshot === savedSnapshotRef.current) return;
-    if (auto && editingToSave.originalId && editingToSave.id !== editingToSave.originalId) return;
+    if (auto && snapshot === savedSnapshotRef.current) {
+      // Aber: Speichern erzwingen alle 2 Sekunden (wegen Positions-Updates)
+      if (Date.now() - (window as any).__lastAutoSave < 1500) return;
+    }
+    (window as any).__lastAutoSave = Date.now();
     setSaving(true);
     try {
       const graph_json = JSON.stringify(editingToSave.graph);
@@ -536,9 +539,19 @@ export default function VerificationAdmin() {
   useEffect(() => {
     const timer = window.setInterval(() => {
       saveEditing(editingRef.current, true);
-    }, 2000);
+    }, 1000);
     return () => window.clearInterval(timer);
   }, [saveEditing]);
+
+  // Direct Auto-Save wenn Graph sich ändert (für Positions-Speicherung)
+  useEffect(() => {
+    if (!editing) return;
+    const graphStr = JSON.stringify(editing.graph);
+    const timer = setTimeout(() => {
+      saveEditing(editing, true);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [editing?.id, JSON.stringify(editing?.graph)]);
 
   const deleteV = async (id: string) => {
     if (!confirm('Nachweis löschen?')) return;

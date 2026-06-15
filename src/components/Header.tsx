@@ -125,26 +125,6 @@ export default function Header({ onAdminClick, onNormChange }: Props) {
         </select>
       </div>
 
-      {/* Holzart + Holzklasse — nur bei SIA 265 relevant */}
-      {isSIA265 && <>
-        {divider}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>Holzart</span>
-          <select style={sel} value={woodType} onChange={e => setWoodType(e.target.value as any)}>
-            {woodTypeOptions.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-        </div>
-
-        {filteredClasses.length > 0 && <>
-          {divider}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>Klasse</span>
-            <select style={{ ...sel, maxWidth: 180 }} value={effectiveClassId} onChange={e => setWoodClassId(e.target.value)}>
-              {filteredClasses.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-            </select>
-          </div>
-        </>}
-      </>}
 
       {/* Norm-Beschreibung */}
       {!isSIA265 && activeNorm?.description && (
