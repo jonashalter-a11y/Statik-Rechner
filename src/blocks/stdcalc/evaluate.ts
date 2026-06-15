@@ -14,7 +14,7 @@ export function evaluateStdCalc(node: GraphNode, runtime: BlockEvalRuntime) {
             const selectedZone = inputs[node.id] != null ? String(inputs[node.id]) : '';
             const pickerVal = tableRes ? tableRes[selectedZone] : NaN;
             const localSym = { ...symbols, [d.picker_name || 'cell']: pickerVal };
-            const expr = d.latex ? latexToJs(d.latex) : (d.expr || '');
+            const expr = d.expr || (d.latex ? latexToJs(d.latex) : '');
             const missingSymbols = extractMissingSymbols(expr, localSym);
             const v = evalFormula(expr, localSym);
             const substituted = substituteValues(expr, localSym);

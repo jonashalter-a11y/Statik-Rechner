@@ -9,7 +9,7 @@ import {
 export function evaluateCheck(node: GraphNode, runtime: BlockEvalRuntime) {
   const d: any = node.data;
   const { graph, inputs, tables, materialProps, context, results, symbols, strSymbols, incomingFrom, getSelectionValue } = runtime;
-  const expr = latexCondToJs(d.latex || '') || d.expr || '';
+  const expr = d.expr || latexCondToJs(d.latex || '') || '';
             const v = evalFormula(expr, symbols);
             const passed = v != null && v !== 0;
             let eta = NaN;

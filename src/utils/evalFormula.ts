@@ -13,8 +13,9 @@ export function evalFormula(expr: string, vars: Record<string, number>): number 
     // Ersetze LaTeX-Konstanten mit ihren mathematischen Werten
     let processedExpr = expr
       .replace(/\\pi\b/g, String(Math.PI))
+      .replace(/\bpi\b/g, String(Math.PI))
       .replace(/\\e\b/g, String(Math.E))
-      .replace(/\\pi\b/g, String(Math.PI));
+      .replace(/\be\b/g, String(Math.E));
 
     const names = Object.keys(vars);
     const values = Object.values(vars);

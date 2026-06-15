@@ -162,7 +162,9 @@ export function substituteLatexValues(latex: string, symbols: Record<string, num
   // Ersetze LaTeX-Konstanten
   normalized = normalized
     .replace(/\\pi\b/g, formatLatexNumber(Math.PI))
-    .replace(/\\e\b/g, formatLatexNumber(Math.E));
+    .replace(/\bpi\b/g, formatLatexNumber(Math.PI))
+    .replace(/\\e\b/g, formatLatexNumber(Math.E))
+    .replace(/\be\b/g, formatLatexNumber(Math.E));
 
   const entries = Object.entries(symbols)
     .filter(([, value]) => typeof value === 'number' && isFinite(value))
@@ -219,7 +221,9 @@ export function extractMissingSymbols(expr: string, symbols: Record<string, numb
   // Entferne LaTeX-Konstanten und Math-Funktionen
   let cleaned = expr
     .replace(/\\pi\b/g, '')
+    .replace(/\bpi\b/g, '')
     .replace(/\\e\b/g, '')
+    .replace(/\be\b/g, '')
     .replace(/Math\.[A-Za-z_$][\w$]*/g, '');
   const ids = cleaned.match(/[A-Za-z_$][\w$]*/g) || [];
   const ignored = new Set(['Math', 'NaN', 'Infinity', 'undefined', 'null', 'true', 'false', 'pi', 'e']);

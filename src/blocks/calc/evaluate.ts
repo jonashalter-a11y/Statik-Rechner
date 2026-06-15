@@ -9,7 +9,7 @@ import {
 export function evaluateCalc(node: GraphNode, runtime: BlockEvalRuntime) {
   const d: any = node.data;
   const { graph, inputs, tables, materialProps, context, results, symbols, strSymbols, incomingFrom, getSelectionValue } = runtime;
-  const expr = d.latex ? latexToJs(d.latex) : (d.expr || '');
+  const expr = d.expr || (d.latex ? latexToJs(d.latex) : '');
             const missingSymbols = extractMissingSymbols(expr, symbols);
             const v = evalFormula(expr, symbols);
             const substituted = substituteValues(expr, symbols);

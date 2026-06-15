@@ -28,77 +28,84 @@
       "sort_order": 1,
       "properties": [
         {
-          "wood_class_id": "C16",
           "key": "f_m_k",
           "label": "Biegefestigkeit",
           "value": 16,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C16",
           "key": "f_t_0_k",
-          "label": "Zug ‖",
+          "label": "Zugfestigkeit ‖",
           "value": 9.4,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C16",
           "key": "f_c_0_k",
-          "label": "Druck ‖",
-          "value": 13,
+          "label": "Druckfestigkeit ‖",
+          "value": 17,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C16",
           "key": "f_c_0_d",
-          "label": "Druckfestigkeit parallel Bemessung",
-          "value": 7.6,
+          "label": "Druckfestigkeit ‖ Bemessung",
+          "value": 10,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C16",
           "key": "f_t_90_k",
-          "label": "Zug ⊥",
+          "label": "Zugfestigkeit ⊥",
           "value": 0.4,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C16",
           "key": "f_c_90_k",
-          "label": "Druck ⊥",
+          "label": "Druckfestigkeit ⊥",
           "value": 2.6,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C16",
           "key": "f_v_k",
-          "label": "Schub",
-          "value": 2.3,
+          "label": "Scherfestigkeit",
+          "value": 1.5,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C16",
-          "key": "E_0_mean",
-          "label": "E-Modul",
+          "key": "E_m_mean",
+          "label": "E-Modul (Mittelwert)",
           "value": 8000,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C16",
-          "key": "E_0_05",
-          "label": "E0,05",
-          "value": 5300,
+          "key": "E_0_mean",
+          "label": "E₀,mean Faserrrichtung",
+          "value": 8000,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C16",
+          "key": "E_0_05",
+          "label": "E₀,₀₅ (5%-Fraktile)",
+          "value": 5400,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_90_mean",
+          "label": "E₉₀,mean ⊥ Faserrrichtung",
+          "value": 270,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "G_mean",
+          "label": "Schubmodul",
+          "value": 500,
+          "unit": "N/mm²"
+        },
+        {
           "key": "rho_k",
           "label": "Rohdichte",
           "value": 310,
           "unit": "kg/m³"
         },
         {
-          "wood_class_id": "C16",
           "key": "beta_c",
           "label": "Hilfswert βc",
           "value": 0.2,
@@ -110,74 +117,88 @@
       "id": "D30",
       "wood_type_id": "laubholz",
       "name": "D30",
-      "label": "D30 – Laubholz",
+      "label": "D30 – Laubholz (Buche/Eiche)",
       "sort_order": 1,
       "properties": [
         {
-          "wood_class_id": "D30",
           "key": "f_m_k",
           "label": "Biegefestigkeit",
           "value": 30,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "D30",
           "key": "f_t_0_k",
-          "label": "Zug ‖",
+          "label": "Zugfestigkeit ‖",
           "value": 18,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "D30",
           "key": "f_c_0_k",
-          "label": "Druck ‖",
-          "value": 23,
+          "label": "Druckfestigkeit ‖",
+          "value": 24,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "D30",
           "key": "f_c_0_d",
-          "label": "Druckfestigkeit parallel Bemessung",
-          "value": 13.5,
+          "label": "Druckfestigkeit ‖ Bemessung",
+          "value": 14.1,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "D30",
           "key": "f_t_90_k",
-          "label": "Zug ⊥",
+          "label": "Zugfestigkeit ⊥",
           "value": 0.6,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "D30",
           "key": "f_c_90_k",
-          "label": "Druck ⊥",
-          "value": 8,
+          "label": "Druckfestigkeit ⊥",
+          "value": 5.3,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "D30",
           "key": "f_v_k",
-          "label": "Schub",
-          "value": 3,
+          "label": "Scherfestigkeit",
+          "value": 1.8,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "D30",
-          "key": "E_0_mean",
-          "label": "E-Modul",
+          "key": "E_m_mean",
+          "label": "E-Modul (Mittelwert)",
           "value": 11000,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "D30",
+          "key": "E_0_mean",
+          "label": "E₀,mean Faserrrichtung",
+          "value": 11000,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_0_05",
+          "label": "E₀,₀₅ (5%-Fraktile)",
+          "value": 9200,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_90_mean",
+          "label": "E₉₀,mean ⊥ Faserrrichtung",
+          "value": 730,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "G_mean",
+          "label": "Schubmodul",
+          "value": 690,
+          "unit": "N/mm²"
+        },
+        {
           "key": "rho_k",
           "label": "Rohdichte",
           "value": 530,
           "unit": "kg/m³"
         },
         {
-          "wood_class_id": "D30",
           "key": "beta_c",
           "label": "Hilfswert βc",
           "value": 0.2,
@@ -193,70 +214,102 @@
       "sort_order": 1,
       "properties": [
         {
-          "wood_class_id": "GL20h",
           "key": "f_m_k",
           "label": "Biegefestigkeit",
           "value": 20,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL20h",
-          "key": "f_t_0_k",
-          "label": "Zug ‖",
+          "key": "f_m_d",
+          "label": "Biegefestigkeit Bemessung",
           "value": 13.3,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL20h",
-          "key": "f_c_0_k",
-          "label": "Druck ‖",
-          "value": 16,
+          "key": "f_t_0_k",
+          "label": "Zugfestigkeit ‖",
+          "value": 13.3,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL20h",
-          "key": "f_c_0_d",
-          "label": "Druckfestigkeit parallel Bemessung",
+          "key": "f_t_0_d",
+          "label": "Zugfestigkeit ‖ Bemessung",
           "value": 10.7,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL20h",
+          "key": "f_c_0_k",
+          "label": "Druckfestigkeit ‖",
+          "value": 20,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_c_0_d",
+          "label": "Druckfestigkeit ‖ Bemessung",
+          "value": 13.3,
+          "unit": "N/mm²"
+        },
+        {
           "key": "f_t_90_k",
-          "label": "Zug ⊥",
+          "label": "Zugfestigkeit ⊥",
           "value": 0.5,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL20h",
           "key": "f_c_90_k",
-          "label": "Druck ⊥",
+          "label": "Druckfestigkeit ⊥",
           "value": 2.5,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL20h",
           "key": "f_v_k",
-          "label": "Schub",
+          "label": "Scherfestigkeit",
           "value": 3.5,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL20h",
-          "key": "E_0_mean",
-          "label": "E-Modul",
+          "key": "f_v_d",
+          "label": "Scherfestigkeit Bemessung",
+          "value": 1.8,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_m_mean",
+          "label": "E-Modul (Mittelwert)",
           "value": 8400,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL20h",
+          "key": "E_0_mean",
+          "label": "E₀,mean Faserrrichtung",
+          "value": 8400,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_0_05",
+          "label": "E₀,₀₅ (5%-Fraktile)",
+          "value": 7000,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_90_mean",
+          "label": "E₉₀,mean ⊥ Faserrrichtung",
+          "value": 300,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "G_mean",
+          "label": "Schubmodul",
+          "value": 650,
+          "unit": "N/mm²"
+        },
+        {
           "key": "rho_k",
           "label": "Rohdichte",
           "value": 340,
           "unit": "kg/m³"
         },
         {
-          "wood_class_id": "GL20h",
           "key": "beta_c",
           "label": "Hilfswert βc",
           "value": 0.1,
@@ -272,84 +325,84 @@
       "sort_order": 2,
       "properties": [
         {
-          "wood_class_id": "C24",
           "key": "f_m_k",
           "label": "Biegefestigkeit",
           "value": 24,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C24",
           "key": "f_t_0_k",
-          "label": "Zug ‖",
+          "label": "Zugfestigkeit ‖",
           "value": 14,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C24",
           "key": "f_c_0_k",
-          "label": "Druck ‖",
+          "label": "Druckfestigkeit ‖",
           "value": 21,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C24",
           "key": "f_c_0_d",
-          "label": "Druckfestigkeit parallel Bemessung",
+          "label": "Druckfestigkeit ‖ Bemessung",
           "value": 12.4,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C24",
           "key": "f_t_90_k",
-          "label": "Zug ⊥",
+          "label": "Zugfestigkeit ⊥",
           "value": 0.4,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C24",
           "key": "f_c_90_k",
-          "label": "Druck ⊥",
+          "label": "Druckfestigkeit ⊥",
           "value": 2.7,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C24",
           "key": "f_v_k",
-          "label": "Schub",
-          "value": 2.5,
+          "label": "Scherfestigkeit",
+          "value": 1.5,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C24",
-          "key": "E_0_mean",
-          "label": "E-Modul",
+          "key": "E_m_mean",
+          "label": "E-Modul (Mittelwert)",
           "value": 11000,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C24",
-          "key": "E_0_05",
-          "label": "E0,05",
-          "value": 7300,
+          "key": "E_0_mean",
+          "label": "E₀,mean Faserrrichtung",
+          "value": 11000,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C24",
+          "key": "E_0_05",
+          "label": "E₀,₀₅ (5%-Fraktile)",
+          "value": 7400,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_90_mean",
+          "label": "E₉₀,mean ⊥ Faserrrichtung",
+          "value": 370,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "G_mean",
+          "label": "Schubmodul",
+          "value": 690,
+          "unit": "N/mm²"
+        },
+        {
           "key": "rho_k",
           "label": "Rohdichte",
           "value": 350,
           "unit": "kg/m³"
         },
         {
-          "wood_class_id": "C24",
-          "key": "f_m_d",
-          "label": "Biegefestigkeit",
-          "value": 14.1,
-          "unit": "N/mm²"
-        },
-        {
-          "wood_class_id": "C24",
           "key": "beta_c",
           "label": "Hilfswert βc",
           "value": 0.2,
@@ -358,77 +411,109 @@
       ]
     },
     {
-      "id": "GL24h",
+      "id": "GL24c",
       "wood_type_id": "bsh",
-      "name": "GL24h",
-      "label": "GL24h – BSH homogen",
+      "name": "GL24c",
+      "label": "GL24c – BSH kombiniert",
       "sort_order": 2,
       "properties": [
         {
-          "wood_class_id": "GL24h",
           "key": "f_m_k",
           "label": "Biegefestigkeit",
           "value": 24,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL24h",
-          "key": "f_t_0_k",
-          "label": "Zug ‖",
-          "value": 16.5,
-          "unit": "N/mm²"
-        },
-        {
-          "wood_class_id": "GL24h",
-          "key": "f_c_0_k",
-          "label": "Druck ‖",
-          "value": 24,
-          "unit": "N/mm²"
-        },
-        {
-          "wood_class_id": "GL24h",
-          "key": "f_c_0_d",
-          "label": "Druckfestigkeit parallel Bemessung",
+          "key": "f_m_d",
+          "label": "Biegefestigkeit Bemessung",
           "value": 16,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL24h",
+          "key": "f_t_0_k",
+          "label": "Zugfestigkeit ‖",
+          "value": 14,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_t_0_d",
+          "label": "Zugfestigkeit ‖ Bemessung",
+          "value": 11.3,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_c_0_k",
+          "label": "Druckfestigkeit ‖",
+          "value": 21.5,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_c_0_d",
+          "label": "Druckfestigkeit ‖ Bemessung",
+          "value": 14.3,
+          "unit": "N/mm²"
+        },
+        {
           "key": "f_t_90_k",
-          "label": "Zug ⊥",
+          "label": "Zugfestigkeit ⊥",
           "value": 0.5,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL24h",
           "key": "f_c_90_k",
-          "label": "Druck ⊥",
-          "value": 2.7,
+          "label": "Druckfestigkeit ⊥",
+          "value": 2.5,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL24h",
           "key": "f_v_k",
-          "label": "Schub",
+          "label": "Scherfestigkeit",
           "value": 3.5,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL24h",
-          "key": "E_0_mean",
-          "label": "E-Modul",
-          "value": 11600,
+          "key": "f_v_d",
+          "label": "Scherfestigkeit Bemessung",
+          "value": 1.8,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL24h",
+          "key": "E_m_mean",
+          "label": "E-Modul (Mittelwert)",
+          "value": 9100,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_0_mean",
+          "label": "E₀,mean Faserrrichtung",
+          "value": 9100,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_0_05",
+          "label": "E₀,₀₅ (5%-Fraktile)",
+          "value": 9100,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_90_mean",
+          "label": "E₉₀,mean ⊥ Faserrrichtung",
+          "value": 300,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "G_mean",
+          "label": "Schubmodul",
+          "value": 650,
+          "unit": "N/mm²"
+        },
+        {
           "key": "rho_k",
           "label": "Rohdichte",
-          "value": 380,
+          "value": 365,
           "unit": "kg/m³"
         },
         {
-          "wood_class_id": "GL24h",
           "key": "beta_c",
           "label": "Hilfswert βc",
           "value": 0.1,
@@ -444,77 +529,84 @@
       "sort_order": 3,
       "properties": [
         {
-          "wood_class_id": "C30",
           "key": "f_m_k",
           "label": "Biegefestigkeit",
           "value": 30,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C30",
           "key": "f_t_0_k",
-          "label": "Zug ‖",
+          "label": "Zugfestigkeit ‖",
           "value": 18,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C30",
           "key": "f_c_0_k",
-          "label": "Druck ‖",
-          "value": 23,
+          "label": "Druckfestigkeit ‖",
+          "value": 24,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C30",
           "key": "f_c_0_d",
-          "label": "Druckfestigkeit parallel Bemessung",
-          "value": 13.5,
+          "label": "Druckfestigkeit ‖ Bemessung",
+          "value": 14.1,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C30",
           "key": "f_t_90_k",
-          "label": "Zug ⊥",
+          "label": "Zugfestigkeit ⊥",
           "value": 0.4,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C30",
           "key": "f_c_90_k",
-          "label": "Druck ⊥",
+          "label": "Druckfestigkeit ⊥",
           "value": 3,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C30",
           "key": "f_v_k",
-          "label": "Schub",
-          "value": 2.7,
+          "label": "Scherfestigkeit",
+          "value": 1.5,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C30",
-          "key": "E_0_mean",
-          "label": "E-Modul",
+          "key": "E_m_mean",
+          "label": "E-Modul (Mittelwert)",
           "value": 12000,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C30",
+          "key": "E_0_mean",
+          "label": "E₀,mean Faserrrichtung",
+          "value": 12000,
+          "unit": "N/mm²"
+        },
+        {
           "key": "E_0_05",
-          "label": "E0,05",
+          "label": "E₀,₀₅ (5%-Fraktile)",
           "value": 8000,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "C30",
+          "key": "E_90_mean",
+          "label": "E₉₀,mean ⊥ Faserrrichtung",
+          "value": 400,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "G_mean",
+          "label": "Schubmodul",
+          "value": 750,
+          "unit": "N/mm²"
+        },
+        {
           "key": "rho_k",
           "label": "Rohdichte",
           "value": 380,
           "unit": "kg/m³"
         },
         {
-          "wood_class_id": "C30",
           "key": "beta_c",
           "label": "Hilfswert βc",
           "value": 0.2,
@@ -523,163 +615,109 @@
       ]
     },
     {
-      "id": "GL24c",
+      "id": "GL24h",
       "wood_type_id": "bsh",
-      "name": "GL24c",
-      "label": "GL24c – BSH kombiniert",
+      "name": "GL24h",
+      "label": "GL24h – BSH homogen",
       "sort_order": 3,
       "properties": [
         {
-          "wood_class_id": "GL24c",
           "key": "f_m_k",
           "label": "Biegefestigkeit",
           "value": 24,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL24c",
-          "key": "f_t_0_k",
-          "label": "Zug ‖",
-          "value": 14,
-          "unit": "N/mm²"
-        },
-        {
-          "wood_class_id": "GL24c",
-          "key": "f_c_0_k",
-          "label": "Druck ‖",
-          "value": 21.5,
-          "unit": "N/mm²"
-        },
-        {
-          "wood_class_id": "GL24c",
-          "key": "f_c_0_d",
-          "label": "Druckfestigkeit parallel Bemessung",
-          "value": 14.3,
-          "unit": "N/mm²"
-        },
-        {
-          "wood_class_id": "GL24c",
-          "key": "f_t_90_k",
-          "label": "Zug ⊥",
-          "value": 0.5,
-          "unit": "N/mm²"
-        },
-        {
-          "wood_class_id": "GL24c",
-          "key": "f_c_90_k",
-          "label": "Druck ⊥",
-          "value": 2.5,
-          "unit": "N/mm²"
-        },
-        {
-          "wood_class_id": "GL24c",
-          "key": "f_v_k",
-          "label": "Schub",
-          "value": 3.5,
-          "unit": "N/mm²"
-        },
-        {
-          "wood_class_id": "GL24c",
-          "key": "E_0_mean",
-          "label": "E-Modul",
-          "value": 11000,
-          "unit": "N/mm²"
-        },
-        {
-          "wood_class_id": "GL24c",
-          "key": "rho_k",
-          "label": "Rohdichte",
-          "value": 350,
-          "unit": "kg/m³"
-        },
-        {
-          "wood_class_id": "GL24c",
-          "key": "f_m_k",
-          "label": "Biegefestigkeit",
+          "key": "f_m_d",
+          "label": "Biegefestigkeit Bemessung",
           "value": 16,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL24c",
-          "key": "beta_c",
-          "label": "Hilfswert βc",
-          "value": 0.1,
-          "unit": "-"
-        }
-      ]
-    },
-    {
-      "id": "GL28h",
-      "wood_type_id": "bsh",
-      "name": "GL28h",
-      "label": "GL28h – BSH homogen",
-      "sort_order": 4,
-      "properties": [
-        {
-          "wood_class_id": "GL28h",
-          "key": "f_m_k",
-          "label": "Biegefestigkeit",
-          "value": 28,
-          "unit": "N/mm²"
-        },
-        {
-          "wood_class_id": "GL28h",
           "key": "f_t_0_k",
-          "label": "Zug ‖",
-          "value": 19.5,
+          "label": "Zugfestigkeit ‖",
+          "value": 16.5,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL28h",
+          "key": "f_t_0_d",
+          "label": "Zugfestigkeit ‖ Bemessung",
+          "value": 12.8,
+          "unit": "N/mm²"
+        },
+        {
           "key": "f_c_0_k",
-          "label": "Druck ‖",
-          "value": 26.5,
+          "label": "Druckfestigkeit ‖",
+          "value": 24,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL28h",
           "key": "f_c_0_d",
-          "label": "Druckfestigkeit parallel Bemessung",
-          "value": 17.7,
+          "label": "Druckfestigkeit ‖ Bemessung",
+          "value": 16,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL28h",
           "key": "f_t_90_k",
-          "label": "Zug ⊥",
+          "label": "Zugfestigkeit ⊥",
           "value": 0.5,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL28h",
           "key": "f_c_90_k",
-          "label": "Druck ⊥",
-          "value": 3,
+          "label": "Druckfestigkeit ⊥",
+          "value": 2.7,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL28h",
           "key": "f_v_k",
-          "label": "Schub",
+          "label": "Scherfestigkeit",
           "value": 3.5,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL28h",
-          "key": "E_0_mean",
-          "label": "E-Modul",
-          "value": 12600,
+          "key": "f_v_d",
+          "label": "Scherfestigkeit Bemessung",
+          "value": 1.8,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL28h",
+          "key": "E_m_mean",
+          "label": "E-Modul (Mittelwert)",
+          "value": 11500,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_0_mean",
+          "label": "E₀,mean Faserrrichtung",
+          "value": 11500,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_0_05",
+          "label": "E₀,₀₅ (5%-Fraktile)",
+          "value": 9600,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_90_mean",
+          "label": "E₉₀,mean ⊥ Faserrrichtung",
+          "value": 300,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "G_mean",
+          "label": "Schubmodul",
+          "value": 650,
+          "unit": "N/mm²"
+        },
+        {
           "key": "rho_k",
           "label": "Rohdichte",
-          "value": 410,
+          "value": 385,
           "unit": "kg/m³"
         },
         {
-          "wood_class_id": "GL28h",
           "key": "beta_c",
           "label": "Hilfswert βc",
           "value": 0.1,
@@ -692,91 +730,313 @@
       "wood_type_id": "bsh",
       "name": "GL28c",
       "label": "GL28c – BSH kombiniert",
-      "sort_order": 5,
+      "sort_order": 4,
       "properties": [
         {
-          "wood_class_id": "GL28c",
           "key": "f_m_k",
           "label": "Biegefestigkeit",
           "value": 28,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL28c",
-          "key": "f_t_0_k",
-          "label": "Zug ‖",
-          "value": 16.5,
-          "unit": "N/mm²"
-        },
-        {
-          "wood_class_id": "GL28c",
-          "key": "f_c_0_k",
-          "label": "Druck ‖",
-          "value": 24,
-          "unit": "N/mm²"
-        },
-        {
-          "wood_class_id": "GL28c",
-          "key": "f_c_0_d",
-          "label": "Druckfestigkeit parallel Bemessung",
-          "value": 16,
-          "unit": "N/mm²"
-        },
-        {
-          "wood_class_id": "GL28c",
-          "key": "f_t_90_k",
-          "label": "Zug ⊥",
-          "value": 0.5,
-          "unit": "N/mm²"
-        },
-        {
-          "wood_class_id": "GL28c",
-          "key": "f_c_90_k",
-          "label": "Druck ⊥",
-          "value": 2.7,
-          "unit": "N/mm²"
-        },
-        {
-          "wood_class_id": "GL28c",
-          "key": "f_v_k",
-          "label": "Schub",
-          "value": 3.5,
-          "unit": "N/mm²"
-        },
-        {
-          "wood_class_id": "GL28c",
-          "key": "E_0_mean",
-          "label": "E-Modul",
-          "value": 12500,
-          "unit": "N/mm²"
-        },
-        {
-          "wood_class_id": "GL28c",
-          "key": "rho_k",
-          "label": "Rohdichte",
-          "value": 380,
-          "unit": "kg/m³"
-        },
-        {
-          "wood_class_id": "GL28c",
           "key": "f_m_d",
-          "label": "Biegefestigkeit",
+          "label": "Biegefestigkeit Bemessung",
           "value": 18.7,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL28c",
+          "key": "f_t_0_k",
+          "label": "Zugfestigkeit ‖",
+          "value": 16.5,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_t_0_d",
+          "label": "Zugfestigkeit ‖ Bemessung",
+          "value": 13,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_c_0_k",
+          "label": "Druckfestigkeit ‖",
+          "value": 24,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_c_0_d",
+          "label": "Druckfestigkeit ‖ Bemessung",
+          "value": 16,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_t_90_k",
+          "label": "Zugfestigkeit ⊥",
+          "value": 0.5,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_c_90_k",
+          "label": "Druckfestigkeit ⊥",
+          "value": 2.7,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_v_k",
+          "label": "Scherfestigkeit",
+          "value": 3.5,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_v_d",
+          "label": "Scherfestigkeit Bemessung",
+          "value": 1.8,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_m_mean",
+          "label": "E-Modul (Mittelwert)",
+          "value": 12500,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_0_mean",
+          "label": "E₀,mean Faserrrichtung",
+          "value": 12500,
+          "unit": "N/mm²"
+        },
+        {
           "key": "E_0_05",
-          "label": "E_0,05",
+          "label": "E₀,₀₅ (5%-Fraktile)",
           "value": 10400,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL28c",
-          "key": "beta_c",
-          "label": "Hilfswert βc",
-          "value": 0.1,
-          "unit": "-"
+          "key": "E_90_mean",
+          "label": "E₉₀,mean ⊥ Faserrrichtung",
+          "value": 300,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "G_mean",
+          "label": "Schubmodul",
+          "value": 650,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "rho_k",
+          "label": "Rohdichte",
+          "value": 390,
+          "unit": "kg/m³"
+        }
+      ]
+    },
+    {
+      "id": "GL28h",
+      "wood_type_id": "bsh",
+      "name": "GL28h",
+      "label": "GL28h – BSH homogen",
+      "sort_order": 5,
+      "properties": [
+        {
+          "key": "f_m_k",
+          "label": "Biegefestigkeit",
+          "value": 28,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_m_d",
+          "label": "Biegefestigkeit Bemessung",
+          "value": 18.7,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_t_0_k",
+          "label": "Zugfestigkeit ‖",
+          "value": 19.5,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_t_0_d",
+          "label": "Zugfestigkeit ‖ Bemessung",
+          "value": 14.9,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_c_0_k",
+          "label": "Druckfestigkeit ‖",
+          "value": 28,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_c_0_d",
+          "label": "Druckfestigkeit ‖ Bemessung",
+          "value": 18.7,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_t_90_k",
+          "label": "Zugfestigkeit ⊥",
+          "value": 0.5,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_c_90_k",
+          "label": "Druckfestigkeit ⊥",
+          "value": 3,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_v_k",
+          "label": "Scherfestigkeit",
+          "value": 3.5,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_v_d",
+          "label": "Scherfestigkeit Bemessung",
+          "value": 1.8,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_m_mean",
+          "label": "E-Modul (Mittelwert)",
+          "value": 12600,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_0_mean",
+          "label": "E₀,mean Faserrrichtung",
+          "value": 12600,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_0_05",
+          "label": "E₀,₀₅ (5%-Fraktile)",
+          "value": 10500,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_90_mean",
+          "label": "E₉₀,mean ⊥ Faserrrichtung",
+          "value": 300,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "G_mean",
+          "label": "Schubmodul",
+          "value": 650,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "rho_k",
+          "label": "Rohdichte",
+          "value": 425,
+          "unit": "kg/m³"
+        }
+      ]
+    },
+    {
+      "id": "GL32c",
+      "wood_type_id": "bsh",
+      "name": "GL32c",
+      "label": "GL32c – BSH hochfest kombiniert",
+      "sort_order": 6,
+      "properties": [
+        {
+          "key": "f_m_k",
+          "label": "Biegefestigkeit",
+          "value": 32,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_m_d",
+          "label": "Biegefestigkeit Bemessung",
+          "value": 21.3,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_t_0_k",
+          "label": "Zugfestigkeit ‖",
+          "value": 13,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_t_0_d",
+          "label": "Zugfestigkeit ‖ Bemessung",
+          "value": 13,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_c_0_k",
+          "label": "Druckfestigkeit ‖",
+          "value": 24.5,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_c_0_d",
+          "label": "Druckfestigkeit ‖ Bemessung",
+          "value": 16.3,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_t_90_k",
+          "label": "Zugfestigkeit ⊥",
+          "value": 0.5,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_c_90_k",
+          "label": "Druckfestigkeit ⊥",
+          "value": 3,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_v_k",
+          "label": "Scherfestigkeit",
+          "value": 3.5,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_v_d",
+          "label": "Scherfestigkeit Bemessung",
+          "value": 1.8,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_m_mean",
+          "label": "E-Modul (Mittelwert)",
+          "value": 13500,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_0_mean",
+          "label": "E₀,mean Faserrrichtung",
+          "value": 13500,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_0_05",
+          "label": "E₀,₀₅ (5%-Fraktile)",
+          "value": 11200,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_90_mean",
+          "label": "E₉₀,mean ⊥ Faserrrichtung",
+          "value": 300,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "G_mean",
+          "label": "Schubmodul",
+          "value": 650,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "rho_k",
+          "label": "Rohdichte",
+          "value": 400,
+          "unit": "kg/m³"
         }
       ]
     },
@@ -785,77 +1045,103 @@
       "wood_type_id": "bsh",
       "name": "GL32h",
       "label": "GL32h – BSH hochfest",
-      "sort_order": 6,
+      "sort_order": 7,
       "properties": [
         {
-          "wood_class_id": "GL32h",
           "key": "f_m_k",
           "label": "Biegefestigkeit",
           "value": 32,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL32h",
-          "key": "f_t_0_k",
-          "label": "Zug ‖",
+          "key": "f_m_d",
+          "label": "Biegefestigkeit Bemessung",
           "value": 21.3,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL32h",
+          "key": "f_t_0_k",
+          "label": "Zugfestigkeit ‖",
+          "value": 21.3,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "f_t_0_d",
+          "label": "Zugfestigkeit ‖ Bemessung",
+          "value": 17.1,
+          "unit": "N/mm²"
+        },
+        {
           "key": "f_c_0_k",
-          "label": "Druck ‖",
-          "value": 29.3,
+          "label": "Druckfestigkeit ‖",
+          "value": 32,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL32h",
           "key": "f_c_0_d",
-          "label": "Druckfestigkeit parallel Bemessung",
-          "value": 19.5,
+          "label": "Druckfestigkeit ‖ Bemessung",
+          "value": 21.3,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL32h",
           "key": "f_t_90_k",
-          "label": "Zug ⊥",
+          "label": "Zugfestigkeit ⊥",
           "value": 0.5,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL32h",
           "key": "f_c_90_k",
-          "label": "Druck ⊥",
+          "label": "Druckfestigkeit ⊥",
           "value": 3,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL32h",
           "key": "f_v_k",
-          "label": "Schub",
+          "label": "Scherfestigkeit",
           "value": 3.5,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL32h",
-          "key": "E_0_mean",
-          "label": "E-Modul",
+          "key": "f_v_d",
+          "label": "Scherfestigkeit Bemessung",
+          "value": 1.8,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_m_mean",
+          "label": "E-Modul (Mittelwert)",
           "value": 14200,
           "unit": "N/mm²"
         },
         {
-          "wood_class_id": "GL32h",
+          "key": "E_0_mean",
+          "label": "E₀,mean Faserrrichtung",
+          "value": 14200,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_0_05",
+          "label": "E₀,₀₅ (5%-Fraktile)",
+          "value": 11800,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "E_90_mean",
+          "label": "E₉₀,mean ⊥ Faserrrichtung",
+          "value": 300,
+          "unit": "N/mm²"
+        },
+        {
+          "key": "G_mean",
+          "label": "Schubmodul",
+          "value": 650,
+          "unit": "N/mm²"
+        },
+        {
           "key": "rho_k",
           "label": "Rohdichte",
           "value": 440,
           "unit": "kg/m³"
-        },
-        {
-          "wood_class_id": "GL32h",
-          "key": "beta_c",
-          "label": "Hilfswert βc",
-          "value": 0.1,
-          "unit": "-"
         }
       ]
     }

@@ -10,7 +10,9 @@ export function substituteValues(expr: string, vars: Record<string, number>): st
   // Ersetze LaTeX-Konstanten zuerst
   let result = expr
     .replace(/\\pi\b/g, formatNumber(Math.PI))
-    .replace(/\\e\b/g, formatNumber(Math.E));
+    .replace(/\bpi\b/g, formatNumber(Math.PI))
+    .replace(/\\e\b/g, formatNumber(Math.E))
+    .replace(/\be\b/g, formatNumber(Math.E));
 
   const names = Object.keys(vars).sort((a, b) => b.length - a.length);
   for (const n of names) {
