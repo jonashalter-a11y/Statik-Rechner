@@ -483,7 +483,7 @@ export default function VerificationAdmin() {
     const snapshot = editingSnapshot(editingToSave);
     if (auto && snapshot === savedSnapshotRef.current) {
       // Aber: Speichern erzwingen alle 2 Sekunden (wegen Positions-Updates)
-      if (Date.now() - (window as any).__lastAutoSave < 1500) return;
+      if (Date.now() - (window as any).__lastAutoSave < 2000) return;
     }
     (window as any).__lastAutoSave = Date.now();
     setSaving(true);
@@ -549,7 +549,7 @@ export default function VerificationAdmin() {
     const graphStr = JSON.stringify(editing.graph);
     const timer = setTimeout(() => {
       saveEditing(editing, true);
-    }, 300);
+    }, 2000);
     return () => clearTimeout(timer);
   }, [editing?.id, JSON.stringify(editing?.graph)]);
 

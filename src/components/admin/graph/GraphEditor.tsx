@@ -99,9 +99,15 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
   const clipboardRef = useRef<GraphClipboard | null>(null);
   const historyRef = useRef<GraphSnapshot[]>([]);
   const historyIndexRef = useRef(-1);
+  const historyPausedRef = useRef(false);
   const restoringHistoryRef = useRef(false);
+  const nodesRef = useRef<Node[]>([]);
+  const edgesRef = useRef<Edge[]>([]);
   const idCounter = useRef(1);
   const newId = (t: string) => `${t}_${Date.now().toString(36)}_${idCounter.current++}`;
+
+  useEffect(() => { nodesRef.current = nodes; }, [nodes]);
+  useEffect(() => { edgesRef.current = edges; }, [edges]);
 
   // Serialisieren → an Parent melden SOFORT (kein Debounce - Auto-Save handled das)
   useEffect(() => {
@@ -132,12 +138,7 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
     }
   }, [nodes]);
 
-  useEffect(() => {
-    if (restoringHistoryRef.current) {
-      restoringHistoryRef.current = false;
-      return;
-    }
-    const snapshot = cloneGraphState(nodes, edges);
+  const pushHistorySnapshot = useCallback((snapshot: GraphSnapshot) => {
     const index = historyIndexRef.current;
     const current = index >= 0 ? historyRef.current[index] : null;
     if (current && snapshotKey(current) === snapshotKey(snapshot)) return;
@@ -148,6 +149,15 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
     historyRef.current = nextHistory;
     historyIndexRef.current = nextHistory.length - 1;
     setHistoryVersion(v => v + 1);
+  }, []);
+
+  useEffect(() => {
+    if (restoringHistoryRef.current) {
+      restoringHistoryRef.current = false;
+      return;
+    }
+    if (historyPausedRef.current) return;
+    pushHistorySnapshot(cloneGraphState(nodes, edges));
   }, [nodes, edges]);
 
   const updateNodeData = useCallback((id: string, patch: Partial<BlockData>) => {
@@ -338,6 +348,17 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
     setHistoryVersion(v => v + 1);
   }, [setNodes, setEdges]);
 
+  const handleNodeDragStart = useCallback(() => {
+    historyPausedRef.current = true;
+  }, []);
+
+  const handleNodeDragStop = useCallback(() => {
+    historyPausedRef.current = false;
+    window.setTimeout(() => {
+      pushHistorySnapshot(cloneGraphState(nodesRef.current, edgesRef.current));
+    }, 0);
+  }, [pushHistorySnapshot]);
+
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -471,6 +492,8 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
           <ReactFlow
             nodes={nodes} edges={edges}
             onNodesChange={handleNodesChange} onEdgesChange={onEdgesChange}
+            onNodeDragStart={handleNodeDragStart}
+            onNodeDragStop={handleNodeDragStop}
             onConnect={onConnect} onEdgeClick={onEdgeClick}
             nodeTypes={nodeTypes as any}
             fitView proOptions={{ hideAttribution: true }}
