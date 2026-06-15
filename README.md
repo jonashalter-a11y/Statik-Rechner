@@ -1,6 +1,6 @@
 # SIA 265/261 Holzbau Rechner
 
-Interaktiver Statik-Rechner für Schweizer Baunormen. Die Anwendung laedt ihre Normen, Kapitel, Tabellen, Holzwerte und Nachweise direkt aus JSON-Dateien und braucht fuer den normalen Betrieb keinen Backend-Server und keine SQLite-Datenbank mehr.
+Interaktiver Statik-Rechner für Schweizer Baunormen. Die Anwendung laedt ihre Normen, Kapitel, Tabellen, Holzwerte und Nachweise direkt aus JSON-Dateien.
 
 ---
 
@@ -43,7 +43,7 @@ Production-Build:
 npm run build
 ```
 
-`npm run build` erzeugt nur das statische Frontend in `dist/`. Dabei wird keine DB neu aufgebaut.
+`npm run build` erzeugt das statische Frontend in `dist/`.
 
 ---
 
@@ -62,16 +62,16 @@ npm run build
 ### Datenspeicher: JSON-first
 Die dauerhafte Quelle sind JSON-Dateien:
 
-- `server/data/norms.json`: Normen und Navigation
-- `server/data/units.json`: globale Einheiten
-- `server/data/wood.json`: Holzarten, Holzklassen und Materialwerte
-- `server/data/chapters/<norm>.json`: Kapitel pro Norm
-- `server/data/tables/<norm>.json`: Tabellen und Diagramm-Daten pro Norm
-- `server/nachweise/<norm>/*.json`: Nachweise inklusive Block-Graph
+- `data/norms.json`: Normen und Navigation
+- `data/units.json`: globale Einheiten
+- `data/wood.json`: Holzarten, Holzklassen und Materialwerte
+- `data/chapters/<norm>.json`: Kapitel pro Norm
+- `data/tables/<norm>.json`: Tabellen und Diagramm-Daten pro Norm
+- `nachweise/<norm>/*.json`: Nachweise inklusive Block-Graph
 
-Das Frontend importiert diese Dateien ueber `src/api.ts` direkt mit Vite. Diese lokale API ersetzt die frueheren `/api`-Requests.
+Das Frontend laedt diese Dateien ueber `src/api.ts` direkt mit Vite.
 
-Wichtig: Ein Browser kann ohne Backend nicht direkt in Projektdateien schreiben. Aenderungen im Admin werden deshalb im Browser-`localStorage` gehalten. Dauerhafte Aenderungen an Nachweisen machst du ueber JSON-Export/Import oder indem du die passende JSON-Datei im Repository ersetzt.
+Wichtig: Ein statisches Browser-Frontend kann nicht direkt in Projektdateien schreiben. Aenderungen im Admin werden deshalb im Browser-`localStorage` gehalten. Dauerhafte Aenderungen an Nachweisen machst du ueber JSON-Export/Import oder indem du die passende JSON-Datei im Repository ersetzt.
 
 ### Block-Typen (Node-Editor)
 `variable` 🟪 · `dropdown` 🟧 · `tablevalue` 🟩 · `calc` 🟥 · `stdcalc` 🟫 · `tablecalc` 🟦 · `condition` 🔶 · `output` ⬜
@@ -86,11 +86,9 @@ Der Norm-Switcher im Header schaltet zwischen SIA 265 und SIA 261:
 
 ---
 
-## Keine Datenbank mehr
+## Statischer Betrieb
 
-Die SQLite-Dateien `server/sia265.db`, `server/sia265.db-shm` und `server/sia265.db-wal` werden nicht mehr benoetigt. Falls sie lokal wieder entstehen, sind sie nicht mehr die Quelle der Wahrheit fuer das Frontend.
-
-Der alte Express-/SQLite-Code im Ordner `server/` kann noch als Archiv oder Migrationshilfe liegen bleiben. Die App selbst laeuft mit `npm run dev` nur ueber Vite.
+Die App laeuft nur noch ueber Vite und liest lokale JSON-Dateien. Die Quelle der Wahrheit sind `data/` und `nachweise/`.
 
 ---
 
@@ -104,7 +102,7 @@ Der alte Express-/SQLite-Code im Ordner `server/` kann noch als Archiv oder Migr
 4. **Export** → Nachweis als JSON sichern
 5. **JSON-Import**: Admin → Nachweise → **JSON importieren** → Norm + Kapitel wählen
 
-Wenn ein Nachweis dauerhaft in der App enthalten sein soll, lege die exportierte Datei unter `server/nachweise/<norm>/<id>.json` ab.
+Wenn ein Nachweis dauerhaft in der App enthalten sein soll, lege die exportierte Datei unter `nachweise/<norm>/<id>.json` ab.
 
 ### JSON-Format
 ```json
@@ -132,13 +130,13 @@ Wenn ein Nachweis dauerhaft in der App enthalten sein soll, lege die exportierte
 
 ## Lokale API
 
-`src/api.ts` stellt weiterhin dieselben Funktionen bereit wie frueher die Backend-API, zum Beispiel:
+`src/api.ts` stellt zentrale Funktionen fuer die lokalen JSON-Daten bereit, zum Beispiel:
 
 - `api.getNorms()`
 - `api.getChapters(norm)`
 - `api.getVerifications(norm)`
-- `api.getDbTables(norm)`
-- `api.getDbTableFull(id)`
+- `api.getTables(norm)`
+- `api.getTableFull(id)`
 - `api.getWoodTypes()`
 - `api.getWoodClasses()`
 - `api.getUnits()`
@@ -187,17 +185,17 @@ Qk = cred · cd · cf · qp · Aref
 ## Projektstruktur
 
 ```
-server/
-  data/
-    norms.json
-    units.json
-    wood.json
-    chapters/<norm>.json
-    tables/<norm>.json
-  nachweise/<norm>/*.json
+data/
+  norms.json
+  units.json
+  wood.json
+  chapters/<norm>.json
+  tables/<norm>.json
+
+nachweise/<norm>/*.json
 
 src/
-  api.ts                Lokale JSON-API statt Backend/DB
+  api.ts                Lokale JSON-Datenschicht
   App.tsx               Layout, Norm-Switcher, Resizable Columns
   store/useStore.ts     Zustand (normId, chapters, verifications, Cache)
   components/
@@ -257,4 +255,4 @@ Alle Tabellen aus `Schneelast_Windlast.xlsm` verifiziert. Nur Tabellen mit Flag=
 | v2.1 | 19 Anhang-C-Tabellen, 6 SVG-Formen, Grundberechnungen |
 | v2.2 | Schneelast-Formel korrigiert, Wind-Geländekategorie Dropdown, Tab. 31–45 Excel-verifiziert |
 | v3.0 | Node-Editor (React Flow) für Nachweis-Erstellung: Block-/Graph-System, Live-Auswertung, Legacy-Adapter |
-| v3.1 | **Verifikationen nur noch JSON-basiert** — kein DB-Seeding mehr, Admin-UI mit JSON-Import |
+| v3.1 | **Verifikationen JSON-basiert**, Admin-UI mit JSON-Import |

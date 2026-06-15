@@ -53,7 +53,7 @@ Splitter zwischen Spalten → Resize möglich (Min: 160px / 300px / 260px)
   - "SIA 261 Einwirkungen"  
   - "EC5 Eurocode"
 - **Dropdowns** (Holzart, Klasse): `background: rgba(255,255,255,0.15)`, Weiß Text, 11px
-- **Backend Button**: Violett Badge rechts
+- **Admin Button**: Violett Badge rechts
 - **Divider**: `rgba(255,255,255,0.2)` dünne vertikale Linie
 
 ---

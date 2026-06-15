@@ -353,7 +353,7 @@ export default function VerificationAdmin() {
   useEffect(() => { savingRef.current = saving; }, [saving]);
 
   useEffect(() => {
-    api.getDbTables(normId)
+    api.getTables(normId)
       .then((metas: any[]) => setDbTables(metas.map((t: any) => ({ id: t.id, title: t.title, chapter_id: t.chapter_id ?? null, type: t.type ?? 'table' }))))
       .catch(() => {});
   }, [normId]);
@@ -381,8 +381,8 @@ export default function VerificationAdmin() {
     });
     setExpanded(toOpen);
     if (!verificationsOk || !chaptersOk) {
-      console.warn('Backend-Daten konnten nicht vollständig geladen werden', { vsResult, chsResult });
-      setMsg('⚠ Backend-Daten konnten nicht vollständig geladen werden');
+      console.warn('Lokale JSON-Daten konnten nicht vollständig geladen werden', { vsResult, chsResult });
+      setMsg('⚠ Lokale JSON-Daten konnten nicht vollständig geladen werden');
     } else {
       setMsg('');
     }

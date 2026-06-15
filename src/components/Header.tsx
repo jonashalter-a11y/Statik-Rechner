@@ -38,11 +38,11 @@ export default function Header({ onAdminClick, onNormChange }: Props) {
 
   useEffect(() => {
     let alive = true;
-    api.getDbTables('sia265')
+    api.getTables('sia265')
       .then((tables: any[]) => {
         const woodTable = tables.find(t => String(t.title || '').trim().toLowerCase() === 'holzart');
         if (!woodTable) return null;
-        return api.getDbTableFull(woodTable.id);
+        return api.getTableFull(woodTable.id);
       })
       .then((table: any) => {
         if (!alive || !table) return;
@@ -167,7 +167,7 @@ export default function Header({ onAdminClick, onNormChange }: Props) {
         color: '#fff', borderRadius: 5, padding: '3px 9px', cursor: 'pointer',
         fontSize: 11, whiteSpace: 'nowrap', flexShrink: 0,
       }}>
-        ⚙️ Backend
+        ⚙️ Admin
       </button>
     </div>
   );

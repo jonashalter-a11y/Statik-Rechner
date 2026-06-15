@@ -1,0 +1,723 @@
+{
+  "wood_types": [
+    {
+      "id": "vollholz",
+      "name": "Vollholz",
+      "label": "Vollholz (Nadelholz)",
+      "sort_order": 1
+    },
+    {
+      "id": "laubholz",
+      "name": "Laubholz",
+      "label": "Laubholz (Buche/Eiche)",
+      "sort_order": 2
+    },
+    {
+      "id": "bsh",
+      "name": "Brettschichtholz",
+      "label": "Brettschichtholz (BSH)",
+      "sort_order": 3
+    }
+  ],
+  "wood_classes": [
+    {
+      "id": "GL20h",
+      "wood_type_id": "bsh",
+      "name": "GL20h",
+      "label": "GL20h – BSH homogen",
+      "sort_order": 1,
+      "properties": [
+        {
+          "wood_class_id": "GL20h",
+          "key": "f_m_k",
+          "label": "Biegefestigkeit",
+          "value": 20,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL20h",
+          "key": "f_t_0_k",
+          "label": "Zug ‖",
+          "value": 13.3,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL20h",
+          "key": "f_c_0_k",
+          "label": "Druck ‖",
+          "value": 16,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL20h",
+          "key": "f_t_90_k",
+          "label": "Zug ⊥",
+          "value": 0.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL20h",
+          "key": "f_c_90_k",
+          "label": "Druck ⊥",
+          "value": 2.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL20h",
+          "key": "f_v_k",
+          "label": "Schub",
+          "value": 3.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL20h",
+          "key": "E_0_mean",
+          "label": "E-Modul",
+          "value": 8400,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL20h",
+          "key": "rho_k",
+          "label": "Rohdichte",
+          "value": 340,
+          "unit": "kg/m³"
+        }
+      ]
+    },
+    {
+      "id": "GL24h",
+      "wood_type_id": "bsh",
+      "name": "GL24h",
+      "label": "GL24h – BSH homogen",
+      "sort_order": 2,
+      "properties": [
+        {
+          "wood_class_id": "GL24h",
+          "key": "f_m_k",
+          "label": "Biegefestigkeit",
+          "value": 24,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL24h",
+          "key": "f_t_0_k",
+          "label": "Zug ‖",
+          "value": 16.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL24h",
+          "key": "f_c_0_k",
+          "label": "Druck ‖",
+          "value": 24,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL24h",
+          "key": "f_t_90_k",
+          "label": "Zug ⊥",
+          "value": 0.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL24h",
+          "key": "f_c_90_k",
+          "label": "Druck ⊥",
+          "value": 2.7,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL24h",
+          "key": "f_v_k",
+          "label": "Schub",
+          "value": 3.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL24h",
+          "key": "E_0_mean",
+          "label": "E-Modul",
+          "value": 11600,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL24h",
+          "key": "rho_k",
+          "label": "Rohdichte",
+          "value": 380,
+          "unit": "kg/m³"
+        }
+      ]
+    },
+    {
+      "id": "GL24c",
+      "wood_type_id": "bsh",
+      "name": "GL24c",
+      "label": "GL24c – BSH kombiniert",
+      "sort_order": 3,
+      "properties": [
+        {
+          "wood_class_id": "GL24c",
+          "key": "f_m_k",
+          "label": "Biegefestigkeit",
+          "value": 24,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL24c",
+          "key": "f_t_0_k",
+          "label": "Zug ‖",
+          "value": 14,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL24c",
+          "key": "f_c_0_k",
+          "label": "Druck ‖",
+          "value": 21.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL24c",
+          "key": "f_t_90_k",
+          "label": "Zug ⊥",
+          "value": 0.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL24c",
+          "key": "f_c_90_k",
+          "label": "Druck ⊥",
+          "value": 2.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL24c",
+          "key": "f_v_k",
+          "label": "Schub",
+          "value": 3.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL24c",
+          "key": "E_0_mean",
+          "label": "E-Modul",
+          "value": 11000,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL24c",
+          "key": "rho_k",
+          "label": "Rohdichte",
+          "value": 350,
+          "unit": "kg/m³"
+        },
+        {
+          "wood_class_id": "GL24c",
+          "key": "f_m_k",
+          "label": "Biegefestigkeit",
+          "value": 16,
+          "unit": "N/mm²"
+        }
+      ]
+    },
+    {
+      "id": "GL28h",
+      "wood_type_id": "bsh",
+      "name": "GL28h",
+      "label": "GL28h – BSH homogen",
+      "sort_order": 4,
+      "properties": [
+        {
+          "wood_class_id": "GL28h",
+          "key": "f_m_k",
+          "label": "Biegefestigkeit",
+          "value": 28,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL28h",
+          "key": "f_t_0_k",
+          "label": "Zug ‖",
+          "value": 19.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL28h",
+          "key": "f_c_0_k",
+          "label": "Druck ‖",
+          "value": 26.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL28h",
+          "key": "f_t_90_k",
+          "label": "Zug ⊥",
+          "value": 0.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL28h",
+          "key": "f_c_90_k",
+          "label": "Druck ⊥",
+          "value": 3,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL28h",
+          "key": "f_v_k",
+          "label": "Schub",
+          "value": 3.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL28h",
+          "key": "E_0_mean",
+          "label": "E-Modul",
+          "value": 12600,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL28h",
+          "key": "rho_k",
+          "label": "Rohdichte",
+          "value": 410,
+          "unit": "kg/m³"
+        }
+      ]
+    },
+    {
+      "id": "GL28c",
+      "wood_type_id": "bsh",
+      "name": "GL28c",
+      "label": "GL28c – BSH kombiniert",
+      "sort_order": 5,
+      "properties": [
+        {
+          "wood_class_id": "GL28c",
+          "key": "f_m_k",
+          "label": "Biegefestigkeit",
+          "value": 28,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL28c",
+          "key": "f_t_0_k",
+          "label": "Zug ‖",
+          "value": 16.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL28c",
+          "key": "f_c_0_k",
+          "label": "Druck ‖",
+          "value": 24,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL28c",
+          "key": "f_t_90_k",
+          "label": "Zug ⊥",
+          "value": 0.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL28c",
+          "key": "f_c_90_k",
+          "label": "Druck ⊥",
+          "value": 2.7,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL28c",
+          "key": "f_v_k",
+          "label": "Schub",
+          "value": 3.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL28c",
+          "key": "E_0_mean",
+          "label": "E-Modul",
+          "value": 12500,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL28c",
+          "key": "rho_k",
+          "label": "Rohdichte",
+          "value": 380,
+          "unit": "kg/m³"
+        },
+        {
+          "wood_class_id": "GL28c",
+          "key": "f_m_d",
+          "label": "Biegefestigkeit",
+          "value": 18.7,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL28c",
+          "key": "E_0_05",
+          "label": "E_0,05",
+          "value": 10400,
+          "unit": "N/mm²"
+        }
+      ]
+    },
+    {
+      "id": "GL32h",
+      "wood_type_id": "bsh",
+      "name": "GL32h",
+      "label": "GL32h – BSH hochfest",
+      "sort_order": 6,
+      "properties": [
+        {
+          "wood_class_id": "GL32h",
+          "key": "f_m_k",
+          "label": "Biegefestigkeit",
+          "value": 32,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL32h",
+          "key": "f_t_0_k",
+          "label": "Zug ‖",
+          "value": 21.3,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL32h",
+          "key": "f_c_0_k",
+          "label": "Druck ‖",
+          "value": 29.3,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL32h",
+          "key": "f_t_90_k",
+          "label": "Zug ⊥",
+          "value": 0.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL32h",
+          "key": "f_c_90_k",
+          "label": "Druck ⊥",
+          "value": 3,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL32h",
+          "key": "f_v_k",
+          "label": "Schub",
+          "value": 3.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL32h",
+          "key": "E_0_mean",
+          "label": "E-Modul",
+          "value": 14200,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "GL32h",
+          "key": "rho_k",
+          "label": "Rohdichte",
+          "value": 440,
+          "unit": "kg/m³"
+        }
+      ]
+    },
+    {
+      "id": "D30",
+      "wood_type_id": "laubholz",
+      "name": "D30",
+      "label": "D30 – Laubholz",
+      "sort_order": 1,
+      "properties": [
+        {
+          "wood_class_id": "D30",
+          "key": "f_m_k",
+          "label": "Biegefestigkeit",
+          "value": 30,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "D30",
+          "key": "f_t_0_k",
+          "label": "Zug ‖",
+          "value": 18,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "D30",
+          "key": "f_c_0_k",
+          "label": "Druck ‖",
+          "value": 23,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "D30",
+          "key": "f_t_90_k",
+          "label": "Zug ⊥",
+          "value": 0.6,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "D30",
+          "key": "f_c_90_k",
+          "label": "Druck ⊥",
+          "value": 8,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "D30",
+          "key": "f_v_k",
+          "label": "Schub",
+          "value": 3,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "D30",
+          "key": "E_0_mean",
+          "label": "E-Modul",
+          "value": 11000,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "D30",
+          "key": "rho_k",
+          "label": "Rohdichte",
+          "value": 530,
+          "unit": "kg/m³"
+        }
+      ]
+    },
+    {
+      "id": "C16",
+      "wood_type_id": "vollholz",
+      "name": "C16",
+      "label": "C16 – Vollholz Nadelholz",
+      "sort_order": 1,
+      "properties": [
+        {
+          "wood_class_id": "C16",
+          "key": "f_m_k",
+          "label": "Biegefestigkeit",
+          "value": 16,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C16",
+          "key": "f_t_0_k",
+          "label": "Zug ‖",
+          "value": 9.4,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C16",
+          "key": "f_c_0_k",
+          "label": "Druck ‖",
+          "value": 13,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C16",
+          "key": "f_t_90_k",
+          "label": "Zug ⊥",
+          "value": 0.4,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C16",
+          "key": "f_c_90_k",
+          "label": "Druck ⊥",
+          "value": 2.6,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C16",
+          "key": "f_v_k",
+          "label": "Schub",
+          "value": 2.3,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C16",
+          "key": "E_0_mean",
+          "label": "E-Modul",
+          "value": 8000,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C16",
+          "key": "E_0_05",
+          "label": "E0,05",
+          "value": 5300,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C16",
+          "key": "rho_k",
+          "label": "Rohdichte",
+          "value": 310,
+          "unit": "kg/m³"
+        }
+      ]
+    },
+    {
+      "id": "C24",
+      "wood_type_id": "vollholz",
+      "name": "C24",
+      "label": "C24 – Vollholz Nadelholz",
+      "sort_order": 2,
+      "properties": [
+        {
+          "wood_class_id": "C24",
+          "key": "f_m_k",
+          "label": "Biegefestigkeit",
+          "value": 24,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C24",
+          "key": "f_t_0_k",
+          "label": "Zug ‖",
+          "value": 14,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C24",
+          "key": "f_c_0_k",
+          "label": "Druck ‖",
+          "value": 21,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C24",
+          "key": "f_t_90_k",
+          "label": "Zug ⊥",
+          "value": 0.4,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C24",
+          "key": "f_c_90_k",
+          "label": "Druck ⊥",
+          "value": 2.7,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C24",
+          "key": "f_v_k",
+          "label": "Schub",
+          "value": 2.5,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C24",
+          "key": "E_0_mean",
+          "label": "E-Modul",
+          "value": 11000,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C24",
+          "key": "E_0_05",
+          "label": "E0,05",
+          "value": 7300,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C24",
+          "key": "rho_k",
+          "label": "Rohdichte",
+          "value": 350,
+          "unit": "kg/m³"
+        },
+        {
+          "wood_class_id": "C24",
+          "key": "f_m_d",
+          "label": "Biegefestigkeit",
+          "value": 14.1,
+          "unit": "N/mm²"
+        }
+      ]
+    },
+    {
+      "id": "C30",
+      "wood_type_id": "vollholz",
+      "name": "C30",
+      "label": "C30 – Vollholz Nadelholz",
+      "sort_order": 3,
+      "properties": [
+        {
+          "wood_class_id": "C30",
+          "key": "f_m_k",
+          "label": "Biegefestigkeit",
+          "value": 30,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C30",
+          "key": "f_t_0_k",
+          "label": "Zug ‖",
+          "value": 18,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C30",
+          "key": "f_c_0_k",
+          "label": "Druck ‖",
+          "value": 23,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C30",
+          "key": "f_t_90_k",
+          "label": "Zug ⊥",
+          "value": 0.4,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C30",
+          "key": "f_c_90_k",
+          "label": "Druck ⊥",
+          "value": 3,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C30",
+          "key": "f_v_k",
+          "label": "Schub",
+          "value": 2.7,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C30",
+          "key": "E_0_mean",
+          "label": "E-Modul",
+          "value": 12000,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C30",
+          "key": "E_0_05",
+          "label": "E0,05",
+          "value": 8000,
+          "unit": "N/mm²"
+        },
+        {
+          "wood_class_id": "C30",
+          "key": "rho_k",
+          "label": "Rohdichte",
+          "value": 380,
+          "unit": "kg/m³"
+        }
+      ]
+    }
+  ]
+}

@@ -190,7 +190,7 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
   const loadTableFull = useCallback(async (id: string): Promise<DbTableFull | null> => {
     if (tableCache.current.has(id)) return tableCache.current.get(id)!;
     try {
-      const full = await api.getDbTableFull(id);
+      const full = await api.getTableFull(id);
       const t: DbTableFull = { id: full.id, title: full.title, headers: full.headers || [], rows: full.rows || [], chart_json: full.chart_json ?? null };
       tableCache.current.set(id, t);
       return t;

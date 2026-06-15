@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { Suspense, lazy, useState, useEffect, useCallback, useRef } from 'react';
 import Header from './components/Header';
 import LeftSidebar from './components/LeftSidebar';
 import VerificationPanel from './components/VerificationPanel';
-import PrintPanel from './components/PrintPanel';
-import AdminPage from './components/admin/AdminPage';
 import Splitter from './components/Splitter';
 import { api } from './api';
 import { useStore } from './store/useStore';
+
+const AdminPage = lazy(() => import('./components/admin/AdminPage'));
+const PrintPanel = lazy(() => import('./components/PrintPanel'));
 
 const MIN_SIDEBAR  = 160;
 const MIN_MIDDLE   = 300;
@@ -91,7 +92,7 @@ export default function App() {
       if (Array.isArray(verifs)) setVerificationsFromApi(verifs, nId);
       if (Array.isArray(chaps))  setChaptersFromApi(chaps, nId);
     } catch (e) {
-      console.warn('Backend nicht erreichbar für Norm', nId, e);
+      console.warn('Lokale JSON-Daten konnten nicht geladen werden für Norm', nId, e);
     }
   }, []);
 
@@ -134,7 +135,11 @@ export default function App() {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       background: '#f1f5f9', overflow: 'hidden',
     }}>
-      {showAdmin && <AdminPage onClose={() => navigateTo('/')} />}
+      {showAdmin && (
+        <Suspense fallback={null}>
+          <AdminPage onClose={() => navigateTo('/')} />
+        </Suspense>
+      )}
 
       <Header onAdminClick={() => navigateTo('/admin')} onNormChange={handleNormChange} />
 
@@ -176,7 +181,9 @@ export default function App() {
               <span>Ausdruckprotokoll</span>
               <button onClick={() => setShowPrint(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: 16, lineHeight: 1 }}>×</button>
             </div>
-            <PrintPanel />
+            <Suspense fallback={null}>
+              <PrintPanel />
+            </Suspense>
           </>}
         </div>
 

@@ -70,7 +70,7 @@ export interface DropdownData {
 
 export interface WoodClassData {
   kind: 'woodclass';
-  label: string;          // nur Backend-Info, im Frontend nicht sichtbar
+  label: string;          // nur Editor-Info, im Frontend nicht sichtbar
 }
 
 export interface TableValueData {

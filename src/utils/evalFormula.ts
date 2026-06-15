@@ -3,7 +3,7 @@
 //
 // Beispiel: evalFormula("(M_d * 1e6 / Wy) / (k_mod * f_m_k / gamma_M)", { M_d: 10, Wy: 1.15e6, k_mod: 0.8, f_m_k: 24, gamma_M: 1.3 })
 //
-// Sicherheitsanmerkung: compute_expr kommt aus der DB und wird im Admin-UI vom User selbst eingegeben.
+// Sicherheitsanmerkung: compute_expr kommt aus lokalen JSON-Daten oder aus dem Admin-UI.
 // In einer Produktionsumgebung sollte man hier eine sandboxed Expression-Engine verwenden.
 
 export function evalFormula(expr: string, vars: Record<string, number>): number | null {

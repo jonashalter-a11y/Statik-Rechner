@@ -1,12 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { Suspense, lazy, useRef, useState } from 'react';
 import { useStore } from '../store/useStore';
 import MathDisplay from './MathDisplay';
 import { nameToLatex } from '../utils/formatName';
 import { substituteValues, formatNumber } from '../utils/substituteFormula';
 import { Verification } from '../types';
-import GraphVerificationView from './GraphVerificationView';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+
+const GraphVerificationView = lazy(() => import('./GraphVerificationView'));
 
 function PrintVerification({
   itemKey,
@@ -92,11 +91,13 @@ function PrintVerification({
 
       <div style={{ padding: 14 }}>
         {v.graph_json ? (
-          <GraphVerificationView
-            verification={v}
-            initialInputs={graphInputs}
-            onInputsChange={inputs => updatePrintItemInputs(itemKey, inputs)}
-          />
+          <Suspense fallback={null}>
+            <GraphVerificationView
+              verification={v}
+              initialInputs={graphInputs}
+              onInputsChange={inputs => updatePrintItemInputs(itemKey, inputs)}
+            />
+          </Suspense>
         ) : (<>
           {/* 1. Symbolische Formel */}
           <div style={{ marginBottom: 12 }}>
@@ -271,6 +272,10 @@ export default function PrintPanel() {
     if (!printRef.current) return;
     setExporting(true);
     try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
       const A4_WIDTH_PX = 794;
       const container = document.createElement('div');
       container.style.cssText = 'position:fixed;left:-10000px;top:0;width:' + A4_WIDTH_PX + 'px;z-index:-1;';

@@ -804,12 +804,12 @@ export default function GraphVerificationView({ verification, readOnly = false, 
     return Object.fromEntries((woodClass?.properties || []).map(p => [p.key, p.value]));
   }, [apiWoodClasses, woodClassId]);
 
-  // Referenzierte DB-Tabellen vorladen
+  // Referenzierte Tabellen vorladen
   useEffect(() => {
     let alive = true;
     const refs = collectTableRefs(graph);
     if (!refs.length) { setTables({}); return; }
-    Promise.all(refs.map(id => api.getDbTableFull(id)
+    Promise.all(refs.map(id => api.getTableFull(id)
       .then((t: any) => [id, { headers: t.headers || [], rows: t.rows || [], chart_json: t.chart_json ?? null }] as const)
       .catch(() => null)))
       .then(pairs => { if (!alive) return; const m: Record<string, DbTableData> = {}; pairs.forEach(p => { if (p) m[p[0]] = p[1]; }); setTables(m); });
@@ -2163,7 +2163,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                 </div>
               )}
 
-              {/* Diagramm aus DB */}
+              {/* Diagramm aus lokalen Daten */}
               {cd.extra === 'chart' && chartJson && (() => {
                 const series: any[] = chartJson.series ?? [];
                 const allX = series.flatMap((s: any) => (s.data ?? []).map((p: any) => p[0]));
@@ -2208,7 +2208,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                 );
               })()}
 
-              {/* Tabelle aus DB */}
+              {/* Tabelle aus lokalen Daten */}
               {cd.extra === 'table' && tbl && (
                 <div style={{ overflowX: 'auto' }}>
                   {tbl.headers.length > 0 && (

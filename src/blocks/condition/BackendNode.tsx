@@ -143,7 +143,7 @@ export function ConditionNode({ id, data, selected }: NodeProps) {
           <div style={lbl}>Quelle — <span style={{ fontWeight: 700, color: '#92400e' }}>{sourceName}</span></div>
           <select className="nodrag" value={d.source || 'woodType'}
             onChange={e => set({ source: e.target.value, conditions: [] })} style={inp}>
-            <option value="woodType">Holzart (Backend-Tabelle)</option>
+            <option value="woodType">Holzart (lokale Daten)</option>
             <option value="woodClass">Holzklasse</option>
             {selectableNodes.map(n => (
               <option key={n.id} value={n.id}>{n.label || n.name || n.id}</option>

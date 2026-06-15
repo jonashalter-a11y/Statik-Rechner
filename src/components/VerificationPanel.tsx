@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { Suspense, lazy, useEffect, useRef } from 'react';
 import { useStore } from '../store/useStore';
-import GraphVerificationView from './GraphVerificationView';
+
+const GraphVerificationView = lazy(() => import('./GraphVerificationView'));
 
 const scrollKey = (verificationId: string) => `sia-verification-scroll:${verificationId}`;
 
@@ -49,11 +50,13 @@ export default function VerificationPanel() {
         </button>
       </div>
 
-      <GraphVerificationView
-        key={`${verification.id}-${restoreNonce}`}
-        verification={verification}
-        initialInputs={graphInputsByVerif[verification.id]}
-      />
+      <Suspense fallback={null}>
+        <GraphVerificationView
+          key={`${verification.id}-${restoreNonce}`}
+          verification={verification}
+          initialInputs={graphInputsByVerif[verification.id]}
+        />
+      </Suspense>
 
       {/* Kommentar */}
       <div style={{ marginTop: 16 }}>

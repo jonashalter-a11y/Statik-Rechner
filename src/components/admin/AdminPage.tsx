@@ -1,26 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import VerificationAdmin from './VerificationAdmin';
 import WoodAdmin from './WoodAdmin';
-import DbTableAdmin from './DbTableAdmin';
+import DataTableAdmin from './DataTableAdmin';
 import { api } from '../../api';
 
-type Tab = 'verifications' | 'wood' | 'database' | 'charts';
+type Tab = 'verifications' | 'wood' | 'tables' | 'charts';
 
 interface Norm { id: string; name: string; label: string; year: number; description: string; }
 
 const tabs: { id: Tab; label: string; icon: string }[] = [
   { id: 'verifications', label: 'Nachweise & Formeln', icon: '📐' },
   { id: 'wood',          label: 'Holzarten & Klassen', icon: '🌲' },
-  { id: 'database',      label: 'Datenbank / Tabellen', icon: '📊' },
-  { id: 'charts',        label: 'Datenbank / Diagramme',            icon: '📈' },
+  { id: 'tables',        label: 'Daten / Tabellen', icon: '📊' },
+  { id: 'charts',        label: 'Daten / Diagramme', icon: '📈' },
 ];
 
-// Context: aktive Norm fürs Backend
+// Context: aktive Norm für lokale Daten
 export const NormContext = React.createContext<{ normId: string; normLabel: string }>({ normId: 'sia265', normLabel: 'SIA 265' });
 
 export default function AdminPage({ onClose }: { onClose: () => void }) {
   const [activeTab, setActiveTab] = useState<Tab>(
-    () => (localStorage.getItem('admin-tab') as Tab | null) ?? 'verifications'
+    () => {
+      const stored = localStorage.getItem('admin-tab');
+      return (stored === 'database' ? 'tables' : stored) as Tab | null ?? 'verifications';
+    }
   );
   const [norms, setNorms] = useState<Norm[]>([]);
   const [activeNorm, setActiveNorm] = useState<string>(
@@ -91,7 +94,7 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
           display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0,
         }}>
           <span style={{ color: '#fff', fontWeight: 700, fontSize: 14, whiteSpace: 'nowrap' }}>
-            ⚙️ Backend
+            ⚙️ Admin
           </span>
 
           {/* Norm-Switcher */}
@@ -150,8 +153,8 @@ export default function AdminPage({ onClose }: { onClose: () => void }) {
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
           {activeTab === 'verifications' && <VerificationAdmin />}
           {activeTab === 'wood'          && <WoodAdmin />}
-          {activeTab === 'database'      && <DbTableAdmin mode="table" />}
-          {activeTab === 'charts'        && <DbTableAdmin mode="chart" />}
+          {activeTab === 'tables'        && <DataTableAdmin mode="table" />}
+          {activeTab === 'charts'        && <DataTableAdmin mode="chart" />}
         </div>
 
         {showNewNorm && (

@@ -28,7 +28,7 @@ export function WoodClassNode({ id, data, selected }: NodeProps) {
       <div style={{ fontSize: 9, color: '#92400e', marginBottom: 3 }}>
         nutzt im Frontend die aktuell gewählte Holzklasse
       </div>
-      <div style={lbl}>Backend-Info</div>
+      <div style={lbl}>Daten-Info</div>
       <F value={d.label} placeholder="Aktuelle Holzklasse" onChange={e => set({ label: e.target.value })} />
       <div style={{ fontSize: 9, color: '#6b7280', marginTop: 3, lineHeight: 1.3 }}>
         Mit 🟩 Tabellenwert verbinden. Name = Kennwert, z.B. f_m_k, E_0_mean.

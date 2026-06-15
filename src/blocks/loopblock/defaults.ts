@@ -1,7 +1,7 @@
 import { BlockData } from '../../types/graph';
 
 // Leerer Schleifenblock — beim Einfügen sind keine Beispielwerte vorbelegt.
-// Felder/Listen werden im Backend-Node über die "+"-Buttons befüllt.
+// Felder/Listen werden im Editor-Node über die "+"-Buttons befüllt.
 export function loopblockDefaults(): BlockData {
   return {
     kind: 'loopblock',

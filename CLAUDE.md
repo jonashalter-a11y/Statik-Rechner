@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Nach jeder Änderung die eine dieser Kategorien betrifft, README.md aktualisieren:**
 - Neue Verifikationen oder Berechnungen
-- Neue DB-Tabellen (Anhang C, Norm-Daten)
+- Neue Tabellen (Anhang C, Norm-Daten)
 - Geänderte API-Endpunkte
 - Neue Komponenten oder Features
 - Versionsnummer (Abschnitt "Version History" im README)
@@ -16,22 +16,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Entwicklungsumgebung starten
 
 ```bash
-# Terminal 1 – Backend
-cd server && PORT=3002 node index.js
-
-# Terminal 2 – Frontend
 npm run dev          # http://localhost:5173
 ```
 
-### Datenbank neu aufbauen (nach Änderungen an db.js oder seed-anhangc-full.js)
-```bash
-rm -f server/sia265.db server/sia265.db-wal server/sia265.db-shm
-node server/db.js                  # Schema + Kapitel-Seeds (SIA 265 + SIA 261)
-node server/seed-anhangc-full.js   # Windtabellen Anhang C
-```
-
-`db.js` seedet nur wenn die DB leer ist (`chapCount === 0`). Datei liegt unter `server/sia265.db`.
-**Verifikationen werden nicht mehr automatisch eingepflanzt** — nur per JSON-Import im Admin-UI.
+Die App laeuft statisch ueber Vite und lokale JSON-Daten.
 
 ### Frontend bauen
 ```bash
@@ -43,53 +31,47 @@ npm run build   # TypeScript check + Vite bundle → dist/
 ## Architektur
 
 ### Stack
-- **Backend**: Node.js + Express (CommonJS, `server/`) auf Port 3002
-- **Frontend**: React 18 + TypeScript + Vite (`src/`), Proxy auf `/api` → `:3002`
+- **Datenquelle**: JSON-Dateien in `data/` und `nachweise/`
+- **Frontend**: React 18 + TypeScript + Vite (`src/`)
 - **State**: Zustand (`src/store/useStore.ts`)
-- **DB**: SQLite via `better-sqlite3` (`server/sia265.db`)
 - **Formeln**: KaTeX für LaTeX-Rendering, `evalFormula.ts` für Auswertung
 
 ### Dual-Norm-System
 Der Norm-Switcher im Header schaltet zwischen `sia265` und `sia261`. Beim Wechsel:
 1. `setNormId(id)` → baut sofort den Kapitelbaum aus dem Cache
-2. `loadNormData(id)` → lädt Kapitel + Verifikationen frisch aus der API
+2. `loadNormData(id)` → lädt Kapitel + Verifikationen aus der lokalen JSON-API
 
 Verifikationen werden pro Norm gecacht in `_verifsByNorm: Record<string, Verification[]>`.
 
-### Verifikations-Architektur: JSON statt DB-Seeding
-**Verifikationen werden nicht mehr in der DB persistent gespeichert**, sondern als JSON importiert:
+### Verifikations-Architektur: JSON-Dateien
+**Verifikationen werden als JSON-Dateien verwaltet**:
 - Admin erstellt Nachweis im Node-Editor (Block-Graph)
-- Export → JSON-Datei oder direkt per JSON-Import in Admin-UI
-- Import speichert die Verifikation in `verifications` Tabelle mit `graph_json`-Spalte
-- Beim API-Abruf (`/api/verifications`) werden alle DB-Einträge ausgegeben
-- **Kapitel und Referenztabellen** (Anhang C) sind weiterhin in der DB gespeichert
+- Export → JSON-Datei oder JSON-Import in Admin-UI
+- Admin-Aenderungen landen im Browser-`localStorage`
+- Dauerhafte Nachweise liegen unter `nachweise/<norm>/*.json`
+- Kapitel und Referenztabellen liegen unter `data/chapters/` und `data/tables/`
 
 ### Berechnungsformel-Pipeline
-1. `compute_expr` in DB = JavaScript-String (darf `Math.*` verwenden)
+1. Formel im Nachweis-Graph oder Legacy-`compute_expr` = JavaScript-String (darf `Math.*` verwenden)
 2. `evalFormula(expr, vars)` → `new Function(...varNames, expr)` 
 3. SIA 265: Ergebnis ist η (≤ 1.0 = bestanden)
 4. SIA 261: Ergebnis ist kN/m² oder kN (kein η-Vergleich)
 
 Variablen vom Typ `dropdown` speichern den Wert als String (z.B. `'III'` für Geländekategorie), der compute_expr muss das intern auflösen.
 
-### Seed-Struktur
-- `seed-chapters.js` → SIA 265 Kapitel (exportiert Array)
-- `seed-sia261.js` → SIA 261 Kapitel (exportiert Array) — **keine Verifikationen mehr**
-- `seed-anhangc-full.js` → Windtabellen Tab. 31–45; **direkt ausführbar**, löscht vorher alle `anhc_*` Einträge
-- `db.js` importiert die Seed-Module und führt sie beim ersten Start aus
-- **Verifikationen** müssen per JSON-Import eingefügt werden (Admin → Nachweise → JSON importieren)
+### JSON-Struktur
+- `data/norms.json` → Normen und Navigation
+- `data/chapters/<norm>.json` → Kapitelbaum pro Norm
+- `data/tables/<norm>.json` → Tabellen und Diagramm-Daten pro Norm
+- `data/wood.json` → Holzarten, Holzklassen und Materialwerte
+- `data/units.json` → Einheiten
+- `nachweise/<norm>/*.json` → Nachweise mit `graph_json`
 
-### DB-Schema (wichtigste Tabellen)
-```
-chapters        id, norm_id, parent_id, number, title, sort_order
-verifications   id, norm_id, chapter_id, title, formula_latex, formula_description, graph_json, active
-db_tables       id, norm_id, category, title, description, headers(JSON), rows(JSON)
-```
-**Anmerkung:** `variables` und `variable_options` sind Legacy — neue Verifikationen speichern alles in `graph_json` (Blöcke + Kanten). Alte `compute_expr`-Nachweise rendern noch via Adapter in `legacyToGraph.ts`.
+**Anmerkung:** `variables` und `compute_expr` sind Legacy — neue Verifikationen speichern alles in `graph_json` (Blöcke + Kanten). Alte `compute_expr`-Nachweise rendern noch via Adapter in `legacyToGraph.ts`.
 
 ### Node-Editor / Block-System (Nachweis-Erstellung)
-Neue Nachweise werden im Backend als **Graph aus Blöcken** gebaut (React Flow, `@xyflow/react`)
-und in `verifications.graph_json` gespeichert. Das Frontend rendert denselben Graphen als
+Neue Nachweise werden als **Graph aus Blöcken** gebaut (React Flow, `@xyflow/react`)
+und in `graph_json` gespeichert. Das Frontend rendert denselben Graphen als
 sequentielle Eingabemaske mit Live-Berechnung.
 
 **Block-Typen** (`src/types/graph.ts`):
@@ -175,7 +157,7 @@ var qp = ch * qp0;
    src/blocks/myblock/
    ├── definition.ts      # Block-Definition (type, icon, label, color)
    ├── defaults.ts        # Funktion: createDefaultData() → BlockData
-   ├── BackendNode.tsx    # React-Komponente für Admin-Editor UI
+   ├── BackendNode.tsx    # React-Komponente für den Node-Editor
    ├── evaluate.ts        # Funktion: evaluate(node, runtime) → void
    └── index.ts           # Exports
    ```
@@ -217,7 +199,7 @@ export function myblockDefaults(): BlockData {
 
 | Problem | Prüfen |
 |---------|--------|
-| Leere Kapitel nach Normwechsel | `rawChapterDataByNorm` im Zustand; API `/api/chapters?norm=sia261` |
+| Leere Kapitel nach Normwechsel | `rawChapterDataByNorm` im Zustand; `data/chapters/<norm>.json`; `api.getChapters(norm)` |
 | Formel ergibt `null` | `evalFormula` gibt `null` bei Fehler → Browser-Konsole |
-| DB-Tabellen fehlen | `node server/seed-anhangc-full.js` erneut ausführen |
+| Tabellen fehlen | `data/tables/<norm>.json` und `api.getTables(norm)` prüfen |
 | Variablenwert wird nicht übernommen | Typ `dropdown` speichert String – compute_expr muss String-Vergleich machen |

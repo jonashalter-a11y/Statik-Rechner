@@ -34,8 +34,8 @@ export function CommentNode({ id, data, selected }: NodeProps) {
     none: '— kein Extra',
     link: '🔗 Link',
     image: '🖼 Foto / Bild',
-    chart: '📊 Diagramm (DB)',
-    table: '📋 Tabelle / CSV (DB)',
+    chart: '📊 Diagramm',
+    table: '📋 Tabelle / CSV',
   };
 
   return (
@@ -103,10 +103,10 @@ export function CommentNode({ id, data, selected }: NodeProps) {
           </>
         )}
 
-        {/* Chart / Tabelle aus DB */}
+        {/* Chart / Tabelle aus lokalen Daten */}
         {(d.extra === 'chart' || d.extra === 'table') && (
           <>
-            <div style={lbl}>{d.extra === 'chart' ? 'Diagramm' : 'Tabelle'} aus DB</div>
+            <div style={lbl}>{d.extra === 'chart' ? 'Diagramm' : 'Tabelle'} aus lokalen Daten</div>
             <select
               className="nodrag"
               value={d.table_ref || ''}

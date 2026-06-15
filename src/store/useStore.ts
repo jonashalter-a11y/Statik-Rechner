@@ -1,6 +1,4 @@
 import { create } from 'zustand';
-import { chapters as staticChapters } from '../data/sia265';
-import { defaultVerifications } from '../data/verifications';
 import { Chapter, Discipline, Standard, Verification, WoodType } from '../types';
 import { evalFormula } from '../utils/evalFormula';
 
@@ -45,7 +43,7 @@ interface AppState {
   // Hochgezählt bei jedem restoreFromPrint → erzwingt Re-mount von GraphVerificationView
   restoreNonce: number;
 
-  // Vom Backend geladene Holzdaten
+  // Aus lokalen JSON-Daten geladene Holzdaten
   apiWoodTypes:    ApiWoodType[];
   apiWoodClasses:  ApiWoodClass[];
   rawChapterData:  any[];
@@ -71,7 +69,7 @@ interface AppState {
   clearPrintProtocol: () => void;
   setGraphInputs: (verifId: string, inputs: Record<string, string>) => void;
   addVerification: (v: Verification) => void;
-  globalUnits: string[];             // LaTeX-Einheiten aus der DB
+  globalUnits: string[];             // LaTeX-Einheiten aus data/units.json
   setGlobalUnits: (units: string[]) => void;
   computeResult:   (verificationId: string) => void;
   setVerificationsFromApi: (data: any[], normId?: string) => void;
@@ -212,10 +210,10 @@ export const useStore = create<AppState>((set, get) => ({
   normId:     (localStorage.getItem('sia-norm-id') || 'sia265') as string,
   woodType:   'Vollholz',
   woodClassId: 'C24',
-  chapters: staticChapters,
+  chapters: [],
   activeChapterId: localStorage.getItem(LS_ACTIVE_CHAPTER),
   activeVerificationId: localStorage.getItem(LS_ACTIVE_VERIFICATION),
-  verifications: defaultVerifications.map(v => computeVerification(v)),
+  verifications: [],
   printItems: readPrintProtocolItems(),
   graphInputsByVerif: readJsonStorage<Record<string, Record<string, string>>>(LS_GRAPH_INPUTS, {}),
   restoreNonce: 0,
@@ -425,7 +423,7 @@ export const useStore = create<AppState>((set, get) => ({
       ),
     })),
 
-  // Kapitelstruktur vom Backend laden
+  // Kapitelstruktur aus lokalen JSON-Daten übernehmen
   setChaptersFromApi: (data, normId = 'sia265') => {
     set(state => {
       const newByNorm = { ...state.rawChapterDataByNorm, [normId]: data };
@@ -458,7 +456,7 @@ export const useStore = create<AppState>((set, get) => ({
     });
   },
 
-  // Nachweise vom Backend laden — bestehende User-Werte bleiben erhalten
+  // Nachweise aus lokalen JSON-Daten übernehmen — bestehende User-Werte bleiben erhalten
   setVerificationsFromApi: (data, normId = 'sia265') => {
     set(state => {
       // Vorhandene Werte aus Cache oder aktiver Norm holen
@@ -496,7 +494,7 @@ export const useStore = create<AppState>((set, get) => ({
             }
             // Für alle anderen Variablen: vom User eingegebenen Wert erhalten
             const existingVar = existingV?.variables.find(ev => ev.id === vr.id);
-            // table_column: Optionen kommen als Strings aus der DB-Tabelle (nicht als Zahlen konvertieren)
+            // table_column: Optionen kommen als Strings aus der Referenztabelle (nicht als Zahlen konvertieren)
             const isTableCol = vr.type === 'table_column';
             const opts = (vr.options || []).map((o: any) => ({
               label: o.label,
@@ -552,7 +550,7 @@ export const useStore = create<AppState>((set, get) => ({
   },
 }));
 
-// Hilfsfunktion: WoodType-Label → DB-ID
+// Hilfsfunktion: WoodType-Label → JSON-ID
 export function woodTypeToId(w: WoodType): string {
   switch (w) {
     case 'Vollholz':          return 'vollholz';
