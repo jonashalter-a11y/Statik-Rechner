@@ -118,6 +118,8 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
   const [dragOrderIdx, setDragOrderIdx] = useState<number | null>(null);
   const [dragOverOrderIdx, setDragOverOrderIdx] = useState<number | null>(null);
   const [collapsedOrderSections, setCollapsedOrderSections] = useState<Set<string>>(new Set());
+  const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+  const [lastSelectedOrderIdx, setLastSelectedOrderIdx] = useState<number | null>(null);
   const toggleOrderSection = (id: string) => setCollapsedOrderSections(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   const tableCache = useRef<Map<string, DbTableFull>>(new Map());
   const clipboardRef = useRef<GraphClipboard | null>(loadClipboardFromStorage());
@@ -594,18 +596,77 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
               })()
             : sortedNodes as unknown as Node[];
 
-          const handleDragStart = (i: number) => setDragOrderIdx(i);
+          const handleOrderItemClick = (i: number, e: React.MouseEvent) => {
+            const nodeId = currentOrder[i].id;
+            const mod = e.ctrlKey || e.metaKey;
+            const shift = e.shiftKey;
+
+            if (shift && lastSelectedOrderIdx !== null) {
+              const start = Math.min(lastSelectedOrderIdx, i);
+              const end = Math.max(lastSelectedOrderIdx, i);
+              const newSelected = new Set(selectedOrderIds);
+              for (let idx = start; idx <= end; idx++) {
+                newSelected.add(currentOrder[idx].id);
+              }
+              setSelectedOrderIds(newSelected);
+            } else if (mod) {
+              const newSelected = new Set(selectedOrderIds);
+              if (newSelected.has(nodeId)) {
+                newSelected.delete(nodeId);
+              } else {
+                newSelected.add(nodeId);
+              }
+              setSelectedOrderIds(newSelected);
+              setLastSelectedOrderIdx(i);
+            } else {
+              setSelectedOrderIds(new Set([nodeId]));
+              setLastSelectedOrderIdx(i);
+            }
+          };
+
+          const handleDragStart = (i: number, e: React.DragEvent) => {
+            const nodeId = currentOrder[i].id;
+            if (!selectedOrderIds.has(nodeId)) {
+              setSelectedOrderIds(new Set([nodeId]));
+              setLastSelectedOrderIdx(i);
+            }
+            setDragOrderIdx(i);
+          };
+
           const handleDragOver = (e: React.DragEvent, i: number) => { e.preventDefault(); setDragOverOrderIdx(i); };
+
           const handleDrop = (e: React.DragEvent, i: number) => {
             e.preventDefault();
             if (dragOrderIdx == null || dragOrderIdx === i) { setDragOrderIdx(null); setDragOverOrderIdx(null); return; }
+
             const ids = currentOrder.map(n => n.id);
-            const [moved] = ids.splice(dragOrderIdx, 1);
-            ids.splice(i, 0, moved);
-            setDisplayOrder(ids);
+            const draggedId = ids[dragOrderIdx];
+            const isSelected = selectedOrderIds.has(draggedId);
+
+            if (isSelected && selectedOrderIds.size > 1) {
+              const selectedIndices = Array.from(selectedOrderIds)
+                .map(id => ids.indexOf(id))
+                .sort((a, b) => a - b);
+              const offset = i - dragOrderIdx;
+
+              const newIds = [...ids];
+              const movedIds = selectedIndices.map(idx => newIds[idx]);
+              const remaining = newIds.filter((id, idx) => !selectedIndices.includes(idx));
+
+              let insertIdx = Math.max(0, Math.min(offset > 0 ? i - selectedIndices.length + 1 : i, remaining.length));
+              remaining.splice(insertIdx, 0, ...movedIds);
+
+              setDisplayOrder(remaining);
+            } else {
+              const [moved] = ids.splice(dragOrderIdx, 1);
+              ids.splice(i, 0, moved);
+              setDisplayOrder(ids);
+            }
+
             setDragOrderIdx(null);
             setDragOverOrderIdx(null);
           };
+
           const handleDragEnd = () => { setDragOrderIdx(null); setDragOverOrderIdx(null); };
 
           // Sichtbarkeit: Blöcke nach einem eingeklappten Titel ausblenden
@@ -656,13 +717,15 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
                   const isNonRend = NON_RENDERABLE.has(String(n.type || ''));
                   const isDragging = dragOrderIdx === i;
                   const isDragOver = dragOverOrderIdx === i;
+                  const isSelected = selectedOrderIds.has(n.id);
                   const titleColor = isTitle ? ((n.data as any).color || '#2563eb') : undefined;
                   const isCollapsed = isTitle && collapsedOrderSections.has(n.id);
                   return (
                     <div
                       key={n.id}
                       draggable={!!displayOrder}
-                      onDragStart={() => displayOrder && handleDragStart(i)}
+                      onClick={e => handleOrderItemClick(i, e)}
+                      onDragStart={e => displayOrder && handleDragStart(i, e)}
                       onDragOver={e => displayOrder && handleDragOver(e, i)}
                       onDrop={e => displayOrder && handleDrop(e, i)}
                       onDragEnd={handleDragEnd}
@@ -670,16 +733,22 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
                         display: 'flex', alignItems: 'center', gap: 5,
                         padding: isTitle ? '5px 6px' : '3px 6px 3px 18px',
                         marginBottom: isTitle ? 4 : 2, borderRadius: 4,
-                        border: `1px solid ${isDragOver ? '#2563eb' : isTitle ? (titleColor + '60') : '#e5e7eb'}`,
-                        background: isDragging ? '#f0f9ff' : isDragOver ? '#eff6ff' : isTitle ? (titleColor + '15') : '#fafafa',
+                        border: `1px solid ${isDragOver ? '#2563eb' : isSelected ? '#3b82f6' : isTitle ? (titleColor + '60') : '#e5e7eb'}`,
+                        background: isDragging ? '#f0f9ff' : isDragOver ? '#eff6ff' : isSelected ? '#dbeafe' : isTitle ? (titleColor + '15') : '#fafafa',
                         cursor: displayOrder ? 'grab' : 'default',
                         fontSize: 11, opacity: isNonRend ? 0.4 : 1,
                         userSelect: 'none',
-                        borderLeft: isTitle ? `3px solid ${titleColor}` : undefined,
+                        borderLeft: isTitle ? `3px solid ${titleColor}` : isSelected ? '3px solid #3b82f6' : undefined,
                         marginTop: isTitle ? 4 : 0,
                       }}
                     >
-                      {displayOrder && <span style={{ color: '#d1d5db', fontSize: 12, flexShrink: 0 }}>≡</span>}
+                      {displayOrder && (
+                        <span style={{
+                          color: isSelected ? '#3b82f6' : '#d1d5db',
+                          fontSize: 12, flexShrink: 0,
+                          fontWeight: isSelected ? 700 : 400,
+                        }}>≡</span>
+                      )}
                       <span style={{ flexShrink: 0 }}>{paletteIcon(String(n.type || ''))}</span>
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: isTitle ? titleColor : '#374151', flex: 1, fontWeight: isTitle ? 700 : 400 }}>{nodeLabel(n)}</span>
                       <button type="button"

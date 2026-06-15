@@ -11,7 +11,7 @@
     "compute_expr": "",
     "sort_order": 0,
     "active": 1,
-    "graph_json": "{\"version\":1,\"nodes\":[{\"id\":\"var_l\",\"type\":\"variable\",\"position\":{\"x\":35.07528780453343,\"y\":-25.67849145816368},\"data\":{\"kind\":\"variable\",\"name\":\"l\",\"label\":\"Knicklänge\",\"unit\":\"mm\",\"default_value\":\"3000\",\"inputKind\":\"number\",\"description\":\"Länge des Druckstabes zwischen den Auflagern\",\"hasDefault\":false}},{\"id\":\"var_b\",\"type\":\"variable\",\"position\":{\"x\":38.28707224753428,\"y\":159.4448669704114},\"data\":{\"kind\":\"variable\",\"name\":\"b\",\"label\":\"Breite\",\"unit\":\"mm\",\"default_value\":\"80\",\"inputKind\":\"number_comment\",\"description\":\"Querschnittsbreite des Stabes\",\"hasDefault\":false,\"comment\":\"Schwache Achse\"},\"style\":{\"width\":150,\"height\":136}},{\"id\":\"var_h\",\"type\":\"variable\",\"position\":{\"x\":42.569391628698554,\"y\":302.8707224753428},\"data\":{\"kind\":\"variable\",\"name\":\"h\",\"label\":\"Höhe\",\"unit\":\"mm\",\"default_value\":\"120\",\"inputKind\":\"number\",\"description\":\"Querschnittshöhe des Stabes\",\"hasDefault\":false},\"style\":{\"width\":150,\"height\":145}},{\"id\":\"var_N\",\"type\":\"variable\",\"position\":{\"x\":45.13878325739714,\"y\":454.8612167426029},\"data\":{\"kind\":\"variable\",\"name\":\"N_d\",\"label\":\"Druckkraft (Bemessung)\",\"unit\":\"\\\\mathrm{N}\",\"default_value\":\"50\",\"inputKind\":\"number\",\"description\":\"Bemessungswert der Druckkraft\",\"hasDefault\":false}},{\"id\":\"calc_A\",\"type\":\"calc\",\"position\":{\"x\":438.82969672914965,\"y\":137.78411919126634},\"data\":{\"kind\":\"calc\",\"name\":\"A\",\"label\":\"Querschnittsfläche\",\"unit\":\"mm²\",\"latex\":\"A = b \\\\cdot h\",\"expr\":\"b * h\",\"description\":\"Fläche des rechteckigen Querschnitts\"},\"style\":{\"width\":150,\"height\":118}},{\"id\":\"calc_i\",\"type\":\"calc\",\"position\":{\"x\":390.2676741554001,\"y\":428.02965269213075},\"data\":{\"kind\":\"calc\",\"name\":\"i\",\"label\":\"Trägheitsradius\",\"unit\":\"mm\",\"latex\":\"i =\\\\sqrt{ \\\\frac{\\\\frac{h \\\\cdot b^3}{12}}{A}}\",\"expr\":\"Math.sqrt( ((((h * Math.pow(b,3))/(12)))/(A)))\",\"description\":\"Trägheitsradius für Rechteck-Querschnitt (schwache Achse)\"},\"style\":{\"width\":150,\"height\":118}},{\"id\":\"calc_lambda\",\"type\":\"calc\",\"position\":{\"x\":758.5079818632609,\"y\":482.93070032266996},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\lambda\",\"label\":\"Schlankheitsgrad\",\"unit\":\"[]\",\"latex\":\"\\\\lambda = \\\\frac{l}{i}\",\"expr\":\"((l)/(i))\",\"description\":\"Geometrischer Schlankheitsgrad (Längenverhältnis)\"},\"style\":{\"width\":251,\"height\":308}},{\"id\":\"calc_lambda_rel\",\"type\":\"calc\",\"position\":{\"x\":1158.2252679299502,\"y\":488.7489574758942},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\lambda_rel\",\"label\":\"Relative Schlankheit\",\"unit\":\"[]\",\"latex\":\"\\\\lambda_{rel} = \\\\frac{\\\\lambda}{\\\\pi} \\\\cdot \\\\sqrt{\\\\frac{f_{c,0,k}}{E_{0,05}}}\",\"expr\":\"((lambda)/(pi)) * Math.sqrt(((f_c_0_k)/(E_0_05)))\",\"description\":\"SIA 265 4.2.8.4: λ / (57 für Vollholz, 60 für BSH)\"},\"style\":{\"width\":251,\"height\":308}},{\"id\":\"calc_k\",\"type\":\"calc\",\"position\":{\"x\":1586.0583667176074,\"y\":551.9126607067045},\"data\":{\"kind\":\"calc\",\"name\":\"k\",\"label\":\"Hilfswert k\",\"unit\":\"-\",\"latex\":\"k = 0.5 \\\\cdot [1 + \\\\beta_c \\\\cdot (\\\\lambda_{rel} - 0.3) + \\\\lambda_{rel}^2]\",\"expr\":\"0.5 * (1 + beta_c * (lambda_rel - 0.3) + lambda_rel * lambda_rel)\",\"description\":\"SIA 265 4.2.8.2 Gleichung 31\"},\"style\":{\"width\":251,\"height\":308}},{\"id\":\"calc_kc\",\"type\":\"calc\",\"position\":{\"x\":2022.683341381141,\"y\":398.34528884485394},\"data\":{\"kind\":\"calc\",\"name\":\"k_c\",\"label\":\"Knickebeiwert\",\"unit\":\"-\",\"latex\":\"k_c = \\\\frac{1}{k + \\\\sqrt{k^2 - \\\\lambda_{rel}^2}}\",\"expr\":\"((1)/(k + Math.sqrt(Math.pow(k,2) - Math.pow(lambda_rel,2))))\",\"description\":\"SIA 265 4.2.8.2 Gleichung 30\"},\"style\":{\"width\":251,\"height\":308}},{\"id\":\"calc_sigma_c0d\",\"type\":\"calc\",\"position\":{\"x\":750.1085655139497,\"y\":142.7290923900507},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\sigma_{c,0,d}\",\"label\":\"Druckspannung\",\"unit\":\"N/mm²\",\"latex\":\"\\\\sigma_{c,0,d} = \\\\frac{N_d}{A}\",\"expr\":\"((N_d)/(A))\",\"description\":\"Bemessungswert der Druckspannung (N_d in kN → zu N umrechnen)\"},\"style\":{\"width\":150,\"height\":118}},{\"id\":\"tablevalue_mqfa5jry_1\",\"type\":\"tablevalue\",\"position\":{\"x\":517.0707080091878,\"y\":669.4440256406024},\"data\":{\"kind\":\"tablevalue\",\"name\":\"f_c_0_k\",\"label\":\"\",\"unit\":\"\\\\mathrm{N/mm^2}\",\"table_col\":1}},{\"id\":\"woodclass_mqfa5up6_3\",\"type\":\"woodclass\",\"position\":{\"x\":94.14118764351338,\"y\":973.0896505456893},\"data\":{\"kind\":\"woodclass\",\"label\":\"Aktuelle Holzklasse\"}},{\"id\":\"tablevalue_mqfb7zmj_1\",\"type\":\"tablevalue\",\"position\":{\"x\":508.32193219628857,\"y\":857.9306682735203},\"data\":{\"kind\":\"tablevalue\",\"name\":\"beta_c\",\"label\":\"\",\"unit\":\"[]\",\"table_col\":1}},{\"id\":\"tablevalue_mqfbaevq_6\",\"type\":\"tablevalue\",\"position\":{\"x\":536.5118268607181,\"y\":1069.1063463924418},\"data\":{\"kind\":\"tablevalue\",\"name\":\"E_0_05\",\"label\":\"\",\"unit\":\"\\\\mathrm{N/mm^2}\",\"table_col\":1},\"style\":{\"width\":319,\"height\":143}},{\"id\":\"check_mqfbbnxy_9\",\"type\":\"check\",\"position\":{\"x\":2842.985626727847,\"y\":522.1855782346692},\"data\":{\"kind\":\"check\",\"label\":\"Druckstabnachweis auf Knicken\",\"latex\":\"\\\\sigma_{c,0,d} \\\\leq f_{c,0,d,eff} \",\"expr\":\"(sigma_c_0_d) <= (f_c_0_d_eff) ? 1 : 0\",\"unit\":\"\\\\mathrm{N/mm^2}\"},\"style\":{\"width\":375,\"height\":292}},{\"id\":\"tablevalue_mqfbny6y_13\",\"type\":\"tablevalue\",\"position\":{\"x\":551.555371949585,\"y\":1265.9395293060131},\"data\":{\"kind\":\"tablevalue\",\"name\":\"f_c_0_d\",\"label\":\"\",\"unit\":\"N/mm²\",\"table_col\":1}},{\"id\":\"calc_mqfeg6n5_4\",\"type\":\"calc\",\"position\":{\"x\":2302.358044030985,\"y\":748.0929679883604},\"data\":{\"kind\":\"calc\",\"name\":\"f_{c,0,d,eff} \",\"label\":\"\",\"unit\":\"\\\\mathrm{N/mm^2}\",\"latex\":\"f_{c,0,d,eff} = k_{c}\\\\cdot f_{c,0,d}\",\"expr\":\"k_c* f_c_0_d\"},\"style\":{\"width\":463,\"height\":368}},{\"id\":\"title_mqfl5pf8_1\",\"type\":\"title\",\"position\":{\"x\":-152.86527614146024,\"y\":-253.69379440873524},\"data\":{\"kind\":\"title\",\"label\":\"Knicken ohne Moment\",\"color\":\"#2563eb\"}},{\"id\":\"frame_mqfl5so7_2\",\"type\":\"frame\",\"position\":{\"x\":-156.53896793361537,\"y\":-133.14191236028},\"data\":{\"kind\":\"frame\",\"label\":\"\",\"color\":\"#2563eb\"},\"style\":{\"width\":3386,\"height\":1593}},{\"id\":\"tablevalue_mqflw80d_1\",\"type\":\"tablevalue\",\"position\":{\"x\":315.70115636603214,\"y\":1805.7260629067594},\"data\":{\"kind\":\"tablevalue\",\"name\":\"E_0_05\",\"label\":\"\",\"unit\":\"N/mm^2\",\"table_col\":0},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"woodclass_mqflw80d_2\",\"type\":\"woodclass\",\"position\":{\"x\":50.570741767900245,\"y\":1822.3863648392128},\"data\":{\"kind\":\"woodclass\",\"label\":\"Aktuelle Holzklasse\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"variable_mqflw80d_3\",\"type\":\"variable\",\"position\":{\"x\":334.95696257919303,\"y\":1959.0004304687338},\"data\":{\"kind\":\"variable\",\"name\":\"b\",\"label\":\"Breite\",\"unit\":\"mm\",\"default_value\":\"180\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"variable_mqflw80d_4\",\"type\":\"variable\",\"position\":{\"x\":333.9373648961948,\"y\":2156.4898543765967},\"data\":{\"kind\":\"variable\",\"name\":\"h\",\"label\":\"Höhe\",\"unit\":\"mm\",\"default_value\":\"1440\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"calc_mqflw80d_5\",\"type\":\"calc\",\"position\":{\"x\":698.7554790137078,\"y\":2075.138345172688},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\sigma_{m,\\\\text{crit}}\",\"label\":\"\",\"unit\":\"N/mm^2\",\"latex\":\"\\\\sigma_{m,\\\\text{crit}} = 0{,}75 \\\\cdot E_{0{,}05} \\\\cdot \\\\frac{b^2}{a \\\\cdot h}\",\"expr\":\"0.75 * E_0_05 * ((Math.pow(b,2))/(a * h))\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"variable_mqflw80d_6\",\"type\":\"variable\",\"position\":{\"x\":338.01575562818766,\"y\":2346.8420945034713},\"data\":{\"kind\":\"variable\",\"name\":\"a\",\"label\":\"Kipplänge\",\"unit\":\"mm\",\"default_value\":\"5000\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"woodclass_mqflw80d_7\",\"type\":\"woodclass\",\"position\":{\"x\":716.7475017339777,\"y\":1884.595382693902},\"data\":{\"kind\":\"woodclass\",\"label\":\"Aktuelle Holzklasse\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"tablevalue_mqflw80d_8\",\"type\":\"tablevalue\",\"position\":{\"x\":958.1934340285236,\"y\":1866.595382693902},\"data\":{\"kind\":\"tablevalue\",\"name\":\"f_m_k\",\"label\":\"\",\"unit\":\"N/mm^2\",\"table_col\":1},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"calc_mqflw80d_9\",\"type\":\"calc\",\"position\":{\"x\":1254.5847935158076,\"y\":2067.2575858102646},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\lambda_{\\\\text{rel},m}\",\"label\":\"\",\"unit\":\"[]\",\"latex\":\"\\\\lambda_{\\\\text{rel},m} = \\\\sqrt{\\\\frac{f_{m,k}}{\\\\sigma_{m,\\\\text{crit}}}}\",\"expr\":\"Math.sqrt(((f_m_k)/(sigma_m,crit)))\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"condition_mqflw80d_10\",\"type\":\"condition\",\"position\":{\"x\":1555.7433964185393,\"y\":2085.716908755722},\"data\":{\"kind\":\"condition\",\"label\":\"\",\"conditions\":[{\"id\":\"c1\",\"latex\":\"\\\\lambda_{\\\\text{rel},m} \\\\leq 0{,}75\",\"expr\":\"(lambda_rel_m) <= (0.75) ? 1 : 0\",\"match\":\"\"},{\"id\":\"c2\",\"latex\":\"0{,}75 \\\\cdot \\\\lambda_{\\\\text{rel},m} \\\\leq 1{,}4\",\"expr\":\"(0.75 * lambda_rel_m) <= (1.4) ? 1 : 0\",\"match\":\"\"},{\"id\":\"c3\",\"latex\":\"1{,}4 < \\\\lambda_{\\\\text{rel},m}\",\"expr\":\"(1.4) < (lambda_rel_m) ? 1 : 0\",\"match\":\"\"}],\"mode\":\"expr\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"calc_mqflw80d_11\",\"type\":\"calc\",\"position\":{\"x\":1911.083174085681,\"y\":1878.3268564154698},\"data\":{\"kind\":\"calc\",\"name\":\"k_m\",\"label\":\"\",\"unit\":\"[]\",\"latex\":\"k_m=1\",\"expr\":\"1\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"calc_mqflw80d_12\",\"type\":\"calc\",\"position\":{\"x\":1915.946559288877,\"y\":2179.8056017284016},\"data\":{\"kind\":\"calc\",\"name\":\"k_m\",\"label\":\"\",\"unit\":\"[]\",\"latex\":\"k_m=1.56-0.75 \\\\cdot \\\\lambda_{\\\\text{rel},m}\",\"expr\":\"1.56-0.75 * lambda_rel_m\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"calc_mqflw80d_13\",\"type\":\"calc\",\"position\":{\"x\":1911.1996680288528,\"y\":2495.0487318461765},\"data\":{\"kind\":\"calc\",\"name\":\"k_m\",\"label\":\"\",\"unit\":\"[]\",\"latex\":\"k_{m} = \\\\frac{1}{\\\\lambda_{\\\\text{rel},m}^2}\",\"expr\":\"((1)/(Math.pow(lambda_rel_m,2)))\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"tablevalue_mqflw80d_14\",\"type\":\"tablevalue\",\"position\":{\"x\":1970.858329927731,\"y\":1723.7762545307583},\"data\":{\"kind\":\"tablevalue\",\"name\":\"f_m_d\",\"label\":\"\",\"unit\":\"N/mm^2\",\"table_col\":1},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"woodclass_mqflw80d_15\",\"type\":\"woodclass\",\"position\":{\"x\":1710.5607271703311,\"y\":1713.8940178284186},\"data\":{\"kind\":\"woodclass\",\"label\":\"Aktuelle Holzklasse\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"variable_mqflw80d_17\",\"type\":\"variable\",\"position\":{\"x\":339.9373648961948,\"y\":2557.5280134084087},\"data\":{\"kind\":\"variable\",\"name\":\"q'\",\"label\":\"Linienlast\",\"unit\":\"kN/m\",\"default_value\":\"20.7\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"calc_mqflw80d_18\",\"type\":\"calc\",\"position\":{\"x\":586.2117324581695,\"y\":2588.07726669945},\"data\":{\"kind\":\"calc\",\"name\":\"M_{max}\",\"label\":\"\",\"unit\":\"Nmm\",\"latex\":\"M_{max}= \\\\frac{q' \\\\cdot l^2}{ 8}\",\"expr\":\"((q * Math.pow(l,2))/( 8))\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"variable_mqflw80d_19\",\"type\":\"variable\",\"position\":{\"x\":333.1921347751713,\"y\":2784.8998512182816},\"data\":{\"kind\":\"variable\",\"name\":\"l\",\"label\":\"Länge\",\"unit\":\"mm\",\"default_value\":\"20000\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"calc_mqflw80d_20\",\"type\":\"calc\",\"position\":{\"x\":868.5962995033144,\"y\":2588.1522751722323},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\sigma_{m, max}\",\"label\":\"\",\"unit\":\"N/mm^2\",\"latex\":\"\\\\sigma_{m, \\\\max} = \\\\frac{M_{max}}{\\\\frac{b \\\\cdot h^2}{6}}\",\"expr\":\"((M_max)/(((b * Math.pow(h,2))/(6))))\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"frame_mqflxefd_43\",\"type\":\"frame\",\"position\":{\"x\":-289.21922965877286,\"y\":1563.5024045524904},\"data\":{\"kind\":\"frame\",\"label\":\"\",\"color\":\"#dc2626\"},\"style\":{\"width\":3572,\"height\":1614}},{\"id\":\"title_mqflxzuu_44\",\"type\":\"title\",\"position\":{\"x\":-288.07886401416727,\"y\":1457.0812234079262},\"data\":{\"kind\":\"title\",\"label\":\"4.2.8.5  Knicken und Kippen\",\"color\":\"#dc2626\"}},{\"id\":\"calc_mqfm1tuu_46\",\"type\":\"calc\",\"position\":{\"x\":2247.774839812908,\"y\":2193.6775768983143},\"data\":{\"kind\":\"calc\",\"name\":\"f_{m,d,eff}\",\"label\":\"\",\"unit\":\"\\\\mathrm{N/mm^2}\",\"latex\":\"f_{m,d,eff} = k_{m} \\\\cdot f_{m,d}\",\"expr\":\"k_m * f_m_d\"},\"style\":{\"width\":715,\"height\":429}},{\"id\":\"check_mqfm66zk_5\",\"type\":\"check\",\"position\":{\"x\":2727.240199734954,\"y\":2240.9204051875317},\"data\":{\"kind\":\"check\",\"label\":\"\",\"latex\":\"\\\\frac{\\\\sigma_{c,0,d}}{f_{c,0,d,eff} }+\\\\frac{\\\\sigma_{m, max}}{f_{m,d,eff}}\\\\leq 1\",\"expr\":\"(((sigma_c_0_d)/(f_c_0_d_eff ))+((sigma_m_max)/(f_m_d_eff))) <= (1) ? 1 : 0\"},\"style\":{\"width\":557,\"height\":341}}],\"edges\":[{\"id\":\"e_l_A\",\"source\":\"var_l\",\"target\":\"calc_lambda\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_b_A\",\"source\":\"var_b\",\"target\":\"calc_A\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_h_A\",\"source\":\"var_h\",\"target\":\"calc_A\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_h_i\",\"source\":\"var_h\",\"target\":\"calc_i\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_i_lambda\",\"source\":\"calc_i\",\"target\":\"calc_lambda\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_A_sigma\",\"source\":\"calc_A\",\"target\":\"calc_sigma_c0d\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_N_sigma\",\"source\":\"var_N\",\"target\":\"calc_sigma_c0d\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_lambda_lambdarel\",\"source\":\"calc_lambda\",\"target\":\"calc_lambda_rel\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_lambdarel_k\",\"source\":\"calc_lambda_rel\",\"target\":\"calc_k\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_k_kc\",\"source\":\"calc_k\",\"target\":\"calc_kc\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfa5y0s_4\",\"source\":\"woodclass_mqfa5up6_3\",\"target\":\"tablevalue_mqfa5jry_1\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfb8in4_2\",\"source\":\"woodclass_mqfa5up6_3\",\"target\":\"tablevalue_mqfb7zmj_1\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfb9wkt_3\",\"source\":\"calc_lambda_rel\",\"target\":\"calc_kc\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfba6qq_4\",\"source\":\"tablevalue_mqfb7zmj_1\",\"target\":\"calc_k\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfbac5q_5\",\"source\":\"tablevalue_mqfa5jry_1\",\"target\":\"calc_lambda_rel\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfbaust_7\",\"source\":\"tablevalue_mqfbaevq_6\",\"target\":\"calc_lambda_rel\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfbnjjf_11\",\"source\":\"woodclass_mqfa5up6_3\",\"target\":\"tablevalue_mqfbaevq_6\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfbo14e_14\",\"source\":\"woodclass_mqfa5up6_3\",\"target\":\"tablevalue_mqfbny6y_13\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfej0ii_1\",\"source\":\"tablevalue_mqfbny6y_13\",\"target\":\"calc_mqfeg6n5_4\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfej4i5_2\",\"source\":\"calc_mqfeg6n5_4\",\"target\":\"check_mqfbbnxy_9\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfejo3f_3\",\"source\":\"calc_kc\",\"target\":\"calc_mqfeg6n5_4\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_21\",\"source\":\"woodclass_mqflw80d_2\",\"target\":\"tablevalue_mqflw80d_1\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_22\",\"source\":\"tablevalue_mqflw80d_1\",\"target\":\"calc_mqflw80d_5\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_23\",\"source\":\"variable_mqflw80d_3\",\"target\":\"calc_mqflw80d_5\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_24\",\"source\":\"variable_mqflw80d_4\",\"target\":\"calc_mqflw80d_5\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_25\",\"source\":\"variable_mqflw80d_6\",\"target\":\"calc_mqflw80d_5\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_26\",\"source\":\"woodclass_mqflw80d_7\",\"target\":\"tablevalue_mqflw80d_8\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_27\",\"source\":\"calc_mqflw80d_5\",\"target\":\"calc_mqflw80d_9\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_28\",\"source\":\"tablevalue_mqflw80d_8\",\"target\":\"calc_mqflw80d_9\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_29\",\"source\":\"calc_mqflw80d_9\",\"target\":\"condition_mqflw80d_10\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_30\",\"source\":\"condition_mqflw80d_10\",\"target\":\"calc_mqflw80d_11\",\"sourceHandle\":\"c1\",\"targetHandle\":null,\"data\":{\"kind\":\"condition\",\"conditionId\":\"c1\"}},{\"id\":\"e_mqflw80d_31\",\"source\":\"condition_mqflw80d_10\",\"target\":\"calc_mqflw80d_12\",\"sourceHandle\":\"c2\",\"targetHandle\":null,\"data\":{\"kind\":\"condition\",\"conditionId\":\"c2\"}},{\"id\":\"e_mqflw80d_32\",\"source\":\"condition_mqflw80d_10\",\"target\":\"calc_mqflw80d_13\",\"sourceHandle\":\"c3\",\"targetHandle\":null,\"data\":{\"kind\":\"condition\",\"conditionId\":\"c3\"}},{\"id\":\"e_mqflw80d_33\",\"source\":\"woodclass_mqflw80d_15\",\"target\":\"tablevalue_mqflw80d_14\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_38\",\"source\":\"variable_mqflw80d_19\",\"target\":\"calc_mqflw80d_18\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_39\",\"source\":\"variable_mqflw80d_17\",\"target\":\"calc_mqflw80d_18\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_41\",\"source\":\"calc_mqflw80d_18\",\"target\":\"calc_mqflw80d_20\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfm5gok_1\",\"source\":\"tablevalue_mqflw80d_14\",\"target\":\"calc_mqfm1tuu_46\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfm5m1k_2\",\"source\":\"calc_mqflw80d_11\",\"target\":\"calc_mqfm1tuu_46\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfm5q8z_3\",\"source\":\"calc_mqflw80d_12\",\"target\":\"calc_mqfm1tuu_46\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfm5z47_4\",\"source\":\"calc_mqflw80d_13\",\"target\":\"calc_mqfm1tuu_46\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfm8w7b_6\",\"source\":\"calc_mqfm1tuu_46\",\"target\":\"check_mqfm66zk_5\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfm9arw_7\",\"source\":\"calc_mqfeg6n5_4\",\"target\":\"check_mqfm66zk_5\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfm9guw_8\",\"source\":\"calc_mqflw80d_20\",\"target\":\"check_mqfm66zk_5\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfm9sit_9\",\"source\":\"calc_sigma_c0d\",\"target\":\"check_mqfm66zk_5\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}}],\"display_order\":[\"woodclass_mqfa5up6_3\",\"title_mqfl5pf8_1\",\"frame_mqfl5so7_2\",\"tablevalue_mqfbny6y_13\",\"tablevalue_mqfa5jry_1\",\"tablevalue_mqfbaevq_6\",\"tablevalue_mqfb7zmj_1\",\"var_l\",\"var_b\",\"var_h\",\"var_N\",\"calc_A\",\"calc_i\",\"calc_sigma_c0d\",\"calc_lambda\",\"calc_lambda_rel\",\"calc_k\",\"calc_kc\",\"calc_mqfeg6n5_4\",\"check_mqfbbnxy_9\",\"tablevalue_mqflw80d_1\",\"woodclass_mqflw80d_2\",\"variable_mqflw80d_3\",\"variable_mqflw80d_4\",\"calc_mqflw80d_5\",\"variable_mqflw80d_6\",\"woodclass_mqflw80d_7\",\"tablevalue_mqflw80d_8\",\"calc_mqflw80d_9\",\"condition_mqflw80d_10\",\"calc_mqflw80d_11\",\"calc_mqflw80d_12\",\"calc_mqflw80d_13\",\"tablevalue_mqflw80d_14\",\"woodclass_mqflw80d_15\",\"variable_mqflw80d_17\",\"calc_mqflw80d_18\",\"variable_mqflw80d_19\",\"calc_mqflw80d_20\",\"frame_mqflxefd_43\",\"title_mqflxzuu_44\",\"calc_mqfm1tuu_46\",\"check_mqfm66zk_5\"]}",
+    "graph_json": "{\"version\":1,\"nodes\":[{\"id\":\"var_l\",\"type\":\"variable\",\"position\":{\"x\":35.07528780453343,\"y\":-25.67849145816368},\"data\":{\"kind\":\"variable\",\"name\":\"l_{k}\",\"label\":\"Knicklänge\",\"unit\":\"mm\",\"default_value\":\"3000\",\"inputKind\":\"number\",\"description\":\"Länge des Druckstabes zwischen den Auflagern\",\"hasDefault\":false}},{\"id\":\"var_b\",\"type\":\"variable\",\"position\":{\"x\":38.28707224753428,\"y\":159.4448669704114},\"data\":{\"kind\":\"variable\",\"name\":\"b\",\"label\":\"Breite\",\"unit\":\"mm\",\"default_value\":\"80\",\"inputKind\":\"number_comment\",\"description\":\"Querschnittsbreite des Stabes\",\"hasDefault\":false,\"comment\":\"Schwache Achse\"},\"style\":{\"width\":150,\"height\":136}},{\"id\":\"var_h\",\"type\":\"variable\",\"position\":{\"x\":42.569391628698554,\"y\":302.8707224753428},\"data\":{\"kind\":\"variable\",\"name\":\"h\",\"label\":\"Höhe\",\"unit\":\"mm\",\"default_value\":\"120\",\"inputKind\":\"number\",\"description\":\"Querschnittshöhe des Stabes\",\"hasDefault\":false},\"style\":{\"width\":150,\"height\":145}},{\"id\":\"var_N\",\"type\":\"variable\",\"position\":{\"x\":45.13878325739714,\"y\":454.8612167426029},\"data\":{\"kind\":\"variable\",\"name\":\"N_d\",\"label\":\"Druckkraft (Bemessung)\",\"unit\":\"\\\\mathrm{N}\",\"default_value\":\"50\",\"inputKind\":\"number\",\"description\":\"Bemessungswert der Druckkraft\",\"hasDefault\":false}},{\"id\":\"calc_A\",\"type\":\"calc\",\"position\":{\"x\":438.82969672914965,\"y\":137.78411919126634},\"data\":{\"kind\":\"calc\",\"name\":\"A\",\"label\":\"Querschnittsfläche\",\"unit\":\"mm²\",\"latex\":\"A = b \\\\cdot h\",\"expr\":\"b * h\",\"description\":\"Fläche des rechteckigen Querschnitts\"},\"style\":{\"width\":150,\"height\":118}},{\"id\":\"calc_i\",\"type\":\"calc\",\"position\":{\"x\":390.2676741554001,\"y\":428.02965269213075},\"data\":{\"kind\":\"calc\",\"name\":\"i\",\"label\":\"Trägheitsradius\",\"unit\":\"mm\",\"latex\":\"i =\\\\sqrt{ \\\\frac{\\\\frac{h \\\\cdot b^3}{12}}{A}}\",\"expr\":\"Math.sqrt( ((((h * Math.pow(b,3))/(12)))/(A)))\",\"description\":\"Trägheitsradius für Rechteck-Querschnitt (schwache Achse)\"},\"style\":{\"width\":150,\"height\":118}},{\"id\":\"calc_lambda\",\"type\":\"calc\",\"position\":{\"x\":758.5079818632609,\"y\":482.93070032266996},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\lambda\",\"label\":\"Schlankheitsgrad\",\"unit\":\"[]\",\"latex\":\"\\\\lambda = \\\\frac{l_{k}}{i}\",\"expr\":\"((l_k)/(i))\",\"description\":\"Geometrischer Schlankheitsgrad (Längenverhältnis)\"},\"style\":{\"width\":251,\"height\":308}},{\"id\":\"calc_lambda_rel\",\"type\":\"calc\",\"position\":{\"x\":1158.2252679299502,\"y\":488.7489574758942},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\lambda_rel\",\"label\":\"Relative Schlankheit\",\"unit\":\"[]\",\"latex\":\"\\\\lambda_{rel} = \\\\frac{\\\\lambda}{\\\\pi} \\\\cdot \\\\sqrt{\\\\frac{f_{c,0,k}}{E_{0,05}}}\",\"expr\":\"((lambda)/(pi)) * Math.sqrt(((f_c_0_k)/(E_0_05)))\",\"description\":\"SIA 265 4.2.8.4: λ / (57 für Vollholz, 60 für BSH)\"},\"style\":{\"width\":251,\"height\":308}},{\"id\":\"calc_k\",\"type\":\"calc\",\"position\":{\"x\":1586.0583667176074,\"y\":551.9126607067045},\"data\":{\"kind\":\"calc\",\"name\":\"k\",\"label\":\"Hilfswert k\",\"unit\":\"-\",\"latex\":\"k = 0.5 \\\\cdot [1 + \\\\beta_c \\\\cdot (\\\\lambda_{rel} - 0.3) + \\\\lambda_{rel}^2]\",\"expr\":\"0.5 * (1 + beta_c * (lambda_rel - 0.3) + lambda_rel * lambda_rel)\",\"description\":\"SIA 265 4.2.8.2 Gleichung 31\"},\"style\":{\"width\":251,\"height\":308}},{\"id\":\"calc_kc\",\"type\":\"calc\",\"position\":{\"x\":2022.683341381141,\"y\":398.34528884485394},\"data\":{\"kind\":\"calc\",\"name\":\"k_c\",\"label\":\"Knickebeiwert\",\"unit\":\"-\",\"latex\":\"k_c = \\\\frac{1}{k + \\\\sqrt{k^2 - \\\\lambda_{rel}^2}}\",\"expr\":\"((1)/(k + Math.sqrt(Math.pow(k,2) - Math.pow(lambda_rel,2))))\",\"description\":\"SIA 265 4.2.8.2 Gleichung 30\"},\"style\":{\"width\":251,\"height\":308}},{\"id\":\"calc_sigma_c0d\",\"type\":\"calc\",\"position\":{\"x\":750.1085655139497,\"y\":142.7290923900507},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\sigma_{c,0,d}\",\"label\":\"Druckspannung\",\"unit\":\"N/mm²\",\"latex\":\"\\\\sigma_{c,0,d} = \\\\frac{N_d}{A}\",\"expr\":\"((N_d)/(A))\",\"description\":\"Bemessungswert der Druckspannung (N_d in kN → zu N umrechnen)\"},\"style\":{\"width\":150,\"height\":118}},{\"id\":\"tablevalue_mqfa5jry_1\",\"type\":\"tablevalue\",\"position\":{\"x\":517.0707080091878,\"y\":669.4440256406024},\"data\":{\"kind\":\"tablevalue\",\"name\":\"f_c_0_k\",\"label\":\"\",\"unit\":\"\\\\mathrm{N/mm^2}\",\"table_col\":1}},{\"id\":\"woodclass_mqfa5up6_3\",\"type\":\"woodclass\",\"position\":{\"x\":94.14118764351338,\"y\":973.0896505456893},\"data\":{\"kind\":\"woodclass\",\"label\":\"Aktuelle Holzklasse\"}},{\"id\":\"tablevalue_mqfb7zmj_1\",\"type\":\"tablevalue\",\"position\":{\"x\":508.32193219628857,\"y\":857.9306682735203},\"data\":{\"kind\":\"tablevalue\",\"name\":\"beta_c\",\"label\":\"\",\"unit\":\"[]\",\"table_col\":1}},{\"id\":\"tablevalue_mqfbaevq_6\",\"type\":\"tablevalue\",\"position\":{\"x\":536.5118268607181,\"y\":1069.1063463924418},\"data\":{\"kind\":\"tablevalue\",\"name\":\"E_0_05\",\"label\":\"\",\"unit\":\"\\\\mathrm{N/mm^2}\",\"table_col\":1},\"style\":{\"width\":319,\"height\":143}},{\"id\":\"check_mqfbbnxy_9\",\"type\":\"check\",\"position\":{\"x\":2842.985626727847,\"y\":522.1855782346692},\"data\":{\"kind\":\"check\",\"label\":\"Druckstabnachweis auf Knicken\",\"latex\":\"\\\\sigma_{c,0,d} \\\\leq f_{c,0,d,eff} \",\"expr\":\"(sigma_c_0_d) <= (f_c_0_d_eff) ? 1 : 0\",\"unit\":\"\\\\mathrm{N/mm^2}\"},\"style\":{\"width\":375,\"height\":292}},{\"id\":\"tablevalue_mqfbny6y_13\",\"type\":\"tablevalue\",\"position\":{\"x\":551.555371949585,\"y\":1265.9395293060131},\"data\":{\"kind\":\"tablevalue\",\"name\":\"f_c_0_d\",\"label\":\"\",\"unit\":\"N/mm²\",\"table_col\":1}},{\"id\":\"calc_mqfeg6n5_4\",\"type\":\"calc\",\"position\":{\"x\":2302.358044030985,\"y\":748.0929679883604},\"data\":{\"kind\":\"calc\",\"name\":\"f_{c,0,d,eff} \",\"label\":\"\",\"unit\":\"\\\\mathrm{N/mm^2}\",\"latex\":\"f_{c,0,d,eff} = k_{c}\\\\cdot f_{c,0,d}\",\"expr\":\"k_c* f_c_0_d\"},\"style\":{\"width\":463,\"height\":368}},{\"id\":\"title_mqfl5pf8_1\",\"type\":\"title\",\"position\":{\"x\":-152.86527614146024,\"y\":-253.69379440873524},\"data\":{\"kind\":\"title\",\"label\":\"Knicken ohne Moment\",\"color\":\"#2563eb\"}},{\"id\":\"calc_mqflw80d_5\",\"type\":\"calc\",\"position\":{\"x\":698.7554790137078,\"y\":2075.138345172688},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\sigma_{m,\\\\text{crit}}\",\"label\":\"\",\"unit\":\"N/mm^2\",\"latex\":\"\\\\sigma_{m,\\\\text{crit}} = 0{,}75 \\\\cdot E_{0{,}05} \\\\cdot \\\\frac{b^2}{a \\\\cdot h}\",\"expr\":\"0.75 * E_0_05 * ((Math.pow(b,2))/(a * h))\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"variable_mqflw80d_6\",\"type\":\"variable\",\"position\":{\"x\":338.01575562818766,\"y\":2346.8420945034713},\"data\":{\"kind\":\"variable\",\"name\":\"a\",\"label\":\"Kipplänge\",\"unit\":\"mm\",\"default_value\":\"5000\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"woodclass_mqflw80d_7\",\"type\":\"woodclass\",\"position\":{\"x\":716.7475017339777,\"y\":1884.595382693902},\"data\":{\"kind\":\"woodclass\",\"label\":\"Aktuelle Holzklasse\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"tablevalue_mqflw80d_8\",\"type\":\"tablevalue\",\"position\":{\"x\":958.1934340285236,\"y\":1866.595382693902},\"data\":{\"kind\":\"tablevalue\",\"name\":\"f_m_k\",\"label\":\"\",\"unit\":\"N/mm^2\",\"table_col\":1},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"calc_mqflw80d_9\",\"type\":\"calc\",\"position\":{\"x\":1254.5847935158076,\"y\":2067.2575858102646},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\lambda_{\\\\text{rel},m}\",\"label\":\"\",\"unit\":\"[]\",\"latex\":\"\\\\lambda_{\\\\text{rel},m} = \\\\sqrt{\\\\frac{f_{m,k}}{\\\\sigma_{m,\\\\text{crit}}}}\",\"expr\":\"Math.sqrt(((f_m_k)/(sigma_m,crit)))\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"condition_mqflw80d_10\",\"type\":\"condition\",\"position\":{\"x\":1555.7433964185393,\"y\":2085.716908755722},\"data\":{\"kind\":\"condition\",\"label\":\"\",\"conditions\":[{\"id\":\"c1\",\"latex\":\"\\\\lambda_{\\\\text{rel},m} \\\\leq 0{,}75\",\"expr\":\"(lambda_rel_m) <= (0.75) ? 1 : 0\",\"match\":\"\"},{\"id\":\"c2\",\"latex\":\"0{,}75 \\\\cdot \\\\lambda_{\\\\text{rel},m} \\\\leq 1{,}4\",\"expr\":\"(0.75 * lambda_rel_m) <= (1.4) ? 1 : 0\",\"match\":\"\"},{\"id\":\"c3\",\"latex\":\"1{,}4 < \\\\lambda_{\\\\text{rel},m}\",\"expr\":\"(1.4) < (lambda_rel_m) ? 1 : 0\",\"match\":\"\"}],\"mode\":\"expr\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"calc_mqflw80d_11\",\"type\":\"calc\",\"position\":{\"x\":1911.083174085681,\"y\":1878.3268564154698},\"data\":{\"kind\":\"calc\",\"name\":\"k_m\",\"label\":\"\",\"unit\":\"[]\",\"latex\":\"k_m=1\",\"expr\":\"1\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"calc_mqflw80d_12\",\"type\":\"calc\",\"position\":{\"x\":1915.946559288877,\"y\":2179.8056017284016},\"data\":{\"kind\":\"calc\",\"name\":\"k_m\",\"label\":\"\",\"unit\":\"[]\",\"latex\":\"k_m=1.56-0.75 \\\\cdot \\\\lambda_{\\\\text{rel},m}\",\"expr\":\"1.56-0.75 * lambda_rel_m\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"calc_mqflw80d_13\",\"type\":\"calc\",\"position\":{\"x\":1911.1996680288528,\"y\":2495.0487318461765},\"data\":{\"kind\":\"calc\",\"name\":\"k_m\",\"label\":\"\",\"unit\":\"[]\",\"latex\":\"k_{m} = \\\\frac{1}{\\\\lambda_{\\\\text{rel},m}^2}\",\"expr\":\"((1)/(Math.pow(lambda_rel_m,2)))\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"tablevalue_mqflw80d_14\",\"type\":\"tablevalue\",\"position\":{\"x\":1970.858329927731,\"y\":1723.7762545307583},\"data\":{\"kind\":\"tablevalue\",\"name\":\"f_m_d\",\"label\":\"\",\"unit\":\"N/mm^2\",\"table_col\":1},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"woodclass_mqflw80d_15\",\"type\":\"woodclass\",\"position\":{\"x\":1710.5607271703311,\"y\":1713.8940178284186},\"data\":{\"kind\":\"woodclass\",\"label\":\"Aktuelle Holzklasse\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"variable_mqflw80d_17\",\"type\":\"variable\",\"position\":{\"x\":339.9373648961948,\"y\":2557.5280134084087},\"data\":{\"kind\":\"variable\",\"name\":\"q'\",\"label\":\"Linienlast\",\"unit\":\"kN/m\",\"default_value\":\"20.7\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"calc_mqflw80d_18\",\"type\":\"calc\",\"position\":{\"x\":586.2117324581695,\"y\":2588.07726669945},\"data\":{\"kind\":\"calc\",\"name\":\"M_{max}\",\"label\":\"\",\"unit\":\"Nmm\",\"latex\":\"M_{max}= \\\\frac{q' \\\\cdot l^2}{ 8}\",\"expr\":\"((q * Math.pow(l,2))/( 8))\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"variable_mqflw80d_19\",\"type\":\"variable\",\"position\":{\"x\":333.1921347751713,\"y\":2784.8998512182816},\"data\":{\"kind\":\"variable\",\"name\":\"l\",\"label\":\"Länge\",\"unit\":\"mm\",\"default_value\":\"20000\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"calc_mqflw80d_20\",\"type\":\"calc\",\"position\":{\"x\":868.5962995033144,\"y\":2588.1522751722323},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\sigma_{m, max}\",\"label\":\"\",\"unit\":\"N/mm^2\",\"latex\":\"\\\\sigma_{m, \\\\max} = \\\\frac{M_{max}}{\\\\frac{b \\\\cdot h^2}{6}}\",\"expr\":\"((M_max)/(((b * Math.pow(h,2))/(6))))\"},\"style\":{\"width\":209,\"height\":179}},{\"id\":\"title_mqflxzuu_44\",\"type\":\"title\",\"position\":{\"x\":-288.07886401416727,\"y\":1457.0812234079262},\"data\":{\"kind\":\"title\",\"label\":\"4.2.8.5  Knicken und Kippen\",\"color\":\"#dc2626\"}},{\"id\":\"calc_mqfm1tuu_46\",\"type\":\"calc\",\"position\":{\"x\":2247.774839812908,\"y\":2193.6775768983143},\"data\":{\"kind\":\"calc\",\"name\":\"f_{m,d,eff}\",\"label\":\"\",\"unit\":\"\\\\mathrm{N/mm^2}\",\"latex\":\"f_{m,d,eff} = k_{m} \\\\cdot f_{m,d}\",\"expr\":\"k_m * f_m_d\"},\"style\":{\"width\":715,\"height\":429}},{\"id\":\"check_mqfm66zk_5\",\"type\":\"check\",\"position\":{\"x\":3046.0641190849874,\"y\":2238.3283408025723},\"data\":{\"kind\":\"check\",\"label\":\"\",\"latex\":\"\\\\frac{\\\\sigma_{c,0,d}}{f_{c,0,d,eff} }+\\\\frac{\\\\sigma_{m, max}}{f_{m,d,eff}}\\\\leq 1\",\"expr\":\"(((sigma_c_0_d)/(f_c_0_d_eff ))+((sigma_m_max)/(f_m_d_eff))) <= (1) ? 1 : 0\"},\"style\":{\"width\":557,\"height\":341}}],\"edges\":[{\"id\":\"e_l_A\",\"source\":\"var_l\",\"target\":\"calc_lambda\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_b_A\",\"source\":\"var_b\",\"target\":\"calc_A\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_h_A\",\"source\":\"var_h\",\"target\":\"calc_A\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_h_i\",\"source\":\"var_h\",\"target\":\"calc_i\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_i_lambda\",\"source\":\"calc_i\",\"target\":\"calc_lambda\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_A_sigma\",\"source\":\"calc_A\",\"target\":\"calc_sigma_c0d\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_N_sigma\",\"source\":\"var_N\",\"target\":\"calc_sigma_c0d\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_lambda_lambdarel\",\"source\":\"calc_lambda\",\"target\":\"calc_lambda_rel\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_lambdarel_k\",\"source\":\"calc_lambda_rel\",\"target\":\"calc_k\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_k_kc\",\"source\":\"calc_k\",\"target\":\"calc_kc\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfa5y0s_4\",\"source\":\"woodclass_mqfa5up6_3\",\"target\":\"tablevalue_mqfa5jry_1\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfb8in4_2\",\"source\":\"woodclass_mqfa5up6_3\",\"target\":\"tablevalue_mqfb7zmj_1\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfb9wkt_3\",\"source\":\"calc_lambda_rel\",\"target\":\"calc_kc\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfba6qq_4\",\"source\":\"tablevalue_mqfb7zmj_1\",\"target\":\"calc_k\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfbac5q_5\",\"source\":\"tablevalue_mqfa5jry_1\",\"target\":\"calc_lambda_rel\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfbaust_7\",\"source\":\"tablevalue_mqfbaevq_6\",\"target\":\"calc_lambda_rel\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfbnjjf_11\",\"source\":\"woodclass_mqfa5up6_3\",\"target\":\"tablevalue_mqfbaevq_6\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfbo14e_14\",\"source\":\"woodclass_mqfa5up6_3\",\"target\":\"tablevalue_mqfbny6y_13\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfej0ii_1\",\"source\":\"tablevalue_mqfbny6y_13\",\"target\":\"calc_mqfeg6n5_4\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfej4i5_2\",\"source\":\"calc_mqfeg6n5_4\",\"target\":\"check_mqfbbnxy_9\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfejo3f_3\",\"source\":\"calc_kc\",\"target\":\"calc_mqfeg6n5_4\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_25\",\"source\":\"variable_mqflw80d_6\",\"target\":\"calc_mqflw80d_5\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_26\",\"source\":\"woodclass_mqflw80d_7\",\"target\":\"tablevalue_mqflw80d_8\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_27\",\"source\":\"calc_mqflw80d_5\",\"target\":\"calc_mqflw80d_9\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_28\",\"source\":\"tablevalue_mqflw80d_8\",\"target\":\"calc_mqflw80d_9\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_29\",\"source\":\"calc_mqflw80d_9\",\"target\":\"condition_mqflw80d_10\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_30\",\"source\":\"condition_mqflw80d_10\",\"target\":\"calc_mqflw80d_11\",\"sourceHandle\":\"c1\",\"targetHandle\":null,\"data\":{\"kind\":\"condition\",\"conditionId\":\"c1\"}},{\"id\":\"e_mqflw80d_31\",\"source\":\"condition_mqflw80d_10\",\"target\":\"calc_mqflw80d_12\",\"sourceHandle\":\"c2\",\"targetHandle\":null,\"data\":{\"kind\":\"condition\",\"conditionId\":\"c2\"}},{\"id\":\"e_mqflw80d_32\",\"source\":\"condition_mqflw80d_10\",\"target\":\"calc_mqflw80d_13\",\"sourceHandle\":\"c3\",\"targetHandle\":null,\"data\":{\"kind\":\"condition\",\"conditionId\":\"c3\"}},{\"id\":\"e_mqflw80d_33\",\"source\":\"woodclass_mqflw80d_15\",\"target\":\"tablevalue_mqflw80d_14\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_38\",\"source\":\"variable_mqflw80d_19\",\"target\":\"calc_mqflw80d_18\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_39\",\"source\":\"variable_mqflw80d_17\",\"target\":\"calc_mqflw80d_18\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqflw80d_41\",\"source\":\"calc_mqflw80d_18\",\"target\":\"calc_mqflw80d_20\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfm5gok_1\",\"source\":\"tablevalue_mqflw80d_14\",\"target\":\"calc_mqfm1tuu_46\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfm5m1k_2\",\"source\":\"calc_mqflw80d_11\",\"target\":\"calc_mqfm1tuu_46\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfm5q8z_3\",\"source\":\"calc_mqflw80d_12\",\"target\":\"calc_mqfm1tuu_46\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfm5z47_4\",\"source\":\"calc_mqflw80d_13\",\"target\":\"calc_mqfm1tuu_46\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfm8w7b_6\",\"source\":\"calc_mqfm1tuu_46\",\"target\":\"check_mqfm66zk_5\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfm9arw_7\",\"source\":\"calc_mqfeg6n5_4\",\"target\":\"check_mqfm66zk_5\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfm9guw_8\",\"source\":\"calc_mqflw80d_20\",\"target\":\"check_mqfm66zk_5\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfm9sit_9\",\"source\":\"calc_sigma_c0d\",\"target\":\"check_mqfm66zk_5\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}}],\"display_order\":[\"woodclass_mqfa5up6_3\",\"title_mqfl5pf8_1\",\"tablevalue_mqfbny6y_13\",\"tablevalue_mqfa5jry_1\",\"tablevalue_mqfbaevq_6\",\"tablevalue_mqfb7zmj_1\",\"var_l\",\"var_b\",\"var_h\",\"var_N\",\"calc_A\",\"calc_i\",\"calc_sigma_c0d\",\"calc_lambda\",\"calc_lambda_rel\",\"calc_k\",\"calc_kc\",\"calc_mqfeg6n5_4\",\"check_mqfbbnxy_9\",\"title_mqflxzuu_44\",\"woodclass_mqflw80d_7\",\"tablevalue_mqflw80d_14\",\"woodclass_mqflw80d_15\",\"tablevalue_mqflw80d_8\",\"variable_mqflw80d_17\",\"variable_mqflw80d_19\",\"variable_mqflw80d_6\",\"calc_mqflw80d_5\",\"calc_mqflw80d_9\",\"condition_mqflw80d_10\",\"calc_mqflw80d_11\",\"calc_mqflw80d_12\",\"calc_mqflw80d_13\",\"calc_mqflw80d_18\",\"calc_mqflw80d_20\",\"calc_mqfm1tuu_46\",\"check_mqfm66zk_5\"]}",
     "notes": ""
   },
   "chapter": {
@@ -36,7 +36,7 @@
         },
         "data": {
           "kind": "variable",
-          "name": "l",
+          "name": "l_{k}",
           "label": "Knicklänge",
           "unit": "mm",
           "default_value": "3000",
@@ -162,8 +162,8 @@
           "name": "\\lambda",
           "label": "Schlankheitsgrad",
           "unit": "[]",
-          "latex": "\\lambda = \\frac{l}{i}",
-          "expr": "((l)/(i))",
+          "latex": "\\lambda = \\frac{l_{k}}{i}",
+          "expr": "((l_k)/(i))",
           "description": "Geometrischer Schlankheitsgrad (Längenverhältnis)"
         },
         "style": {
@@ -381,102 +381,6 @@
           "kind": "title",
           "label": "Knicken ohne Moment",
           "color": "#2563eb"
-        }
-      },
-      {
-        "id": "frame_mqfl5so7_2",
-        "type": "frame",
-        "position": {
-          "x": -156.53896793361537,
-          "y": -133.14191236028
-        },
-        "data": {
-          "kind": "frame",
-          "label": "",
-          "color": "#2563eb"
-        },
-        "style": {
-          "width": 3386,
-          "height": 1593
-        }
-      },
-      {
-        "id": "tablevalue_mqflw80d_1",
-        "type": "tablevalue",
-        "position": {
-          "x": 315.70115636603214,
-          "y": 1805.7260629067594
-        },
-        "data": {
-          "kind": "tablevalue",
-          "name": "E_0_05",
-          "label": "",
-          "unit": "N/mm^2",
-          "table_col": 0
-        },
-        "style": {
-          "width": 209,
-          "height": 179
-        }
-      },
-      {
-        "id": "woodclass_mqflw80d_2",
-        "type": "woodclass",
-        "position": {
-          "x": 50.570741767900245,
-          "y": 1822.3863648392128
-        },
-        "data": {
-          "kind": "woodclass",
-          "label": "Aktuelle Holzklasse"
-        },
-        "style": {
-          "width": 209,
-          "height": 179
-        }
-      },
-      {
-        "id": "variable_mqflw80d_3",
-        "type": "variable",
-        "position": {
-          "x": 334.95696257919303,
-          "y": 1959.0004304687338
-        },
-        "data": {
-          "kind": "variable",
-          "name": "b",
-          "label": "Breite",
-          "unit": "mm",
-          "default_value": "180",
-          "inputKind": "number",
-          "options": [],
-          "hasDefault": false
-        },
-        "style": {
-          "width": 209,
-          "height": 179
-        }
-      },
-      {
-        "id": "variable_mqflw80d_4",
-        "type": "variable",
-        "position": {
-          "x": 333.9373648961948,
-          "y": 2156.4898543765967
-        },
-        "data": {
-          "kind": "variable",
-          "name": "h",
-          "label": "Höhe",
-          "unit": "mm",
-          "default_value": "1440",
-          "inputKind": "number",
-          "options": [],
-          "hasDefault": false
-        },
-        "style": {
-          "width": 209,
-          "height": 179
         }
       },
       {
@@ -793,23 +697,6 @@
         }
       },
       {
-        "id": "frame_mqflxefd_43",
-        "type": "frame",
-        "position": {
-          "x": -289.21922965877286,
-          "y": 1563.5024045524904
-        },
-        "data": {
-          "kind": "frame",
-          "label": "",
-          "color": "#dc2626"
-        },
-        "style": {
-          "width": 3572,
-          "height": 1614
-        }
-      },
-      {
         "id": "title_mqflxzuu_44",
         "type": "title",
         "position": {
@@ -846,8 +733,8 @@
         "id": "check_mqfm66zk_5",
         "type": "check",
         "position": {
-          "x": 2727.240199734954,
-          "y": 2240.9204051875317
+          "x": 3046.0641190849874,
+          "y": 2238.3283408025723
         },
         "data": {
           "kind": "check",
@@ -1073,46 +960,6 @@
         }
       },
       {
-        "id": "e_mqflw80d_21",
-        "source": "woodclass_mqflw80d_2",
-        "target": "tablevalue_mqflw80d_1",
-        "sourceHandle": null,
-        "targetHandle": null,
-        "data": {
-          "kind": "workflow"
-        }
-      },
-      {
-        "id": "e_mqflw80d_22",
-        "source": "tablevalue_mqflw80d_1",
-        "target": "calc_mqflw80d_5",
-        "sourceHandle": null,
-        "targetHandle": null,
-        "data": {
-          "kind": "workflow"
-        }
-      },
-      {
-        "id": "e_mqflw80d_23",
-        "source": "variable_mqflw80d_3",
-        "target": "calc_mqflw80d_5",
-        "sourceHandle": null,
-        "targetHandle": null,
-        "data": {
-          "kind": "workflow"
-        }
-      },
-      {
-        "id": "e_mqflw80d_24",
-        "source": "variable_mqflw80d_4",
-        "target": "calc_mqflw80d_5",
-        "sourceHandle": null,
-        "targetHandle": null,
-        "data": {
-          "kind": "workflow"
-        }
-      },
-      {
         "id": "e_mqflw80d_25",
         "source": "variable_mqflw80d_6",
         "target": "calc_mqflw80d_5",
@@ -1319,7 +1166,6 @@
     "display_order": [
       "woodclass_mqfa5up6_3",
       "title_mqfl5pf8_1",
-      "frame_mqfl5so7_2",
       "tablevalue_mqfbny6y_13",
       "tablevalue_mqfa5jry_1",
       "tablevalue_mqfbaevq_6",
@@ -1337,27 +1183,22 @@
       "calc_kc",
       "calc_mqfeg6n5_4",
       "check_mqfbbnxy_9",
-      "tablevalue_mqflw80d_1",
-      "woodclass_mqflw80d_2",
-      "variable_mqflw80d_3",
-      "variable_mqflw80d_4",
-      "calc_mqflw80d_5",
-      "variable_mqflw80d_6",
+      "title_mqflxzuu_44",
       "woodclass_mqflw80d_7",
+      "tablevalue_mqflw80d_14",
+      "woodclass_mqflw80d_15",
       "tablevalue_mqflw80d_8",
+      "variable_mqflw80d_17",
+      "variable_mqflw80d_19",
+      "variable_mqflw80d_6",
+      "calc_mqflw80d_5",
       "calc_mqflw80d_9",
       "condition_mqflw80d_10",
       "calc_mqflw80d_11",
       "calc_mqflw80d_12",
       "calc_mqflw80d_13",
-      "tablevalue_mqflw80d_14",
-      "woodclass_mqflw80d_15",
-      "variable_mqflw80d_17",
       "calc_mqflw80d_18",
-      "variable_mqflw80d_19",
       "calc_mqflw80d_20",
-      "frame_mqflxefd_43",
-      "title_mqflxzuu_44",
       "calc_mqfm1tuu_46",
       "check_mqfm66zk_5"
     ]
