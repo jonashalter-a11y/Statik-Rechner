@@ -826,6 +826,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
   const [decimals, setDecimals] = useState(3);
   const [imageModal, setImageModal] = useState<{ src: string; label?: string; source?: string } | null>(null);
   const [chartModal, setChartModal] = useState<string | null>(null); // Node-ID
+  const [overrideModal, setOverrideModal] = useState<{ nodeId: string; currentValue: number } | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const toggleSection = (id: string) => setCollapsedSections(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   const effectiveWoodType = woodTypeByVerif[verification.id] || '';
@@ -902,10 +903,42 @@ export default function GraphVerificationView({ verification, readOnly = false, 
     }
     return next;
   });
-  const ev = useMemo(
-    () => evalGraph(graph, inputs, tables, materialProps, { woodType: effectiveWoodType, woodClassId: effectiveWoodClassId }),
-    [graph, inputs, tables, materialProps, effectiveWoodType, effectiveWoodClassId],
-  );
+  const ev = useMemo(() => {
+    // Normale Evaluation
+    const result = evalGraph(graph, inputs, tables, materialProps, { woodType: effectiveWoodType, woodClassId: effectiveWoodClassId });
+
+    // Nach der Evaluation: Wende Override-Werte an
+    for (const [key, value] of Object.entries(inputs)) {
+      if (key.endsWith('_override')) {
+        const nodeId = key.replace('_override', '');
+        const numValue = parseFloat(String(value));
+        if (!isNaN(numValue)) {
+          // Überschreibe das Ergebnis
+          if (result.results[nodeId]) {
+            result.results[nodeId].value = numValue;
+          }
+
+          // Aktualisiere Symbole für diesen Node basierend auf seinem Namen
+          const node = graph.nodes.find(n => n.id === nodeId);
+          if (node?.data && 'name' in node.data) {
+            const name = String((node.data as any).name);
+            // Versuche verschiedene Normalisierungsvarianten
+            const aliases = [
+              name,
+              name.replace(/\\/g, ''),
+              name.replace(/_\{|\}/g, ''),
+              name.replace(/\\/g, '').replace(/_\{|\}/g, ''),
+            ];
+            for (const alias of aliases) {
+              result.symbols[alias] = numValue;
+            }
+          }
+        }
+      }
+    }
+
+    return result;
+  }, [graph, inputs, tables, materialProps, effectiveWoodType, effectiveWoodClassId]);
   const ordered = useMemo(() => {
     const sorted = topoSort(graph);
     const order = graph.display_order;
@@ -1212,7 +1245,57 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                         {colOptions(d.table_ref, d.table_col).map((c, i) => <option key={i} value={c}>{c}</option>)}
                       </select>
                     ) : (
-                      <input type="number" disabled={readOnly} style={{ ...sel, textAlign: 'right', fontFamily: 'monospace' }} value={inputs[n.id] ?? ''} onChange={e => setInput(n.id, e.target.value)} />
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <input
+                          type="text"
+                          disabled={readOnly}
+                          style={{ ...sel, textAlign: 'right', fontFamily: 'monospace', flex: 1 }}
+                          value={inputs[n.id] ?? ''}
+                          placeholder="z.B. 10*11+(45/29) dann ="
+                          onChange={e => setInput(n.id, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && typeof inputs[n.id] === 'string' && (inputs[n.id].includes('*') || inputs[n.id].includes('+') || inputs[n.id].includes('-') || inputs[n.id].includes('/') || inputs[n.id].includes('^'))) {
+                              try {
+                                const formula = String(inputs[n.id] || '').replace(/\^/g, '**');
+                                const result = new Function('return ' + formula)();
+                                if (typeof result === 'number' && isFinite(result)) {
+                                  setInput(n.id, String(result));
+                                }
+                              } catch {
+                                // Fehler beim Evaluieren — nichts tun
+                              }
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          disabled={readOnly}
+                          onClick={() => {
+                            try {
+                              const formula = String(inputs[n.id] || '').replace(/\^/g, '**');
+                              const result = new Function('return ' + formula)();
+                              if (typeof result === 'number' && isFinite(result)) {
+                                setInput(n.id, String(result));
+                              }
+                            } catch {
+                              // Fehler beim Evaluieren
+                            }
+                          }}
+                          style={{
+                            padding: '6px 10px',
+                            background: '#4f46e5',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: 4,
+                            cursor: readOnly ? 'not-allowed' : 'pointer',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            opacity: readOnly ? 0.5 : 1,
+                          }}
+                        >
+                          =
+                        </button>
+                      </div>
                     )}
                   </div>
                 );
@@ -1368,8 +1451,52 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                       const sub = r.substitutedLatex.trimStart().startsWith('=') && d.name
                         ? `${nameToLatex(d.name)} ${r.substitutedLatex.trimStart()}`
                         : r.substitutedLatex;
+                      // GELBE BOX: Zeige immer Original-Berechnung
                       return <MathDisplay latex={isFiniteNumber(r.value) ? `${sub} = ${resultLatex(r.value, d.unit)}` : sub} display />;
                     })()}
+                  </div>
+                )}
+                {isFiniteNumber(r.value) && !readOnly && (
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => setOverrideModal({ nodeId: n.id, currentValue: inputs[`${n.id}_override`] ? parseFloat(String(inputs[`${n.id}_override`])) : (r.value ?? 0) })}
+                      style={{
+                        padding: '4px 6px',
+                        background: 'transparent',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: 3,
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        color: '#6b7280',
+                      }}
+                      title="Wert überschreiben"
+                    >
+                      ✏️
+                    </button>
+                    {inputs[`${n.id}_override`] && (
+                      <div style={{ display: 'flex', gap: 4, alignItems: 'center', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 3, padding: '2px 6px' }}>
+                        <span style={{ fontSize: 11, color: '#ea580c', fontWeight: 600 }}>
+                          {d.name ? nameToLatex(d.name) : '?'} = {inputs[`${n.id}_override`]} {d.unit ? `[${d.unit}]` : ''}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setInput(`${n.id}_override`, '')}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#ea580c',
+                            cursor: 'pointer',
+                            fontSize: 14,
+                            padding: 0,
+                            lineHeight: 1,
+                          }}
+                          title="Override löschen"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
                 {(r.missingSymbols || []).length > 0 && (
@@ -2509,6 +2636,86 @@ export default function GraphVerificationView({ verification, readOnly = false, 
               {`η = ${num(resultVal)} ${resultVal != null && resultVal <= 1 ? '≤ 1.0 → erfüllt' : '> 1.0 → nicht erfüllt'}`}
             </div>
             {resultVal != null && <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Ausnutzung: {(resultVal * 100).toFixed(1)}%</div>}
+          </div>
+        </div>
+      )}
+
+      {/* Override-Modal */}
+      {overrideModal && (
+        <div onClick={() => setOverrideModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 8, padding: 20, boxShadow: '0 10px 40px rgba(0,0,0,0.3)', minWidth: 300 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 12 }}>Wert ändern</div>
+            <input
+              type="text"
+              autoFocus
+              defaultValue={String(overrideModal.currentValue)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const val = (e.target as HTMLInputElement).value.trim();
+                  if (val) {
+                    const num = parseFloat(val);
+                    if (!isNaN(num)) {
+                      setInput(`${overrideModal.nodeId}_override`, String(num));
+                      setOverrideModal(null);
+                    }
+                  }
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                border: '1px solid #cbd5e1',
+                borderRadius: 4,
+                fontSize: 13,
+                fontFamily: 'monospace',
+                marginBottom: 12,
+                boxSizing: 'border-box',
+              }}
+            />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setOverrideModal(null)}
+                style={{
+                  padding: '6px 12px',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: 4,
+                  background: '#fff',
+                  color: '#374151',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                Abbrechen
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const input = (document.activeElement as HTMLInputElement);
+                  const val = input?.value?.trim();
+                  if (val) {
+                    const num = parseFloat(val);
+                    if (!isNaN(num)) {
+                      setInput(`${overrideModal.nodeId}_override`, String(num));
+                      setOverrideModal(null);
+                    }
+                  }
+                }}
+                style={{
+                  padding: '6px 12px',
+                  border: 'none',
+                  borderRadius: 4,
+                  background: '#4f46e5',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                Speichern
+              </button>
+            </div>
           </div>
         </div>
       )}
