@@ -92,7 +92,12 @@ export const F = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HT
     const el = ref.current;
     if (!el || document.activeElement === el) return;
     const strVal = String(value ?? '');
-    if (el.value !== strVal) el.value = strVal;
+    if (el.value !== strVal) {
+      const start = el.selectionStart ?? 0;
+      const end = el.selectionEnd ?? 0;
+      el.value = strVal;
+      el.setSelectionRange(start, end);
+    }
   }, [value]);
   return (
     <input
@@ -120,7 +125,12 @@ export function LatexArea({ value, onChange, placeholder, style, elRef }: {
   useEffect(() => {
     const el = ref.current;
     if (!el || document.activeElement === el) return;
-    if (el.value !== value) el.value = value;
+    if (el.value !== value) {
+      const start = el.selectionStart ?? 0;
+      const end = el.selectionEnd ?? 0;
+      el.value = value;
+      el.setSelectionRange(start, end);
+    }
   }, [value]);
   return (
     <textarea

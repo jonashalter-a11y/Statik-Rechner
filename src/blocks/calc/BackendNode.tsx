@@ -27,7 +27,8 @@ export function CalcNode({ id, data, selected }: NodeProps) {
   const setLatex = (latex: string) => set({ latex, expr: latexToJs(latex) });
   const setName = (name: string) => {
     const latex = updateLatexNamePrefix(d.latex || '', d.name || '', name);
-    set({ name, latex, expr: latexToJs(latex) });
+    const expr = latexToJs(latex);
+    set({ name, latex, expr });
   };
   const insertFormulaName = (name: string) => {
     const token = formulaName(name);
