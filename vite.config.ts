@@ -1,4 +1,4 @@
-import { mkdir, readdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -124,6 +124,45 @@ function jsonWriterPlugin(): Plugin {
 
           res.setHeader('Content-Type', 'application/json')
           res.end(JSON.stringify({ ok: true }))
+        } catch (error: any) {
+          res.statusCode = 500
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify({ ok: false, error: error?.message || String(error) }))
+        }
+      })
+
+      // Dynamisches Laden aller Verifikationen (ohne Dev-Server Restart)
+      server.middlewares.use('/__statik-rechner/load-verifications', async (req, res) => {
+        if (req.method !== 'GET') {
+          res.statusCode = 405
+          res.end(JSON.stringify({ ok: false, error: 'Method not allowed' }))
+          return
+        }
+
+        try {
+          const root = server.config.root
+          const verifications: AnyRecord[] = []
+          const nachweiseDir = path.join(root, 'nachweise')
+
+          // Alle Norm-Ordner lesen
+          const norms = await readdir(nachweiseDir, { withFileTypes: true })
+          for (const normDir of norms) {
+            if (!normDir.isDirectory()) continue
+            const normPath = path.join(nachweiseDir, normDir.name)
+            const files = await readdir(normPath)
+
+            // Alle JSON-Dateien in diesem Norm-Ordner lesen
+            for (const file of files) {
+              if (!file.endsWith('.json')) continue
+              const filePath = path.join(normPath, file)
+              const content = await readFile(filePath, 'utf-8')
+              const parsed = JSON.parse(content)
+              verifications.push(parsed)
+            }
+          }
+
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify({ ok: true, verifications }))
         } catch (error: any) {
           res.statusCode = 500
           res.setHeader('Content-Type', 'application/json')

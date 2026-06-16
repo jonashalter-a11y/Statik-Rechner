@@ -827,6 +827,12 @@
           "label": "Rohdichte",
           "value": 390,
           "unit": "kg/m³"
+        },
+        {
+          "key": "beta_c",
+          "label": "Hilfswert βc",
+          "value": 0.1,
+          "unit": "N/mm²"
         }
       ]
     },
@@ -932,6 +938,12 @@
           "label": "Rohdichte",
           "value": 425,
           "unit": "kg/m³"
+        },
+        {
+          "key": "beta_c",
+          "label": "Hilfswert βc",
+          "value": 0.1,
+          "unit": "N/mm²"
         }
       ]
     },
@@ -1037,6 +1049,12 @@
           "label": "Rohdichte",
           "value": 400,
           "unit": "kg/m³"
+        },
+        {
+          "key": "beta_c",
+          "label": "Hilfswert βc",
+          "value": 0.1,
+          "unit": "N/mm²"
         }
       ]
     },
@@ -1142,6 +1160,12 @@
           "label": "Rohdichte",
           "value": 440,
           "unit": "kg/m³"
+        },
+        {
+          "key": "beta_c",
+          "label": "Hilfswert βc",
+          "value": 0.1,
+          "unit": "N/mm²"
         }
       ]
     }

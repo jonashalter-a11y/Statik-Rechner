@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "exported_at": "2026-06-16T09:19:00.190Z",
+  "verification": {
+    "id": "abbrand2",
+    "norm_id": "lignum_brandschutz",
+    "chapter_id": "lignum_brandschutz_1_mqgdgk39",
+    "title": "Neuer Nachweis",
+    "formula_latex": "",
+    "formula_description": "",
+    "compute_expr": "",
+    "graph_json": "{\"version\":1,\"nodes\":[{\"id\":\"tablevalue_mqgfkfai_1\",\"type\":\"tablevalue\",\"position\":{\"x\":299,\"y\":312.5},\"data\":{\"kind\":\"tablevalue\",\"name\":\"\",\"label\":\"\",\"unit\":\"\",\"table_col\":1}},{\"id\":\"variable_mqgfkgec_2\",\"type\":\"variable\",\"position\":{\"x\":238.5,\"y\":469.5},\"data\":{\"kind\":\"variable\",\"name\":\"\",\"label\":\"\",\"unit\":\"\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[]}},{\"id\":\"variable_mqgfku73_1\",\"type\":\"variable\",\"position\":{\"x\":289.04192725639825,\"y\":799.3487356783136},\"data\":{\"kind\":\"variable\",\"name\":\"\",\"label\":\"\",\"unit\":\"\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[]}},{\"id\":\"variable_mqgfkvl0_2\",\"type\":\"variable\",\"position\":{\"x\":407.27775934746126,\"y\":737.6033566974252},\"data\":{\"kind\":\"variable\",\"name\":\"\",\"label\":\"\",\"unit\":\"\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[]}}],\"edges\":[]}",
+    "notes": "",
+    "active": 1
+  },
+  "chapter": {
+    "id": "lignum_brandschutz_1_mqgdgk39",
+    "sort_order": 2,
+    "norm_id": "lignum_brandschutz",
+    "parent_id": null,
+    "number": "1",
+    "title": "Abbrand"
+  },
+  "variables": [],
+  "tables": [],
+  "graph": {
+    "version": 1,
+    "nodes": [
+      {
+        "id": "tablevalue_mqgfkfai_1",
+        "type": "tablevalue",
+        "position": {
+          "x": 299,
+          "y": 312.5
+        },
+        "data": {
+          "kind": "tablevalue",
+          "name": "",
+          "label": "",
+          "unit": "",
+          "table_col": 1
+        }
+      },
+      {
+        "id": "variable_mqgfkgec_2",
+        "type": "variable",
+        "position": {
+          "x": 238.5,
+          "y": 469.5
+        },
+        "data": {
+          "kind": "variable",
+          "name": "",
+          "label": "",
+          "unit": "",
+          "default_value": "0",
+          "inputKind": "number",
+          "options": []
+        }
+      },
+      {
+        "id": "variable_mqgfku73_1",
+        "type": "variable",
+        "position": {
+          "x": 289.04192725639825,
+          "y": 799.3487356783136
+        },
+        "data": {
+          "kind": "variable",
+          "name": "",
+          "label": "",
+          "unit": "",
+          "default_value": "0",
+          "inputKind": "number",
+          "options": []
+        }
+      },
+      {
+        "id": "variable_mqgfkvl0_2",
+        "type": "variable",
+        "position": {
+          "x": 407.27775934746126,
+          "y": 737.6033566974252
+        },
+        "data": {
+          "kind": "variable",
+          "name": "",
+          "label": "",
+          "unit": "",
+          "default_value": "0",
+          "inputKind": "number",
+          "options": []
+        }
+      }
+    ],
+    "edges": []
+  }
+}

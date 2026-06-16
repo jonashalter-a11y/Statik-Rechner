@@ -1,1 +1,39 @@
-[]
+[
+  {
+    "id": "abbrandrate",
+    "sort_order": 1,
+    "norm_id": "lignum_brandschutz",
+    "chapter_id": "lignum_brandschutz_1_mqgdgk39",
+    "title": "Abbrandrate",
+    "description": "",
+    "type": "table",
+    "headers": [
+      "Baustoff",
+      "Abbrandrate",
+      "Einheit"
+    ],
+    "rows": [
+      [
+        "Vollholz (Nadelholz oder Buche) ",
+        "0.8",
+        "\\mathrm{mm/min}"
+      ],
+      [
+        "Brettschichtholz Nadelholz oder Buche ",
+        "0.7",
+        "\\mathrm{mm/min}"
+      ],
+      [
+        "Eiche oder Robinie (Vollholz und Brettschichtholz)",
+        "0.5",
+        "\\mathrm{mm/min}"
+      ],
+      [
+        "Massivholzschalung",
+        "0.9",
+        "\\mathrm{mm/min}"
+      ]
+    ],
+    "chart_json": null
+  }
+]

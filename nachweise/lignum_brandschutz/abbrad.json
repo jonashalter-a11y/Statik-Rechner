@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "exported_at": "2026-06-16T09:05:04.464Z",
+  "verification": {
+    "id": "abbrad",
+    "norm_id": "lignum_brandschutz",
+    "chapter_id": "lignum_brandschutz_1_mqgdgk39",
+    "title": "Abbrand QS",
+    "formula_latex": "",
+    "formula_description": "",
+    "compute_expr": "",
+    "graph_json": "{\"version\":1,\"nodes\":[{\"id\":\"beamvisual_mqgezzcl_1\",\"type\":\"beamvisual\",\"position\":{\"x\":126,\"y\":140.5},\"data\":{\"kind\":\"beamvisual\",\"label\":\"Träger\",\"span_var\":\"L\",\"span_unit\":\"m\",\"left_support\":\"pin\",\"right_support\":\"roller\",\"loads\":[]}},{\"id\":\"variable_mqgf01m0_2\",\"type\":\"variable\",\"position\":{\"x\":265.88185795624173,\"y\":396.0526120149585},\"data\":{\"kind\":\"variable\",\"name\":\"\",\"label\":\"\",\"unit\":\"\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[]}}],\"edges\":[]}",
+    "notes": "",
+    "active": 1
+  },
+  "chapter": {
+    "id": "lignum_brandschutz_1_mqgdgk39",
+    "sort_order": 2,
+    "norm_id": "lignum_brandschutz",
+    "parent_id": null,
+    "number": "1",
+    "title": "Abbrand"
+  },
+  "variables": [],
+  "tables": [],
+  "graph": {
+    "version": 1,
+    "nodes": [
+      {
+        "id": "beamvisual_mqgezzcl_1",
+        "type": "beamvisual",
+        "position": {
+          "x": 126,
+          "y": 140.5
+        },
+        "data": {
+          "kind": "beamvisual",
+          "label": "Träger",
+          "span_var": "L",
+          "span_unit": "m",
+          "left_support": "pin",
+          "right_support": "roller",
+          "loads": []
+        }
+      },
+      {
+        "id": "variable_mqgf01m0_2",
+        "type": "variable",
+        "position": {
+          "x": 265.88185795624173,
+          "y": 396.0526120149585
+        },
+        "data": {
+          "kind": "variable",
+          "name": "",
+          "label": "",
+          "unit": "",
+          "default_value": "0",
+          "inputKind": "number",
+          "options": []
+        }
+      }
+    ],
+    "edges": []
+  }
+}

@@ -123,6 +123,7 @@ function ChapterTreeNode({ node, depth, selectedTableId, selectedChapterId, expa
 // ── CSV-Import-Modal ───────────────────────────────────────────────────────────
 function CsvImportModal({ normId, chapterId, chapters, onClose, onImported }: { normId: string; chapterId: string; chapters: Chapter[]; onClose: () => void; onImported: () => void; }) {
   const [title, setTitle] = useState('');
+  const [id, setId] = useState('');
   const [description, setDescription] = useState('');
   const [csvText, setCsvText] = useState('');
   const [preview, setPreview] = useState<{ headers: string[]; rows: string[][] } | null>(null);
@@ -144,10 +145,10 @@ function CsvImportModal({ normId, chapterId, chapters, onClose, onImported }: { 
     reader.readAsText(file, 'UTF-8');
   };
   const doImport = async () => {
-    if (!preview || !title.trim()) { setErr('Titel und CSV erforderlich'); return; }
+    if (!preview || !title.trim() || !id.trim()) { setErr('Titel, ID und CSV erforderlich'); return; }
     setSaving(true); setErr('');
     try {
-      await (api as any).createTable({ norm_id: normId, chapter_id: chapterId, title: title.trim(), description, type: 'table', headers: preview.headers, rows: preview.rows });
+      await (api as any).createTable({ id: id.trim(), norm_id: normId, chapter_id: chapterId, title: title.trim(), description, type: 'table', headers: preview.headers, rows: preview.rows });
       onImported(); onClose();
     } catch { setErr('Fehler beim Importieren'); }
     setSaving(false);
@@ -163,8 +164,9 @@ function CsvImportModal({ normId, chapterId, chapters, onClose, onImported }: { 
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#9ca3af' }}>×</button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
           <div><div style={L}>Tabellenname *</div><input value={title} onChange={e => setTitle(e.target.value)} placeholder="z.B. Tab. 31" style={INP} /></div>
+          <div><div style={L}>ID *</div><input value={id} onChange={e => setId(e.target.value)} placeholder="z.B. abbrandrate" style={INP} /></div>
           <div><div style={L}>Beschreibung</div><input value={description} onChange={e => setDescription(e.target.value)} placeholder="Kurze Beschreibung" style={INP} /></div>
         </div>
         <div>
@@ -189,7 +191,7 @@ function CsvImportModal({ normId, chapterId, chapters, onClose, onImported }: { 
         {err && <div style={{ fontSize: 12, color: '#b91c1c' }}>{err}</div>}
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
           <button onClick={onClose} style={{ background: '#f1f5f9', border: '1px solid #d1d5db', borderRadius: 6, padding: '6px 16px', cursor: 'pointer', fontSize: 12 }}>Abbrechen</button>
-          <button onClick={doImport} disabled={saving || !preview || !title.trim()} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', cursor: 'pointer', fontSize: 12, fontWeight: 600, opacity: saving || !preview || !title.trim() ? 0.5 : 1 }}>
+          <button onClick={doImport} disabled={saving || !preview || !title.trim() || !id.trim()} style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', cursor: 'pointer', fontSize: 12, fontWeight: 600, opacity: saving || !preview || !title.trim() || !id.trim() ? 0.5 : 1 }}>
             {saving ? '…' : '📥 Importieren'}
           </button>
         </div>

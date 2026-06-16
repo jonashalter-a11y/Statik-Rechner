@@ -546,7 +546,7 @@ export default function VerificationAdmin() {
   useEffect(() => {
     const timer = window.setInterval(() => {
       saveEditing(editingRef.current, true);
-    }, 1000);
+    }, 5000);
     return () => window.clearInterval(timer);
   }, [saveEditing]);
 
@@ -559,7 +559,7 @@ export default function VerificationAdmin() {
     graphStrRef.current = graphStr;
     const timer = setTimeout(() => {
       saveEditing(editing, true);
-    }, 3000);
+    }, 5000);
     return () => clearTimeout(timer);
   }, [editing, saveEditing]);
 
@@ -676,6 +676,10 @@ export default function VerificationAdmin() {
               style={{ background: hideEmpty ? '#dbeafe' : '#f1f5f9', color: hideEmpty ? '#1e40af' : '#6b7280', border: `1px solid ${hideEmpty ? '#93c5fd' : '#d1d5db'}`, borderRadius: 5, padding: '4px 7px', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}>
               {hideEmpty ? '👁' : '👁'}
             </button>
+            <button onClick={async () => { try { await (api as any).reloadVerifications(); await reload(); setMsg('✓ Nachweise neu geladen'); } catch (err: any) { setMsg(`⚠ ${err?.message || err}`); } }} title="Nachweise aus Dateisystem neu laden (ohne Dev-Server Restart)"
+              style={{ background: '#f1f5f9', color: '#374151', border: '1px solid #d1d5db', borderRadius: 5, padding: '4px 8px', cursor: 'pointer', fontSize: 11 }}>
+              🔄 Reload
+            </button>
             <button onClick={() => setChapterForm('new')} style={{ background: '#f1f5f9', color: '#374151', border: '1px solid #d1d5db', borderRadius: 5, padding: '4px 8px', cursor: 'pointer', fontSize: 11 }}>+ Kapitel</button>
             <button onClick={newVerification} title="Neuen Nachweis erstellen" style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', fontSize: 12 }}>+ Nachweis</button>
             <input
@@ -735,10 +739,11 @@ export default function VerificationAdmin() {
           {/* Kopfzeile */}
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 14px', borderBottom: '1px solid #e5e7eb', background: '#fff', flexShrink: 0 }}>
             <div style={{ width: 260 }}>
-              <div style={labelStyle}>ID</div>
+              <div style={labelStyle}>ID *</div>
               <input value={editing.id} onChange={e => setEditing({ ...editing, id: e.target.value })}
-                placeholder="leer = automatisch"
-                style={{ border: '1px solid #d1d5db', borderRadius: 6, padding: '5px 10px', fontSize: 13, width: '100%', boxSizing: 'border-box', fontFamily: 'monospace' }} />
+                placeholder="z.B. abbrand_qs"
+                style={{ border: editing.id ? '1px solid #d1d5db' : '1px solid #fca5a5', borderRadius: 6, padding: '5px 10px', fontSize: 13, width: '100%', boxSizing: 'border-box', fontFamily: 'monospace', background: editing.id ? '#fff' : '#fef2f2' }} />
+              {!editing.id && <div style={{ fontSize: 10, color: '#b91c1c', marginTop: 2 }}>⚠ ID erforderlich</div>}
             </div>
             <div style={{ flex: 1 }}>
               <div style={labelStyle}>Titel</div>
@@ -761,7 +766,7 @@ export default function VerificationAdmin() {
             <button onClick={copyCurrent} style={{ alignSelf: 'flex-end', background: '#f1f5f9', color: '#374151', border: '1px solid #d1d5db', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontSize: 12 }}>Kopieren</button>
             <button onClick={exportCurrentJson} style={{ alignSelf: 'flex-end', background: '#f1f5f9', color: '#374151', border: '1px solid #d1d5db', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', fontSize: 12 }}>Export JSON</button>
             {editing.id && <button onClick={() => deleteV(editing.originalId || editing.id)} style={{ alignSelf: 'flex-end', background: '#fee2e2', border: 'none', borderRadius: 6, padding: '6px 12px', cursor: 'pointer', color: '#b91c1c', fontSize: 12 }}>🗑</button>}
-            <button onClick={save} disabled={saving} style={{ alignSelf: 'flex-end', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
+            <button onClick={save} disabled={saving || !editing.id} style={{ alignSelf: 'flex-end', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '6px 16px', cursor: 'pointer', fontSize: 13, fontWeight: 600, opacity: saving || !editing.id ? 0.5 : 1 }}>
               {saving ? 'Speichern…' : '💾 Speichern'}
             </button>
           </div>

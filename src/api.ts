@@ -525,4 +525,24 @@ export const api = {
     await persist();
     return ok({ ok: true });
   },
+
+  reloadVerifications: async () => {
+    try {
+      const response = await fetch('/__statik-rechner/load-verifications');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (!data.ok) throw new Error(data.error || 'Fehler beim Laden');
+
+      const current = await getState();
+      const normalized = (data.verifications || [])
+        .map((payload: AnyRecord) => normalizeVerificationPayload(payload))
+        .filter(Boolean) as AnyRecord[];
+
+      current.verifications = normalized;
+      await persist();
+      return ok({ ok: true, count: normalized.length });
+    } catch (error: any) {
+      throw new Error(`Verifikationen konnte nicht neu geladen werden: ${error?.message || error}`);
+    }
+  },
 };
