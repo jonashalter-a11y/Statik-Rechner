@@ -6,10 +6,10 @@
     "norm_id": "lignum_brandschutz",
     "chapter_id": "lignum_brandschutz_1_mqgdgk39",
     "title": "Abbrand QS",
-    "formula_latex": "",
+    "formula_latex": "d_{char,n} = t\\cdot \\beta_{c}",
     "formula_description": "",
     "compute_expr": "",
-    "graph_json": "{\"version\":1,\"nodes\":[{\"id\":\"beamvisual_mqgezzcl_1\",\"type\":\"beamvisual\",\"position\":{\"x\":126,\"y\":140.5},\"data\":{\"kind\":\"beamvisual\",\"label\":\"Träger\",\"span_var\":\"L\",\"span_unit\":\"m\",\"left_support\":\"pin\",\"right_support\":\"roller\",\"loads\":[]}},{\"id\":\"variable_mqgf01m0_2\",\"type\":\"variable\",\"position\":{\"x\":265.88185795624173,\"y\":396.0526120149585},\"data\":{\"kind\":\"variable\",\"name\":\"\",\"label\":\"\",\"unit\":\"\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[]}}],\"edges\":[]}",
+    "graph_json": "{\"version\":1,\"nodes\":[{\"id\":\"variable_mqgf01m0_2\",\"type\":\"variable\",\"position\":{\"x\":12.957060264046547,\"y\":125.64404488402195},\"data\":{\"kind\":\"variable\",\"name\":\"h\",\"label\":\"Höhe\",\"unit\":\"\\\\mathrm{mm}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"variable_mqgfmaj5_1\",\"type\":\"variable\",\"position\":{\"x\":14.26612326552025,\"y\":329.0945292422931},\"data\":{\"kind\":\"variable\",\"name\":\"b\",\"label\":\"Breite\",\"unit\":\"\\\\mathrm{mm}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"dropdown_mqgfmici_2\",\"type\":\"dropdown\",\"position\":{\"x\":289.6903514803475,\"y\":223.04735782648945},\"data\":{\"kind\":\"dropdown\",\"name\":\"\",\"label\":\"Abbrandrate\",\"mode\":\"table_column\",\"options\":[],\"unit\":\"\\\\mathrm{mm/min}\",\"table_ref\":\"abbrandrate\",\"label_col\":0}},{\"id\":\"tablevalue_mqgfmuv7_3\",\"type\":\"tablevalue\",\"position\":{\"x\":663.4500198942959,\"y\":279.3223612656205},\"data\":{\"kind\":\"tablevalue\",\"name\":\"\\\\beta_{c}\",\"label\":\"\",\"unit\":\"\\\\mathrm{mm/min}\",\"table_col\":1}},{\"id\":\"variable_mqgfoql4_6\",\"type\":\"variable\",\"position\":{\"x\":586.7962343579557,\"y\":578.4178557380822},\"data\":{\"kind\":\"variable\",\"name\":\"t\",\"label\":\"zeit\",\"unit\":\"\\\\mathrm{min}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"calc_mqgft3oc_8\",\"type\":\"calc\",\"position\":{\"x\":1057.543160565473,\"y\":249.43725575685124},\"data\":{\"kind\":\"calc\",\"name\":\"d_{char,n}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"d_{char,n} = t\\\\cdot \\\\beta_{c}\",\"expr\":\"t* beta_c\"}},{\"id\":\"calc_mqgfuc5e_9\",\"type\":\"calc\",\"position\":{\"x\":1101.2065504984791,\"y\":667.8678363994954},\"data\":{\"kind\":\"calc\",\"name\":\"d_{ef}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"d_{ef} = d_{char,n}+d_{red}\",\"expr\":\"d_char_n+d_red\"}},{\"id\":\"variable_mqgfvykn_10\",\"type\":\"variable\",\"position\":{\"x\":592.0137815736276,\"y\":833.6885194389279},\"data\":{\"kind\":\"variable\",\"name\":\"d_{red}\",\"label\":\"Schichtdicke d_red\",\"unit\":\"\\\\mathrm{mm}\",\"default_value\":\"7\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":true}}],\"edges\":[{\"id\":\"e_mqgfmw84_4\",\"source\":\"dropdown_mqgfmici_2\",\"target\":\"tablevalue_mqgfmuv7_3\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqgg1efm_11\",\"source\":\"tablevalue_mqgfmuv7_3\",\"target\":\"calc_mqgft3oc_8\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}}]}",
     "notes": "",
     "active": 1
   },
@@ -27,40 +27,164 @@
     "version": 1,
     "nodes": [
       {
-        "id": "beamvisual_mqgezzcl_1",
-        "type": "beamvisual",
-        "position": {
-          "x": 126,
-          "y": 140.5
-        },
-        "data": {
-          "kind": "beamvisual",
-          "label": "Träger",
-          "span_var": "L",
-          "span_unit": "m",
-          "left_support": "pin",
-          "right_support": "roller",
-          "loads": []
-        }
-      },
-      {
         "id": "variable_mqgf01m0_2",
         "type": "variable",
         "position": {
-          "x": 265.88185795624173,
-          "y": 396.0526120149585
+          "x": 12.957060264046547,
+          "y": 125.64404488402195
         },
         "data": {
           "kind": "variable",
-          "name": "",
-          "label": "",
-          "unit": "",
+          "name": "h",
+          "label": "Höhe",
+          "unit": "\\mathrm{mm}",
           "default_value": "0",
           "inputKind": "number",
-          "options": []
+          "options": [],
+          "hasDefault": false
+        }
+      },
+      {
+        "id": "variable_mqgfmaj5_1",
+        "type": "variable",
+        "position": {
+          "x": 14.26612326552025,
+          "y": 329.0945292422931
+        },
+        "data": {
+          "kind": "variable",
+          "name": "b",
+          "label": "Breite",
+          "unit": "\\mathrm{mm}",
+          "default_value": "0",
+          "inputKind": "number",
+          "options": [],
+          "hasDefault": false
+        }
+      },
+      {
+        "id": "dropdown_mqgfmici_2",
+        "type": "dropdown",
+        "position": {
+          "x": 289.6903514803475,
+          "y": 223.04735782648945
+        },
+        "data": {
+          "kind": "dropdown",
+          "name": "",
+          "label": "Abbrandrate",
+          "mode": "table_column",
+          "options": [],
+          "unit": "\\mathrm{mm/min}",
+          "table_ref": "abbrandrate",
+          "label_col": 0
+        }
+      },
+      {
+        "id": "tablevalue_mqgfmuv7_3",
+        "type": "tablevalue",
+        "position": {
+          "x": 663.4500198942959,
+          "y": 279.3223612656205
+        },
+        "data": {
+          "kind": "tablevalue",
+          "name": "\\beta_{c}",
+          "label": "",
+          "unit": "\\mathrm{mm/min}",
+          "table_col": 1
+        }
+      },
+      {
+        "id": "variable_mqgfoql4_6",
+        "type": "variable",
+        "position": {
+          "x": 586.7962343579557,
+          "y": 578.4178557380822
+        },
+        "data": {
+          "kind": "variable",
+          "name": "t",
+          "label": "zeit",
+          "unit": "\\mathrm{min}",
+          "default_value": "0",
+          "inputKind": "number",
+          "options": [],
+          "hasDefault": false
+        }
+      },
+      {
+        "id": "calc_mqgft3oc_8",
+        "type": "calc",
+        "position": {
+          "x": 1057.543160565473,
+          "y": 249.43725575685124
+        },
+        "data": {
+          "kind": "calc",
+          "name": "d_{char,n}",
+          "label": "",
+          "unit": "",
+          "latex": "d_{char,n} = t\\cdot \\beta_{c}",
+          "expr": "t* beta_c"
+        }
+      },
+      {
+        "id": "calc_mqgfuc5e_9",
+        "type": "calc",
+        "position": {
+          "x": 1101.2065504984791,
+          "y": 667.8678363994954
+        },
+        "data": {
+          "kind": "calc",
+          "name": "d_{ef}",
+          "label": "",
+          "unit": "",
+          "latex": "d_{ef} = d_{char,n}+d_{red}",
+          "expr": "d_char_n+d_red"
+        }
+      },
+      {
+        "id": "variable_mqgfvykn_10",
+        "type": "variable",
+        "position": {
+          "x": 592.0137815736276,
+          "y": 833.6885194389279
+        },
+        "data": {
+          "kind": "variable",
+          "name": "d_{red}",
+          "label": "Schichtdicke d_red",
+          "unit": "\\mathrm{mm}",
+          "default_value": "7",
+          "inputKind": "number",
+          "options": [],
+          "hasDefault": true
         }
       }
     ],
-    "edges": []
+    "edges": [
+      {
+        "id": "e_mqgfmw84_4",
+        "source": "dropdown_mqgfmici_2",
+        "target": "tablevalue_mqgfmuv7_3",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mqgg1efm_11",
+        "source": "tablevalue_mqgfmuv7_3",
+        "target": "calc_mqgft3oc_8",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      }
+    ]
   }
 }

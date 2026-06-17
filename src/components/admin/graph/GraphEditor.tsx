@@ -418,10 +418,10 @@ function GraphEditorInner({ graph, onChange, dbTables }: Props) {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      const tag = target?.tagName?.toLowerCase();
-      const isFormField = tag === 'input' || tag === 'textarea' || tag === 'select' || target?.isContentEditable;
-      if (isFormField) return;
+      // Überspring den Handler wenn in einem Input/Textarea
+      const active = document.activeElement as HTMLElement | null;
+      const tag = active?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || active?.isContentEditable) return;
       const mod = event.metaKey || event.ctrlKey;
 
       // Delete ausgewählte Blöcke (Delete oder Backspace)

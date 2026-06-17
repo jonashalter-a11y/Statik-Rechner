@@ -88,22 +88,11 @@ export const F = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HT
     if (typeof forwardedRef === 'function') forwardedRef(el);
     else if (forwardedRef) (forwardedRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
   };
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || document.activeElement === el) return;
-    const strVal = String(value ?? '');
-    if (el.value !== strVal) {
-      const start = el.selectionStart ?? 0;
-      const end = el.selectionEnd ?? 0;
-      el.value = strVal;
-      el.setSelectionRange(start, end);
-    }
-  }, [value]);
   return (
     <input
       ref={setRefs}
       className="nodrag"
-      defaultValue={String(value ?? '')}
+      value={String(value ?? '')}
       onChange={onChange}
       {...props}
       style={{ ...inp, ...(style || {}) }}
@@ -122,21 +111,11 @@ export function LatexArea({ value, onChange, placeholder, style, elRef }: {
 }) {
   const innerRef = useRef<HTMLTextAreaElement>(null);
   const ref = elRef || innerRef;
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || document.activeElement === el) return;
-    if (el.value !== value) {
-      const start = el.selectionStart ?? 0;
-      const end = el.selectionEnd ?? 0;
-      el.value = value;
-      el.setSelectionRange(start, end);
-    }
-  }, [value]);
   return (
     <textarea
       ref={ref}
       className="nodrag"
-      defaultValue={value}
+      value={value}
       placeholder={placeholder}
       style={style}
       onChange={e => onChange(e.target.value)}
