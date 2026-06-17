@@ -21,6 +21,7 @@ import { outputBlock } from './output';
 import { refBlock } from './ref';
 import { sectionBlock } from './section';
 import { stdcalcBlock } from './stdcalc';
+import { switchcalcBlock } from './switchcalc';
 import { tablecalcBlock } from './tablecalc';
 import { tablevalueBlock } from './tablevalue';
 import { titleBlock } from './title';
@@ -46,6 +47,7 @@ export const BLOCK_DEFINITIONS = [
   refBlock,
   sectionBlock,
   stdcalcBlock,
+  switchcalcBlock,
   tablecalcBlock,
   tablevalueBlock,
   titleBlock,

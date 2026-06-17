@@ -30,6 +30,8 @@ export type BlockType =
   | 'sum'          // Σ Summen-Block
   | 'output'
   | 'summenblock_neu'
+
+  | 'switchcalc'
 ;      // ⬜ PDF/Ausgabe
 
 export type EdgeKind = 'workflow' | 'condition';
@@ -252,6 +254,11 @@ export interface SummenblockneuData {
   description?: string;
 }
 
+export interface SwitchcalcData {
+  name: string;
+  label: string;
+}
+
 export interface OutputData {
   kind: 'output';
   label: string;
@@ -464,7 +471,7 @@ export type BlockData =
   | VariableData | DropdownData | WoodClassData | TableValueData | CalcData
   | StdCalcData | TableCalcData | ChartLookupData | ConditionData | CheckData | MinMaxData | ImageBlockData
   | TitleData | FrameData | RefData | CasesData | MatrixData | BeamVisualData | SectionData | CommentData
-  | GroupCalcData | LoopBlockData | SummenblockData | SumData | OutputData | BeamvisualData | ChartlookupData | GroupcalcData | ImageData | LoopblockData | MinmaxData | StdcalcData | TablecalcData | TablevalueData | WoodclassData | SummenblockneuData;
+  | GroupCalcData | LoopBlockData | SummenblockData | SumData | OutputData | BeamvisualData | ChartlookupData | GroupcalcData | ImageData | LoopblockData | MinmaxData | StdcalcData | TablecalcData | TablevalueData | WoodclassData | SummenblockneuData | SwitchcalcData;
 
 // ── React-Flow-kompatible Node/Edge-Strukturen ──────────────────────────────
 export interface GraphNode {

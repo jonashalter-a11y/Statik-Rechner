@@ -20,6 +20,7 @@ import { OutputNode } from '../../../blocks/output/BackendNode';
 import { RefNode } from '../../../blocks/ref/BackendNode';
 import { SectionNode } from '../../../blocks/section/BackendNode';
 import { StdCalcNode } from '../../../blocks/stdcalc/BackendNode';
+import { SwitchCalcNode } from '../../../blocks/switchcalc/BackendNode';
 import { TableCalcNode } from '../../../blocks/tablecalc/BackendNode';
 import { TableValueNode } from '../../../blocks/tablevalue/BackendNode';
 import { TitleNode } from '../../../blocks/title/BackendNode';
@@ -45,6 +46,7 @@ export const nodeTypes = {
   ref: RefNode,
   section: SectionNode,
   stdcalc: StdCalcNode,
+  switchcalc: SwitchCalcNode,
   tablecalc: TableCalcNode,
   tablevalue: TableValueNode,
   title: TitleNode,

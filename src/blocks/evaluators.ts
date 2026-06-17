@@ -22,6 +22,7 @@ import { evaluateOutput } from './output/evaluate';
 import { evaluateRef } from './ref/evaluate';
 import { evaluateSection } from './section/evaluate';
 import { evaluateStdCalc } from './stdcalc/evaluate';
+import { evaluateSwitchCalc } from './switchcalc/evaluate';
 import { evaluateTableCalc } from './tablecalc/evaluate';
 import { evaluateTableValue } from './tablevalue/evaluate';
 import { evaluateTitle } from './title/evaluate';
@@ -49,6 +50,7 @@ export const BLOCK_EVALUATORS: Record<string, BlockEvaluator> = {
   ref: evaluateRef,
   section: evaluateSection,
   stdcalc: evaluateStdCalc,
+  switchcalc: evaluateSwitchCalc,
   tablecalc: evaluateTableCalc,
   tablevalue: evaluateTableValue,
   title: evaluateTitle,
