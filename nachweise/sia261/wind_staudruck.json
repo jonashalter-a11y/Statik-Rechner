@@ -1,0 +1,388 @@
+{
+  "version": 1,
+  "exported_at": "2026-06-18T00:00:00.000Z",
+  "verification": {
+    "id": "wind_staudruck",
+    "norm_id": "sia261",
+    "chapter_id": "sia261_1_mqjj3ph8",
+    "title": "(11/12) Staudruck qp",
+    "formula_latex": "z_g = z_g(GK)",
+    "formula_description": "",
+    "compute_expr": "",
+    "sort_order": 20,
+    "active": 1,
+    "graph_json": "{\"version\":1,\"nodes\":[{\"id\":\"var_z\",\"type\":\"variable\",\"position\":{\"x\":40,\"y\":40},\"data\":{\"kind\":\"variable\",\"name\":\"z\",\"label\":\"z Gebäudehöhe\",\"unit\":\"m\",\"default_value\":\"8\",\"description\":\"Massgebende Höhe über Gelände (i.d.R. Traufhöhe).\",\"inputKind\":\"number\",\"options\":[]}},{\"id\":\"var_qp0\",\"type\":\"variable\",\"position\":{\"x\":40,\"y\":180},\"data\":{\"kind\":\"variable\",\"name\":\"qp0\",\"label\":\"qp0 Referenzstaudruck\",\"unit\":\"kN/m²\",\"default_value\":\"0.9\",\"description\":\"Referenzstaudruck aus Karte Anhang E SIA 261 (Windzone / Region).\",\"inputKind\":\"dropdown\",\"options\":[{\"label\":\"Windzone 1 - geschützte Lagen (qp0 = 0.70 kN/m²)\",\"value\":\"0.7\",\"sort_order\":0},{\"label\":\"Windzone 2 - Mittelland, Voralpen (qp0 = 0.90 kN/m²)\",\"value\":\"0.9\",\"sort_order\":1},{\"label\":\"Windzone 3 - Alpen, exponierte Lagen (qp0 = 1.30 kN/m²)\",\"value\":\"1.3\",\"sort_order\":2},{\"label\":\"Windzone 4 - Hochlagen, Alpenkämme (qp0 = 2.00 kN/m²)\",\"value\":\"2.0\",\"sort_order\":3}]}},{\"id\":\"var_GK\",\"type\":\"variable\",\"position\":{\"x\":40,\"y\":340},\"data\":{\"kind\":\"variable\",\"name\":\"GK\",\"label\":\"Geländekategorie\",\"unit\":\"−\",\"default_value\":\"3\",\"description\":\"Geländekategorie nach Tab. 4 SIA 261. Bestimmt Gradientenhöhe zg und Bodenrauigkeitsexponent alpha_r.\",\"inputKind\":\"dropdown\",\"options\":[{\"label\":\"II - Seeufer, offshore, offenes Gelände (zg=300 m, alpha_r=0.16)\",\"value\":\"2\",\"sort_order\":0},{\"label\":\"IIa - Grosse Ebene, Flachland (zg=380 m, alpha_r=0.19)\",\"value\":\"2.1\",\"sort_order\":1},{\"label\":\"III - Ortschaften, freies Feld (zg=450 m, alpha_r=0.23)\",\"value\":\"3\",\"sort_order\":2},{\"label\":\"IV - Grossflächige Stadtgebiete (zg=526 m, alpha_r=0.30)\",\"value\":\"4\",\"sort_order\":3}]}},{\"id\":\"calc_zg\",\"type\":\"calc\",\"position\":{\"x\":430,\"y\":90},\"data\":{\"kind\":\"calc\",\"name\":\"z_g\",\"label\":\"Gradientenhöhe zg\",\"unit\":\"m\",\"latex\":\"z_g = z_g(GK)\",\"expr\":\"+GK === 2 ? 300 : +GK === 2.1 ? 380 : +GK === 4 ? 526 : 450\",\"description\":\"Gradientenhöhe aus Geländekategorie nach SIA 261 Tab. 4.\"}},{\"id\":\"calc_alpha\",\"type\":\"calc\",\"position\":{\"x\":430,\"y\":240},\"data\":{\"kind\":\"calc\",\"name\":\"alpha_r\",\"label\":\"Rauigkeitsexponent alpha_r\",\"unit\":\"−\",\"latex\":\"\\\\alpha_r = \\\\alpha_r(GK)\",\"expr\":\"+GK === 2 ? 0.16 : +GK === 2.1 ? 0.19 : +GK === 4 ? 0.30 : 0.23\",\"description\":\"Bodenrauigkeitsexponent aus Geländekategorie nach SIA 261 Tab. 4.\"}},{\"id\":\"calc_zmin\",\"type\":\"calc\",\"position\":{\"x\":430,\"y\":390},\"data\":{\"kind\":\"calc\",\"name\":\"z_min\",\"label\":\"Mindesthöhe zmin\",\"unit\":\"m\",\"latex\":\"z_{min} = z_{min}(GK)\",\"expr\":\"+GK === 4 ? 10 : 5\",\"description\":\"Mindesthöhe für das Windprofil.\"}},{\"id\":\"calc_zeff\",\"type\":\"calc\",\"position\":{\"x\":760,\"y\":70},\"data\":{\"kind\":\"calc\",\"name\":\"z_eff\",\"label\":\"Wirksame Höhe\",\"unit\":\"m\",\"latex\":\"z_{eff} = \\\\max(z, z_{min})\",\"expr\":\"Math.max(z_min, z)\",\"description\":\"Für niedrige Gebäude wird mindestens zmin angesetzt.\"}},{\"id\":\"calc_ch\",\"type\":\"calc\",\"position\":{\"x\":1080,\"y\":180},\"data\":{\"kind\":\"calc\",\"name\":\"c_h\",\"label\":\"Höhenbeiwert ch\",\"unit\":\"−\",\"latex\":\"c_h = 1{,}6 \\\\cdot (z_{eff}/z_g)^{2\\\\alpha_r} + 0{,}375\",\"expr\":\"1.6 * Math.pow(z_eff / z_g, 2 * alpha_r) + 0.375\",\"description\":\"Profilbeiwert nach SIA 261 §6.2.1.\"}},{\"id\":\"calc_qp\",\"type\":\"calc\",\"position\":{\"x\":1410,\"y\":200},\"data\":{\"kind\":\"calc\",\"name\":\"q_p\",\"label\":\"Staudruck qp\",\"unit\":\"kN/m²\",\"latex\":\"q_p = c_h \\\\cdot q_{p0}\",\"expr\":\"c_h * qp0\",\"description\":\"Charakteristischer Staudruck nach SIA 261 §6.2.1.\"}}],\"edges\":[{\"id\":\"e_gk_zg\",\"source\":\"var_GK\",\"target\":\"calc_zg\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_gk_alpha\",\"source\":\"var_GK\",\"target\":\"calc_alpha\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_gk_zmin\",\"source\":\"var_GK\",\"target\":\"calc_zmin\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_z_z_eff\",\"source\":\"var_z\",\"target\":\"calc_zeff\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_zmin_z_eff\",\"source\":\"calc_zmin\",\"target\":\"calc_zeff\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_z_eff_ch\",\"source\":\"calc_zeff\",\"target\":\"calc_ch\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_zg_ch\",\"source\":\"calc_zg\",\"target\":\"calc_ch\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_alpha_ch\",\"source\":\"calc_alpha\",\"target\":\"calc_ch\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_ch_qp\",\"source\":\"calc_ch\",\"target\":\"calc_qp\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_qp0_qp\",\"source\":\"var_qp0\",\"target\":\"calc_qp\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}}],\"display_order\":[\"var_z\",\"var_qp0\",\"var_GK\",\"calc_zg\",\"calc_alpha\",\"calc_zmin\",\"calc_zeff\",\"calc_ch\",\"calc_qp\"]}",
+    "notes": ""
+  },
+  "chapter": {
+    "id": "sia261_1_mqjj3ph8",
+    "sort_order": 1,
+    "norm_id": "sia261",
+    "parent_id": null,
+    "number": "1",
+    "title": "Einwirkungen"
+  },
+  "variables": [],
+  "tables": [
+    {
+      "id": "sia261_tab4_gelaendekategorien",
+      "norm_id": "sia261",
+      "chapter_id": "261.6.2.1",
+      "title": "Tab. 4 - Geländekategorien",
+      "description": "Gradientenhöhe zg und Bodenrauigkeitsexponent alpha_r für die Windberechnung.",
+      "headers": [
+        "Geländekategorie",
+        "Beschreibung",
+        "zg [m]",
+        "alpha_r",
+        "zmin [m]"
+      ],
+      "rows": [
+        [
+          "II",
+          "Seeufer, offshore, offenes Gelände",
+          "300",
+          "0.16",
+          "5"
+        ],
+        [
+          "IIa",
+          "Grosse Ebene, Flachland",
+          "380",
+          "0.19",
+          "5"
+        ],
+        [
+          "III",
+          "Ortschaften, freies Feld",
+          "450",
+          "0.23",
+          "5"
+        ],
+        [
+          "IV",
+          "Grossflächige Stadtgebiete",
+          "526",
+          "0.30",
+          "10"
+        ]
+      ]
+    }
+  ],
+  "graph": {
+    "version": 1,
+    "nodes": [
+      {
+        "id": "var_z",
+        "type": "variable",
+        "position": {
+          "x": 40,
+          "y": 40
+        },
+        "data": {
+          "kind": "variable",
+          "name": "z",
+          "label": "z Gebäudehöhe",
+          "unit": "m",
+          "default_value": "8",
+          "description": "Massgebende Höhe über Gelände (i.d.R. Traufhöhe).",
+          "inputKind": "number",
+          "options": []
+        }
+      },
+      {
+        "id": "var_qp0",
+        "type": "variable",
+        "position": {
+          "x": 40,
+          "y": 180
+        },
+        "data": {
+          "kind": "variable",
+          "name": "qp0",
+          "label": "qp0 Referenzstaudruck",
+          "unit": "kN/m²",
+          "default_value": "0.9",
+          "description": "Referenzstaudruck aus Karte Anhang E SIA 261 (Windzone / Region).",
+          "inputKind": "dropdown",
+          "options": [
+            {
+              "label": "Windzone 1 - geschützte Lagen (qp0 = 0.70 kN/m²)",
+              "value": "0.7",
+              "sort_order": 0
+            },
+            {
+              "label": "Windzone 2 - Mittelland, Voralpen (qp0 = 0.90 kN/m²)",
+              "value": "0.9",
+              "sort_order": 1
+            },
+            {
+              "label": "Windzone 3 - Alpen, exponierte Lagen (qp0 = 1.30 kN/m²)",
+              "value": "1.3",
+              "sort_order": 2
+            },
+            {
+              "label": "Windzone 4 - Hochlagen, Alpenkämme (qp0 = 2.00 kN/m²)",
+              "value": "2.0",
+              "sort_order": 3
+            }
+          ]
+        }
+      },
+      {
+        "id": "var_GK",
+        "type": "variable",
+        "position": {
+          "x": 40,
+          "y": 340
+        },
+        "data": {
+          "kind": "variable",
+          "name": "GK",
+          "label": "Geländekategorie",
+          "unit": "−",
+          "default_value": "3",
+          "description": "Geländekategorie nach Tab. 4 SIA 261. Bestimmt Gradientenhöhe zg und Bodenrauigkeitsexponent alpha_r.",
+          "inputKind": "dropdown",
+          "options": [
+            {
+              "label": "II - Seeufer, offshore, offenes Gelände (zg=300 m, alpha_r=0.16)",
+              "value": "2",
+              "sort_order": 0
+            },
+            {
+              "label": "IIa - Grosse Ebene, Flachland (zg=380 m, alpha_r=0.19)",
+              "value": "2.1",
+              "sort_order": 1
+            },
+            {
+              "label": "III - Ortschaften, freies Feld (zg=450 m, alpha_r=0.23)",
+              "value": "3",
+              "sort_order": 2
+            },
+            {
+              "label": "IV - Grossflächige Stadtgebiete (zg=526 m, alpha_r=0.30)",
+              "value": "4",
+              "sort_order": 3
+            }
+          ]
+        }
+      },
+      {
+        "id": "calc_zg",
+        "type": "calc",
+        "position": {
+          "x": 430,
+          "y": 90
+        },
+        "data": {
+          "kind": "calc",
+          "name": "z_g",
+          "label": "Gradientenhöhe zg",
+          "unit": "m",
+          "latex": "z_g = z_g(GK)",
+          "expr": "+GK === 2 ? 300 : +GK === 2.1 ? 380 : +GK === 4 ? 526 : 450",
+          "description": "Gradientenhöhe aus Geländekategorie nach SIA 261 Tab. 4."
+        }
+      },
+      {
+        "id": "calc_alpha",
+        "type": "calc",
+        "position": {
+          "x": 430,
+          "y": 240
+        },
+        "data": {
+          "kind": "calc",
+          "name": "alpha_r",
+          "label": "Rauigkeitsexponent alpha_r",
+          "unit": "−",
+          "latex": "\\alpha_r = \\alpha_r(GK)",
+          "expr": "+GK === 2 ? 0.16 : +GK === 2.1 ? 0.19 : +GK === 4 ? 0.30 : 0.23",
+          "description": "Bodenrauigkeitsexponent aus Geländekategorie nach SIA 261 Tab. 4."
+        }
+      },
+      {
+        "id": "calc_zmin",
+        "type": "calc",
+        "position": {
+          "x": 430,
+          "y": 390
+        },
+        "data": {
+          "kind": "calc",
+          "name": "z_min",
+          "label": "Mindesthöhe zmin",
+          "unit": "m",
+          "latex": "z_{min} = z_{min}(GK)",
+          "expr": "+GK === 4 ? 10 : 5",
+          "description": "Mindesthöhe für das Windprofil."
+        }
+      },
+      {
+        "id": "calc_zeff",
+        "type": "calc",
+        "position": {
+          "x": 760,
+          "y": 70
+        },
+        "data": {
+          "kind": "calc",
+          "name": "z_eff",
+          "label": "Wirksame Höhe",
+          "unit": "m",
+          "latex": "z_{eff} = \\max(z, z_{min})",
+          "expr": "Math.max(z_min, z)",
+          "description": "Für niedrige Gebäude wird mindestens zmin angesetzt."
+        }
+      },
+      {
+        "id": "calc_ch",
+        "type": "calc",
+        "position": {
+          "x": 1080,
+          "y": 180
+        },
+        "data": {
+          "kind": "calc",
+          "name": "c_h",
+          "label": "Höhenbeiwert ch",
+          "unit": "−",
+          "latex": "c_h = 1{,}6 \\cdot (z_{eff}/z_g)^{2\\alpha_r} + 0{,}375",
+          "expr": "1.6 * Math.pow(z_eff / z_g, 2 * alpha_r) + 0.375",
+          "description": "Profilbeiwert nach SIA 261 §6.2.1."
+        }
+      },
+      {
+        "id": "calc_qp",
+        "type": "calc",
+        "position": {
+          "x": 1410,
+          "y": 200
+        },
+        "data": {
+          "kind": "calc",
+          "name": "q_p",
+          "label": "Staudruck qp",
+          "unit": "kN/m²",
+          "latex": "q_p = c_h \\cdot q_{p0}",
+          "expr": "c_h * qp0",
+          "description": "Charakteristischer Staudruck nach SIA 261 §6.2.1."
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e_gk_zg",
+        "source": "var_GK",
+        "target": "calc_zg",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_gk_alpha",
+        "source": "var_GK",
+        "target": "calc_alpha",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_gk_zmin",
+        "source": "var_GK",
+        "target": "calc_zmin",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_z_z_eff",
+        "source": "var_z",
+        "target": "calc_zeff",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_zmin_z_eff",
+        "source": "calc_zmin",
+        "target": "calc_zeff",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_z_eff_ch",
+        "source": "calc_zeff",
+        "target": "calc_ch",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_zg_ch",
+        "source": "calc_zg",
+        "target": "calc_ch",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_alpha_ch",
+        "source": "calc_alpha",
+        "target": "calc_ch",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_ch_qp",
+        "source": "calc_ch",
+        "target": "calc_qp",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_qp0_qp",
+        "source": "var_qp0",
+        "target": "calc_qp",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      }
+    ],
+    "display_order": [
+      "var_z",
+      "var_qp0",
+      "var_GK",
+      "calc_zg",
+      "calc_alpha",
+      "calc_zmin",
+      "calc_zeff",
+      "calc_ch",
+      "calc_qp"
+    ]
+  }
+}

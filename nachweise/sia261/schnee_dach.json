@@ -1,0 +1,463 @@
+{
+  "version": 1,
+  "exported_at": "2026-06-18T00:00:00.000Z",
+  "verification": {
+    "id": "schnee_dach",
+    "norm_id": "sia261",
+    "chapter_id": "sia261_1_mqjj3ph8",
+    "title": "(9/10) Schneelast auf Daechern",
+    "formula_latex": "s_k = 0{,}4 \\cdot \\left[1 + \\left(\\frac{h_0}{350}\\right)^2\\right] \\geq 0{,}9",
+    "formula_description": "",
+    "compute_expr": "",
+    "sort_order": 10,
+    "active": 1,
+    "graph_json": "{\"version\":1,\"nodes\":[{\"id\":\"title_schnee\",\"type\":\"title\",\"position\":{\"x\":40,\"y\":-80},\"data\":{\"kind\":\"title\",\"label\":\"Schneelast auf Daechern - SIA 261 Figur 2\",\"color\":\"#2563eb\"}},{\"id\":\"var_h0\",\"type\":\"variable\",\"position\":{\"x\":40,\"y\":40},\"data\":{\"kind\":\"variable\",\"name\":\"h0\",\"label\":\"Bezugshoehe h0\",\"unit\":\"m\",\"default_value\":\"600\",\"description\":\"Bezugshoehe ueber Meer inkl. Hoehenzuschlag (Anhang D SIA 261). Typisch: Meereshoehe + 200 m Zuschlag.\",\"inputKind\":\"number\",\"options\":[]}},{\"id\":\"var_alpha\",\"type\":\"variable\",\"position\":{\"x\":40,\"y\":190},\"data\":{\"kind\":\"variable\",\"name\":\"alpha\",\"label\":\"Dachneigung alpha\",\"unit\":\"°\",\"default_value\":\"0\",\"description\":\"Dachneigung zur Ablesung der Dachformbeiwerte nach SIA 261 Figur 2.\",\"inputKind\":\"number\",\"options\":[]}},{\"id\":\"var_Ce\",\"type\":\"variable\",\"position\":{\"x\":40,\"y\":340},\"data\":{\"kind\":\"variable\",\"name\":\"Ce\",\"label\":\"Ce Expositionsbeiwert\",\"unit\":\"-\",\"default_value\":\"1.0\",\"description\":\"Windexposition nach SIA 261 §5.2.\",\"inputKind\":\"dropdown\",\"options\":[{\"label\":\"Normal (Ce = 1.00)\",\"value\":\"1.0\",\"sort_order\":0},{\"label\":\"Stark windexponiert (Ce = 0.80)\",\"value\":\"0.8\",\"sort_order\":1},{\"label\":\"Windgeschuetzt (Ce = 1.20)\",\"value\":\"1.2\",\"sort_order\":2}]}},{\"id\":\"var_CT\",\"type\":\"variable\",\"position\":{\"x\":40,\"y\":490},\"data\":{\"kind\":\"variable\",\"name\":\"CT\",\"label\":\"CT thermischer Beiwert\",\"unit\":\"-\",\"default_value\":\"1.0\",\"description\":\"Thermischer Beiwert, in der Regel 1.0.\",\"inputKind\":\"dropdown\",\"options\":[{\"label\":\"Normal - Kaltdach / unbeheiztes Gebaeude (CT = 1.00)\",\"value\":\"1.0\",\"sort_order\":0},{\"label\":\"Warmdach grosser Waermedurchgang (CT = 0.80)\",\"value\":\"0.8\",\"sort_order\":1}]}},{\"id\":\"comment_fig2\",\"type\":\"comment\",\"position\":{\"x\":380,\"y\":-70},\"data\":{\"kind\":\"comment\",\"text\":\"Figur 2 - Dachformbeiwerte in Abhaengigkeit der Dachneigung alpha\",\"extra\":\"chart\",\"table_ref\":\"sia261_fig2_dachformbeiwerte\"},\"style\":{\"width\":520,\"height\":300}},{\"id\":\"chart_mu\",\"type\":\"chartlookup\",\"position\":{\"x\":430,\"y\":270},\"data\":{\"kind\":\"chartlookup\",\"chart_ref\":\"sia261_fig2_dachformbeiwerte\",\"series_index\":0,\"all_series\":true,\"direction\":\"x_to_y\",\"x_name\":\"alpha\",\"name\":\"mu\",\"label\":\"Dachformbeiwerte aus Figur 2\",\"unit\":\"-\"}},{\"id\":\"calc_sk\",\"type\":\"calc\",\"position\":{\"x\":430,\"y\":470},\"data\":{\"kind\":\"calc\",\"name\":\"s_k\",\"label\":\"Schneelast am Boden\",\"unit\":\"kN/m²\",\"latex\":\"s_k = 0{,}4 \\\\cdot \\\\left[1 + \\\\left(\\\\frac{h_0}{350}\\\\right)^2\\\\right] \\\\geq 0{,}9\",\"expr\":\"Math.max(0.9, 0.4 * (1 + Math.pow(h0 / 350, 2)))\",\"description\":\"Charakteristische Schneelast am Boden in Funktion der Bezugshoehe.\"}},{\"id\":\"calc_mu1\",\"type\":\"calc\",\"position\":{\"x\":800,\"y\":270},\"data\":{\"kind\":\"calc\",\"name\":\"mu_1\",\"label\":\"Dachformbeiwert mu1\",\"unit\":\"-\",\"latex\":\"\\\\mu_1 = f(\\\\alpha)\",\"expr\":\"alpha <= 30 ? 0.8 : alpha >= 60 ? 0 : 0.8 * (60 - alpha) / 30\",\"description\":\"Stueckweise lineare Ablesung der Kurve mu1 aus SIA 261 Figur 2.\"}},{\"id\":\"calc_qk\",\"type\":\"calc\",\"position\":{\"x\":800,\"y\":430},\"data\":{\"kind\":\"calc\",\"name\":\"q_k\",\"label\":\"Schneelast auf Dach\",\"unit\":\"kN/m²\",\"latex\":\"q_k = \\\\mu_1 \\\\cdot C_e \\\\cdot C_T \\\\cdot s_k\",\"expr\":\"mu_1 * Ce * CT * s_k\",\"description\":\"Charakteristischer Wert der Schneelast auf dem Dach mit mu1 aus SIA 261 Figur 2.\"}}],\"edges\":[{\"id\":\"e_title_chart\",\"source\":\"title_schnee\",\"target\":\"comment_fig2\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_alpha_chart\",\"source\":\"var_alpha\",\"target\":\"chart_mu\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_h0_sk\",\"source\":\"var_h0\",\"target\":\"calc_sk\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_chart_qk\",\"source\":\"chart_mu\",\"target\":\"calc_qk\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_sk_qk\",\"source\":\"calc_sk\",\"target\":\"calc_qk\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_ce_qk\",\"source\":\"var_Ce\",\"target\":\"calc_qk\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_ct_qk\",\"source\":\"var_CT\",\"target\":\"calc_qk\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_alpha_mu1\",\"source\":\"var_alpha\",\"target\":\"calc_mu1\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mu1_qk\",\"source\":\"calc_mu1\",\"target\":\"calc_qk\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}}],\"display_order\":[\"title_schnee\",\"var_h0\",\"var_alpha\",\"var_Ce\",\"var_CT\",\"comment_fig2\",\"chart_mu\",\"calc_sk\",\"calc_mu1\",\"calc_qk\"]}",
+    "notes": ""
+  },
+  "chapter": {
+    "id": "sia261_1_mqjj3ph8",
+    "sort_order": 1,
+    "norm_id": "sia261",
+    "parent_id": null,
+    "number": "1",
+    "title": "Einwirkungen"
+  },
+  "variables": [],
+  "tables": [
+    {
+      "id": "sia261_fig2_dachformbeiwerte",
+      "norm_id": "sia261",
+      "chapter_id": "sia261_1_mqjj3ph8",
+      "type": "chart",
+      "title": "Figur 2 - Dachformbeiwerte in Abhaengigkeit der Dachneigung alpha",
+      "description": "SIA 261 Figur 2: Dachformbeiwerte mu1, mu2 und mu3 in Abhaengigkeit der Dachneigung alpha.",
+      "headers": [
+        "alpha [°]",
+        "mu_1",
+        "mu_2",
+        "mu_3"
+      ],
+      "rows": [
+        [
+          "0",
+          "0.8",
+          "0.8",
+          "0.2"
+        ],
+        [
+          "20",
+          "0.8",
+          "1.333",
+          "2.0"
+        ],
+        [
+          "30",
+          "0.8",
+          "1.6",
+          "2.0"
+        ],
+        [
+          "45",
+          "0.4",
+          "1.6",
+          "2.0"
+        ],
+        [
+          "60",
+          "0.0",
+          "1.6",
+          ""
+        ],
+        [
+          "70",
+          "0.0",
+          "1.6",
+          ""
+        ]
+      ],
+      "chart_json": {
+        "xAxis": {
+          "label": "alpha",
+          "unit": "°",
+          "min": 0,
+          "max": 70
+        },
+        "yAxis": {
+          "label": "mu",
+          "unit": "-",
+          "min": 0,
+          "max": 2.4
+        },
+        "series": [
+          {
+            "name": "mu_1",
+            "label": "mu1",
+            "data": [
+              [
+                0,
+                0.8
+              ],
+              [
+                30,
+                0.8
+              ],
+              [
+                60,
+                0
+              ],
+              [
+                70,
+                0
+              ]
+            ]
+          },
+          {
+            "name": "mu_2",
+            "label": "mu2",
+            "data": [
+              [
+                0,
+                0.8
+              ],
+              [
+                30,
+                1.6
+              ],
+              [
+                70,
+                1.6
+              ]
+            ]
+          },
+          {
+            "name": "mu_3",
+            "label": "mu3",
+            "data": [
+              [
+                0,
+                0.2
+              ],
+              [
+                20,
+                2
+              ],
+              [
+                45,
+                2
+              ]
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "graph": {
+    "version": 1,
+    "nodes": [
+      {
+        "id": "title_schnee",
+        "type": "title",
+        "position": {
+          "x": 40,
+          "y": -80
+        },
+        "data": {
+          "kind": "title",
+          "label": "Schneelast auf Daechern - SIA 261 Figur 2",
+          "color": "#2563eb"
+        }
+      },
+      {
+        "id": "var_h0",
+        "type": "variable",
+        "position": {
+          "x": 40,
+          "y": 40
+        },
+        "data": {
+          "kind": "variable",
+          "name": "h0",
+          "label": "Bezugshoehe h0",
+          "unit": "m",
+          "default_value": "600",
+          "description": "Bezugshoehe ueber Meer inkl. Hoehenzuschlag (Anhang D SIA 261). Typisch: Meereshoehe + 200 m Zuschlag.",
+          "inputKind": "number",
+          "options": []
+        }
+      },
+      {
+        "id": "var_alpha",
+        "type": "variable",
+        "position": {
+          "x": 40,
+          "y": 190
+        },
+        "data": {
+          "kind": "variable",
+          "name": "alpha",
+          "label": "Dachneigung alpha",
+          "unit": "°",
+          "default_value": "0",
+          "description": "Dachneigung zur Ablesung der Dachformbeiwerte nach SIA 261 Figur 2.",
+          "inputKind": "number",
+          "options": []
+        }
+      },
+      {
+        "id": "var_Ce",
+        "type": "variable",
+        "position": {
+          "x": 40,
+          "y": 340
+        },
+        "data": {
+          "kind": "variable",
+          "name": "Ce",
+          "label": "Ce Expositionsbeiwert",
+          "unit": "-",
+          "default_value": "1.0",
+          "description": "Windexposition nach SIA 261 §5.2.",
+          "inputKind": "dropdown",
+          "options": [
+            {
+              "label": "Normal (Ce = 1.00)",
+              "value": "1.0",
+              "sort_order": 0
+            },
+            {
+              "label": "Stark windexponiert (Ce = 0.80)",
+              "value": "0.8",
+              "sort_order": 1
+            },
+            {
+              "label": "Windgeschuetzt (Ce = 1.20)",
+              "value": "1.2",
+              "sort_order": 2
+            }
+          ]
+        }
+      },
+      {
+        "id": "var_CT",
+        "type": "variable",
+        "position": {
+          "x": 40,
+          "y": 490
+        },
+        "data": {
+          "kind": "variable",
+          "name": "CT",
+          "label": "CT thermischer Beiwert",
+          "unit": "-",
+          "default_value": "1.0",
+          "description": "Thermischer Beiwert, in der Regel 1.0.",
+          "inputKind": "dropdown",
+          "options": [
+            {
+              "label": "Normal - Kaltdach / unbeheiztes Gebaeude (CT = 1.00)",
+              "value": "1.0",
+              "sort_order": 0
+            },
+            {
+              "label": "Warmdach grosser Waermedurchgang (CT = 0.80)",
+              "value": "0.8",
+              "sort_order": 1
+            }
+          ]
+        }
+      },
+      {
+        "id": "comment_fig2",
+        "type": "comment",
+        "position": {
+          "x": 380,
+          "y": -70
+        },
+        "data": {
+          "kind": "comment",
+          "text": "Figur 2 - Dachformbeiwerte in Abhaengigkeit der Dachneigung alpha",
+          "extra": "chart",
+          "table_ref": "sia261_fig2_dachformbeiwerte"
+        },
+        "style": {
+          "width": 520,
+          "height": 300
+        }
+      },
+      {
+        "id": "chart_mu",
+        "type": "chartlookup",
+        "position": {
+          "x": 430,
+          "y": 270
+        },
+        "data": {
+          "kind": "chartlookup",
+          "chart_ref": "sia261_fig2_dachformbeiwerte",
+          "series_index": 0,
+          "all_series": true,
+          "direction": "x_to_y",
+          "x_name": "alpha",
+          "name": "mu",
+          "label": "Dachformbeiwerte aus Figur 2",
+          "unit": "-"
+        }
+      },
+      {
+        "id": "calc_sk",
+        "type": "calc",
+        "position": {
+          "x": 430,
+          "y": 470
+        },
+        "data": {
+          "kind": "calc",
+          "name": "s_k",
+          "label": "Schneelast am Boden",
+          "unit": "kN/m²",
+          "latex": "s_k = 0{,}4 \\cdot \\left[1 + \\left(\\frac{h_0}{350}\\right)^2\\right] \\geq 0{,}9",
+          "expr": "Math.max(0.9, 0.4 * (1 + Math.pow(h0 / 350, 2)))",
+          "description": "Charakteristische Schneelast am Boden in Funktion der Bezugshoehe."
+        }
+      },
+      {
+        "id": "calc_mu1",
+        "type": "calc",
+        "position": {
+          "x": 800,
+          "y": 270
+        },
+        "data": {
+          "kind": "calc",
+          "name": "mu_1",
+          "label": "Dachformbeiwert mu1",
+          "unit": "-",
+          "latex": "\\mu_1 = f(\\alpha)",
+          "expr": "alpha <= 30 ? 0.8 : alpha >= 60 ? 0 : 0.8 * (60 - alpha) / 30",
+          "description": "Stueckweise lineare Ablesung der Kurve mu1 aus SIA 261 Figur 2."
+        }
+      },
+      {
+        "id": "calc_qk",
+        "type": "calc",
+        "position": {
+          "x": 800,
+          "y": 430
+        },
+        "data": {
+          "kind": "calc",
+          "name": "q_k",
+          "label": "Schneelast auf Dach",
+          "unit": "kN/m²",
+          "latex": "q_k = \\mu_1 \\cdot C_e \\cdot C_T \\cdot s_k",
+          "expr": "mu_1 * Ce * CT * s_k",
+          "description": "Charakteristischer Wert der Schneelast auf dem Dach mit mu1 aus SIA 261 Figur 2."
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e_title_chart",
+        "source": "title_schnee",
+        "target": "comment_fig2",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_alpha_chart",
+        "source": "var_alpha",
+        "target": "chart_mu",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_h0_sk",
+        "source": "var_h0",
+        "target": "calc_sk",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_chart_qk",
+        "source": "chart_mu",
+        "target": "calc_qk",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_sk_qk",
+        "source": "calc_sk",
+        "target": "calc_qk",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_ce_qk",
+        "source": "var_Ce",
+        "target": "calc_qk",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_ct_qk",
+        "source": "var_CT",
+        "target": "calc_qk",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_alpha_mu1",
+        "source": "var_alpha",
+        "target": "calc_mu1",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mu1_qk",
+        "source": "calc_mu1",
+        "target": "calc_qk",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      }
+    ],
+    "display_order": [
+      "title_schnee",
+      "var_h0",
+      "var_alpha",
+      "var_Ce",
+      "var_CT",
+      "comment_fig2",
+      "chart_mu",
+      "calc_sk",
+      "calc_mu1",
+      "calc_qk"
+    ]
+  }
+}
