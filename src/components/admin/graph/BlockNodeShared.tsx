@@ -123,11 +123,19 @@ export function LatexArea({ value, onChange, placeholder, style, elRef }: {
 }) {
   const innerRef = useRef<HTMLTextAreaElement>(null);
   const ref = elRef || innerRef;
+
+  // Nur DOM-Wert aktualisieren, wenn das Feld nicht fokussiert ist
+  useLayoutEffect(() => {
+    if (ref.current && document.activeElement !== ref.current) {
+      ref.current.value = value ?? '';
+    }
+  }, [value, ref]);
+
   return (
     <textarea
       ref={ref}
       className="nodrag"
-      value={value}
+      defaultValue={value ?? ''}
       placeholder={placeholder}
       style={style}
       onChange={e => onChange(e.target.value)}
