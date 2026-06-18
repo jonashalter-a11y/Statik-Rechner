@@ -25,6 +25,7 @@ Interaktiver Statik-Rechner für Schweizer Baunormen. Die Anwendung laedt ihre N
 - PDF-Export (jsPDF + html2canvas)
 - SVG-Gebäudeskizzen für 6 Grundformen (Flachdach, Satteldach, Pultdach)
 - **Node-Editor zum Erstellen von Nachweisen** (React Flow): Blöcke per Drag & Drop + Kanten statt Formular
+- **Manuelle Werteingabe**: Haken im Block-Header erlaubt Überschreiben berechneter Werte (calc, stdcalc, tablecalc, minmax, cases, groupcalc) — Override-Wert wird an downstream Blöcke weitergegeben
 - Admin-UI zum Bearbeiten von Kapiteln, Tabellen und Verifikationen
 
 ---
@@ -256,3 +257,4 @@ Alle Tabellen aus `Schneelast_Windlast.xlsm` verifiziert. Nur Tabellen mit Flag=
 | v2.2 | Schneelast-Formel korrigiert, Wind-Geländekategorie Dropdown, Tab. 31–45 Excel-verifiziert |
 | v3.0 | Node-Editor (React Flow) für Nachweis-Erstellung: Block-/Graph-System, Live-Auswertung, Legacy-Adapter |
 | v3.1 | **Verifikationen JSON-basiert**, Admin-UI mit JSON-Import |
+| v3.2 | **Override-Toggle für Rechenblöcke**: Manuelle Werteingabe im Frontend, propagiert an downstream Blöcke |
