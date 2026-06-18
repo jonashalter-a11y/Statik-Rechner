@@ -30,5 +30,13 @@
     "number": "4.2.8",
     "title": "Knicken (Stabilität von Druckstäben)",
     "sort_order": 50
+  },
+  {
+    "id": "sia265_5_2_mqjf77sf",
+    "sort_order": 51,
+    "norm_id": "sia265",
+    "parent_id": null,
+    "number": "5.2",
+    "title": "Ausklinkungen"
   }
 ]
