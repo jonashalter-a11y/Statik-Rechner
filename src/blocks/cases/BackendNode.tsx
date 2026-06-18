@@ -15,7 +15,7 @@ import {
 } from '../../types/graph';
 import {
   F, LatexArea, NameChips, PRESET_COLORS, Shell, THEME, UnitField, formulaName, formulaPrefix,
-  inp, lbl, pasteImageFromClipboard, updateLatexNamePrefix,
+  inp, lbl, pasteImageFromClipboard, updateLatexNamePrefix, OverrideToggle,
 } from '../../components/admin/graph/BlockNodeShared';
 
 // ── ⑂ Fallunterscheidung ────────────────────────────────────────────────────
@@ -70,7 +70,7 @@ export function CasesNode({ id, data, selected }: NodeProps) {
     isSelect ? !(c.match_value || '').trim() : !(c.cond_expr || '').trim();
 
   return (
-    <Shell id={id} type="cases" selected={selected}>
+    <Shell id={id} type="cases" selected={selected} headerRight={<OverrideToggle checked={!!d.allowOverride} onChange={v => set({ allowOverride: v })} />}>
       <div style={lbl}>Ergebnis-Name (LaTeX)</div>
       <F value={d.name || ''} placeholder="c_h" onChange={e => set({ name: e.target.value })} />
       {d.name && <div style={{ fontSize: 10, marginTop: 1 }}><MathDisplay latex={nameToLatex(d.name)} /></div>}

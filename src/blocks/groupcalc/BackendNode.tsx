@@ -15,7 +15,7 @@ import {
 } from '../../types/graph';
 import {
   F, LatexArea, NameChips, PRESET_COLORS, Shell, THEME, UnitField, formulaName, formulaPrefix,
-  inp, lbl, pasteImageFromClipboard, updateLatexNamePrefix,
+  inp, lbl, pasteImageFromClipboard, updateLatexNamePrefix, OverrideToggle,
 } from '../../components/admin/graph/BlockNodeShared';
 
 // ── ⚙ Gruppenberechnung ─────────────────────────────────────────────────────
@@ -56,7 +56,7 @@ export function GroupCalcNode({ id, data, selected }: NodeProps) {
   const options = d.options || [];
 
   return (
-    <Shell id={id} type="groupcalc" selected={selected}>
+    <Shell id={id} type="groupcalc" selected={selected} headerRight={<OverrideToggle checked={!!d.allowOverride} onChange={v => set({ allowOverride: v })} />}>
       <div style={lbl}>Block-Titel</div>
       <F value={d.label || ''} placeholder="Beplankungsnachweis" onChange={e => set({ label: e.target.value })} />
       <div style={lbl}>Dropdown-Bezeichnung</div>

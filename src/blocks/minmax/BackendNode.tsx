@@ -15,7 +15,7 @@ import {
 } from '../../types/graph';
 import {
   F, LatexArea, NameChips, PRESET_COLORS, Shell, THEME, UnitField, formulaName, formulaPrefix,
-  inp, lbl, pasteImageFromClipboard, updateLatexNamePrefix,
+  inp, lbl, pasteImageFromClipboard, updateLatexNamePrefix, OverrideToggle,
 } from '../../components/admin/graph/BlockNodeShared';
 
 // ── ↕ Min / Max ──────────────────────────────────────────────────────────────
@@ -48,7 +48,7 @@ export function MinMaxNode({ id, data, selected }: NodeProps) {
   };
 
   return (
-    <Shell id={id} type="minmax" selected={selected}>
+    <Shell id={id} type="minmax" selected={selected} headerRight={<OverrideToggle checked={!!d.allowOverride} onChange={v => set({ allowOverride: v })} />}>
       <div style={lbl}>Ergebnis-Name (LaTeX)</div>
       <F value={d.name} placeholder="f_{v,0,d}" onChange={e => setName(e.target.value)} />
       {d.name && <div style={{ fontSize: 10, marginTop: 1 }}><MathDisplay latex={nameToLatex(d.name)} /></div>}

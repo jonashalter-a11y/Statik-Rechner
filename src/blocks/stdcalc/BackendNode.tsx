@@ -15,7 +15,7 @@ import {
 } from '../../types/graph';
 import {
   F, LatexArea, NameChips, PRESET_COLORS, Shell, THEME, UnitField, formulaName, formulaPrefix,
-  inp, lbl, pasteImageFromClipboard, updateLatexNamePrefix,
+  inp, lbl, pasteImageFromClipboard, updateLatexNamePrefix, OverrideToggle,
 } from '../../components/admin/graph/BlockNodeShared';
 
 // ── 🟫 Standard-Berechnung ───────────────────────────────────────────────────
@@ -44,7 +44,7 @@ export function StdCalcNode({ id, data, selected }: NodeProps) {
     }, 0);
   };
   return (
-    <Shell id={id} type="stdcalc" selected={selected}>
+    <Shell id={id} type="stdcalc" selected={selected} headerRight={<OverrideToggle checked={!!d.allowOverride} onChange={v => set({ allowOverride: v })} />}>
       <div style={{ fontSize: 9, color: '#92400e', marginBottom: 2 }}>ein Wert wird im Frontend aus Tabellenberechnung gewählt</div>
       <div style={lbl}>Ergebnis-Name</div>
       <F value={d.name} placeholder="q_k" onChange={e => setName(e.target.value)} />

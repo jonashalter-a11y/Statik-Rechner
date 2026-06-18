@@ -15,7 +15,7 @@ import {
 } from '../../types/graph';
 import {
   F, LatexArea, NameChips, PRESET_COLORS, Shell, THEME, UnitField, formulaName, formulaPrefix,
-  inp, lbl, pasteImageFromClipboard, updateLatexNamePrefix,
+  inp, lbl, pasteImageFromClipboard, updateLatexNamePrefix, OverrideToggle,
 } from '../../components/admin/graph/BlockNodeShared';
 
 // ── 🟥 Rechnung ──────────────────────────────────────────────────────────────
@@ -45,7 +45,7 @@ export function CalcNode({ id, data, selected }: NodeProps) {
     }, 0);
   };
   return (
-    <Shell id={id} type="calc" selected={selected}>
+    <Shell id={id} type="calc" selected={selected} headerRight={<OverrideToggle checked={!!d.allowOverride} onChange={v => set({ allowOverride: v })} />}>
       <div style={lbl}>Ergebnis-Name (LaTeX)</div>
       <F value={d.name} placeholder="c_h" onChange={e => setName(e.target.value)} />
       <div style={{ fontSize: 10, marginTop: 1 }}><MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} /></div>

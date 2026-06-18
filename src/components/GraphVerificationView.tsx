@@ -851,7 +851,12 @@ function sanitizeGraphInputs(inputs: Record<string, string> | undefined, graph: 
   const next: Record<string, string> = {};
   for (const [key, value] of Object.entries(inputs || {})) {
     if (key.endsWith('_override')) {
-      const baseKey = key.replace(/_override$/, '');
+      // Prüfe verschiedene Override-Formate:
+      // Simple: nodeId_override
+      // Zone: nodeId__zone__zoneName_override
+      // Output: nodeId__out__outputId_override
+      const m = key.match(/^(.+?)(?:__(?:zone|out)__.+)?_override$/);
+      const baseKey = m ? m[1] : key.replace(/_override$/, '');
       if (nodeIds.has(baseKey)) next[key] = value;
       continue;
     }
@@ -874,7 +879,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
   const [decimals, setDecimals] = useState(3);
   const [imageModal, setImageModal] = useState<{ src: string; label?: string; source?: string } | null>(null);
   const [chartModal, setChartModal] = useState<string | null>(null); // Node-ID
-  const [overrideModal, setOverrideModal] = useState<{ nodeId: string; currentValue: number } | null>(null);
+  const [overrideModal, setOverrideModal] = useState<{ nodeId: string; currentValue: number; zone?: string; outputId?: string } | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const toggleSection = (id: string) => setCollapsedSections(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   const effectiveWoodType = woodTypeByVerif[verification.id] || '';
@@ -979,33 +984,123 @@ export default function GraphVerificationView({ verification, readOnly = false, 
     if (!graphReady) return { results: {}, symbols: {} };
 
     // Normale Evaluation
-    const result = evalGraph(graph, inputs, tables, materialProps, { woodType: effectiveWoodType, woodClassId: effectiveWoodClassId });
+    let result = evalGraph(graph, inputs, tables, materialProps, { woodType: effectiveWoodType, woodClassId: effectiveWoodClassId });
 
-    // Nach der Evaluation: Wende Override-Werte an
+    // Sammle Overrides
+    const overrideMap = new Map<string, { node: any; value: number }>();
     for (const [key, value] of Object.entries(inputs)) {
       if (key.endsWith('_override')) {
-        const nodeId = key.replace('_override', '');
         const numValue = parseFloat(String(value));
         if (!isNaN(numValue)) {
-          // Überschreibe das Ergebnis
-          if (result.results[nodeId]) {
-            result.results[nodeId].value = numValue;
+          // Parse verschiedene Override-Formate
+          let nodeId: string;
+          let zone: string | undefined;
+          let outputId: string | undefined;
+
+          const zoneMatch = key.match(/^(.+?)__zone__(.+)_override$/);
+          const outMatch = key.match(/^(.+?)__out__(.+)_override$/);
+          const simpleMatch = key.match(/^(.+?)_override$/);
+
+          if (zoneMatch) {
+            nodeId = zoneMatch[1];
+            zone = zoneMatch[2];
+          } else if (outMatch) {
+            nodeId = outMatch[1];
+            outputId = outMatch[2];
+          } else if (simpleMatch) {
+            nodeId = simpleMatch[1];
+          } else {
+            continue;
           }
 
-          // Aktualisiere Symbole für diesen Node basierend auf seinem Namen
           const node = graph.nodes.find(n => n.id === nodeId);
-          if (node?.data && 'name' in node.data) {
-            const name = String((node.data as any).name);
-            // Versuche verschiedene Normalisierungsvarianten
-            const aliases = [
-              name,
-              name.replace(/\\/g, ''),
-              name.replace(/_\{|\}/g, ''),
-              name.replace(/\\/g, '').replace(/_\{|\}/g, ''),
-            ];
-            for (const alias of aliases) {
-              result.symbols[alias] = numValue;
+          if (!node) continue;
+
+          overrideMap.set(nodeId, { node, value: numValue });
+
+          // Wende Override an basierend auf Typ
+          if (zone && result.results[nodeId]?.table) {
+            (result.results[nodeId]?.table as any)[zone] = numValue;
+          } else if (outputId && result.results[nodeId]?.matrixVals) {
+            (result.results[nodeId]?.matrixVals as any)[outputId] = numValue;
+            // Aktualisiere auch Symbole für groupcalc Output
+            const gcData = node.data as any;
+            if (gcData?.outputs) {
+              const output = gcData.outputs.find((o: any) => o.id === outputId);
+              if (output?.name) {
+                const name = String(output.name);
+                const aliases = [
+                  name,
+                  name.replace(/\\/g, ''),
+                  name.replace(/_\{|\}/g, ''),
+                  name.replace(/\\/g, '').replace(/_\{|\}/g, ''),
+                ];
+                for (const alias of aliases) {
+                  result.symbols[alias] = numValue;
+                }
+              }
             }
+          } else if (!zone && !outputId && result.results[nodeId]) {
+            // Simple override: direkt Wert setzen
+            result.results[nodeId].value = numValue;
+            // Aktualisiere Symbole
+            if (node.data && 'name' in node.data) {
+              const name = String((node.data as any).name);
+              const aliases = [
+                name,
+                name.replace(/\\/g, ''),
+                name.replace(/_\{|\}/g, ''),
+                name.replace(/\\/g, '').replace(/_\{|\}/g, ''),
+              ];
+              for (const alias of aliases) {
+                result.symbols[alias] = numValue;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Wenn Overrides vorhanden sind, re-evaluate downstream Blöcke
+    if (overrideMap.size > 0) {
+      // Finde alle Blöcke, die von Override-Blöcken abhängen
+      const overrideIds = new Set(overrideMap.keys());
+      const downstream = new Set<string>();
+      const visited = new Set<string>();
+
+      const collectDownstream = (nodeId: string) => {
+        if (visited.has(nodeId)) return;
+        visited.add(nodeId);
+        for (const edge of graph.edges) {
+          if (edge.source === nodeId && edge.data?.kind !== 'condition') {
+            downstream.add(edge.target);
+            collectDownstream(edge.target);
+          }
+        }
+      };
+
+      for (const id of overrideIds) {
+        collectDownstream(id);
+      }
+
+      // Re-evaluate downstream Blöcke mit aktualisierten Symbolen
+      for (const nodeId of downstream) {
+        const node = graph.nodes.find(n => n.id === nodeId);
+        if (!node) continue;
+
+        // Führe evaluate für diesen Node aus
+        const evaluators = (window as any).__evaluators || {};
+        const evaluator = evaluators[node.type];
+        if (evaluator && node.data) {
+          const runtime = {
+            inputs: inputs as any,
+            symbols: result.symbols,
+            results: result.results,
+          };
+          try {
+            evaluator(node, runtime);
+          } catch {
+            // Fehler beim Re-eval ignorieren
           }
         }
       }
@@ -1613,7 +1708,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                     })()}
                   </div>
                 )}
-                {isFiniteNumber(r.value) && !readOnly && (
+                {isFiniteNumber(r.value) && !readOnly && d.allowOverride && (
                   <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
                     <button
                       type="button"
@@ -1770,6 +1865,49 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                     );
                   })}
                 </div>
+                {isFiniteNumber(r.value) && !readOnly && d.allowOverride && (
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginTop: 4, flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => setOverrideModal({ nodeId: n.id, currentValue: inputs[`${n.id}_override`] ? parseFloat(String(inputs[`${n.id}_override`])) : (r.value ?? 0) })}
+                      style={{
+                        padding: '4px 6px',
+                        background: 'transparent',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: 3,
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        color: '#6b7280',
+                      }}
+                      title="Wert überschreiben"
+                    >
+                      ✏️
+                    </button>
+                    {inputs[`${n.id}_override`] && (
+                      <div style={{ display: 'flex', gap: 4, alignItems: 'center', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 3, padding: '2px 6px' }}>
+                        <span style={{ fontSize: 11, color: '#ea580c', fontWeight: 600 }}>
+                          {d.name ? nameToLatex(d.name) : '?'} = {inputs[`${n.id}_override`]} {d.unit ? `[${d.unit}]` : ''}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setInput(`${n.id}_override`, '')}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#ea580c',
+                            cursor: 'pointer',
+                            fontSize: 14,
+                            padding: 0,
+                            lineHeight: 1,
+                          }}
+                          title="Override löschen"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               {parentCondId && renderCondition(parentCondId)}
             </React.Fragment>
@@ -1778,15 +1916,67 @@ export default function GraphVerificationView({ verification, readOnly = false, 
 
         if (n.type === 'tablecalc') {
           const tableRes = r.table || {};
+          const zones = Object.keys(tableRes);
           return (
             <div key={n.id} style={{ ...card, background: '#eff6ff', borderColor: '#bfdbfe' }}>
               <div style={lbl}>🟦 {d.label || d.name} [{d.unit}]</div>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ borderCollapse: 'collapse', fontSize: 12 }}>
-                  <thead><tr>{Object.keys(tableRes).map(z => <th key={z} style={{ border: '1px solid #cbd5e1', padding: '3px 8px', background: '#dbeafe' }}>{z}</th>)}</tr></thead>
-                  <tbody><tr>{Object.values(tableRes).map((val, i) => <td key={i} style={{ border: '1px solid #e2e8f0', padding: '3px 8px', textAlign: 'right', fontFamily: 'monospace' }}>{num(val as number)}</td>)}</tr></tbody>
+                  <thead><tr>{zones.map(z => <th key={z} style={{ border: '1px solid #cbd5e1', padding: '3px 8px', background: '#dbeafe' }}>{z}</th>)}</tr></thead>
+                  <tbody><tr>{zones.map((z, i) => <td key={i} style={{ border: '1px solid #e2e8f0', padding: '3px 8px', textAlign: 'right', fontFamily: 'monospace' }}>{num(tableRes[z] as number)}</td>)}</tr></tbody>
                 </table>
               </div>
+              {!readOnly && d.allowOverride && zones.length > 0 && (
+                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {zones.map(zone => {
+                    const key = `${n.id}__zone__${zone}_override`;
+                    const hasOverride = !!inputs[key];
+                    return (
+                      <div key={zone} style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => setOverrideModal({ nodeId: n.id, zone, currentValue: inputs[key] ? parseFloat(String(inputs[key])) : (tableRes[zone] ?? 0) })}
+                          style={{
+                            padding: '4px 6px',
+                            background: 'transparent',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: 3,
+                            fontSize: 12,
+                            cursor: 'pointer',
+                            color: '#6b7280',
+                          }}
+                          title={`Zone ${zone} überschreiben`}
+                        >
+                          ✏️ {zone}
+                        </button>
+                        {hasOverride && (
+                          <div style={{ display: 'flex', gap: 4, alignItems: 'center', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 3, padding: '2px 6px' }}>
+                            <span style={{ fontSize: 11, color: '#ea580c', fontWeight: 600 }}>
+                              {d.name}_{zone} = {inputs[key]} {d.unit ? `[${d.unit}]` : ''}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setInput(key, '')}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#ea580c',
+                                cursor: 'pointer',
+                                fontSize: 14,
+                                padding: 0,
+                                lineHeight: 1,
+                              }}
+                              title="Override löschen"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           );
         }
@@ -2616,23 +2806,70 @@ export default function GraphVerificationView({ verification, readOnly = false, 
               {(gc.outputs || []).map(out => {
                 const val = outVals[out.id];
                 const latex = outLatex[out.id];
+                const key = `${n.id}__out__${out.id}_override`;
+                const hasOverride = !!inputs[key];
                 return (
-                  <div key={out.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <div>
-                      <div style={{ fontSize: 11, color: '#6b7280' }}>{out.label}</div>
-                      {out.name && <MathDisplay latex={out.name.includes('_{') ? out.name : nameToLatex(out.name)} />}
-                      {latex && selLabel && (
-                        <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>
-                          = <MathDisplay latex={latex} />
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: 15, fontWeight: 600, color: isFinite(val) ? '#0f766e' : '#9ca3af' }}>
-                        {isFinite(val) ? formatNumber(val) : '—'}
+                  <div key={out.id}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <div>
+                        <div style={{ fontSize: 11, color: '#6b7280' }}>{out.label}</div>
+                        {out.name && <MathDisplay latex={out.name.includes('_{') ? out.name : nameToLatex(out.name)} />}
+                        {latex && selLabel && (
+                          <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>
+                            = <MathDisplay latex={latex} />
+                          </div>
+                        )}
                       </div>
-                      {out.unit && <div style={{ fontSize: 11, color: '#6b7280' }}>[{out.unit}]</div>}
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: isFinite(val) ? '#0f766e' : '#9ca3af' }}>
+                          {isFinite(val) ? formatNumber(val) : '—'}
+                        </div>
+                        {out.unit && <div style={{ fontSize: 11, color: '#6b7280' }}>[{out.unit}]</div>}
+                      </div>
                     </div>
+                    {isFiniteNumber(val) && !readOnly && d.allowOverride && (
+                      <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+                        <button
+                          type="button"
+                          onClick={() => setOverrideModal({ nodeId: n.id, outputId: out.id, currentValue: inputs[key] ? parseFloat(String(inputs[key])) : (val ?? 0) })}
+                          style={{
+                            padding: '4px 6px',
+                            background: 'transparent',
+                            border: '1px solid #5eead4',
+                            borderRadius: 3,
+                            fontSize: 12,
+                            cursor: 'pointer',
+                            color: '#0f766e',
+                          }}
+                          title={`${out.label} überschreiben`}
+                        >
+                          ✏️
+                        </button>
+                        {hasOverride && (
+                          <div style={{ display: 'flex', gap: 4, alignItems: 'center', background: '#d1f2eb', border: '1px solid #5eead4', borderRadius: 3, padding: '2px 6px' }}>
+                            <span style={{ fontSize: 11, color: '#0f766e', fontWeight: 600 }}>
+                              {out.name ? nameToLatex(out.name) : out.label} = {inputs[key]} {out.unit ? `[${out.unit}]` : ''}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setInput(key, '')}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#0f766e',
+                                cursor: 'pointer',
+                                fontSize: 14,
+                                padding: 0,
+                                lineHeight: 1,
+                              }}
+                              title="Override löschen"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -2798,84 +3035,92 @@ export default function GraphVerificationView({ verification, readOnly = false, 
       )}
 
       {/* Override-Modal */}
-      {overrideModal && (
-        <div onClick={() => setOverrideModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 8, padding: 20, boxShadow: '0 10px 40px rgba(0,0,0,0.3)', minWidth: 300 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 12 }}>Wert ändern</div>
-            <input
-              type="text"
-              autoFocus
-              defaultValue={String(overrideModal.currentValue)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  const val = (e.target as HTMLInputElement).value.trim();
-                  if (val) {
-                    const num = parseFloat(val);
-                    if (!isNaN(num)) {
-                      setInput(`${overrideModal.nodeId}_override`, String(num));
-                      setOverrideModal(null);
+      {overrideModal && (() => {
+        const getKey = () => {
+          if (overrideModal.zone) return `${overrideModal.nodeId}__zone__${overrideModal.zone}_override`;
+          if (overrideModal.outputId) return `${overrideModal.nodeId}__out__${overrideModal.outputId}_override`;
+          return `${overrideModal.nodeId}_override`;
+        };
+        const key = getKey();
+        return (
+          <div onClick={() => setOverrideModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 8, padding: 20, boxShadow: '0 10px 40px rgba(0,0,0,0.3)', minWidth: 300 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 12 }}>Wert ändern</div>
+              <input
+                type="text"
+                autoFocus
+                defaultValue={String(overrideModal.currentValue)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const val = (e.target as HTMLInputElement).value.trim();
+                    if (val) {
+                      const num = parseFloat(val);
+                      if (!isNaN(num)) {
+                        setInput(key, String(num));
+                        setOverrideModal(null);
+                      }
                     }
                   }
-                }
-              }}
-              style={{
-                width: '100%',
-                padding: '8px 10px',
-                border: '1px solid #cbd5e1',
-                borderRadius: 4,
-                fontSize: 13,
-                fontFamily: 'monospace',
-                marginBottom: 12,
-                boxSizing: 'border-box',
-              }}
-            />
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setOverrideModal(null)}
+                }}
                 style={{
-                  padding: '6px 12px',
+                  width: '100%',
+                  padding: '8px 10px',
                   border: '1px solid #cbd5e1',
                   borderRadius: 4,
-                  background: '#fff',
-                  color: '#374151',
-                  cursor: 'pointer',
-                  fontSize: 12,
-                  fontWeight: 600,
+                  fontSize: 13,
+                  fontFamily: 'monospace',
+                  marginBottom: 12,
+                  boxSizing: 'border-box',
                 }}
-              >
-                Abbrechen
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const input = (document.activeElement as HTMLInputElement);
-                  const val = input?.value?.trim();
-                  if (val) {
-                    const num = parseFloat(val);
-                    if (!isNaN(num)) {
-                      setInput(`${overrideModal.nodeId}_override`, String(num));
-                      setOverrideModal(null);
+              />
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setOverrideModal(null)}
+                  style={{
+                    padding: '6px 12px',
+                    border: '1px solid #cbd5e1',
+                    borderRadius: 4,
+                    background: '#fff',
+                    color: '#374151',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    fontWeight: 600,
+                  }}
+                >
+                  Abbrechen
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const input = (document.activeElement as HTMLInputElement);
+                    const val = input?.value?.trim();
+                    if (val) {
+                      const num = parseFloat(val);
+                      if (!isNaN(num)) {
+                        setInput(key, String(num));
+                        setOverrideModal(null);
+                      }
                     }
-                  }
-                }}
-                style={{
-                  padding: '6px 12px',
-                  border: 'none',
-                  borderRadius: 4,
-                  background: '#4f46e5',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  fontSize: 12,
-                  fontWeight: 600,
-                }}
-              >
-                Speichern
-              </button>
+                  }}
+                  style={{
+                    padding: '6px 12px',
+                    border: 'none',
+                    borderRadius: 4,
+                    background: '#4f46e5',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    fontWeight: 600,
+                  }}
+                >
+                  Speichern
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Diagramm-Modal */}
       {chartModal && (() => {

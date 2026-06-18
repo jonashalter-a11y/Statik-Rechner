@@ -15,7 +15,7 @@ import {
 } from '../../types/graph';
 import {
   F, LatexArea, NameChips, PRESET_COLORS, Shell, THEME, UnitField, formulaName, formulaPrefix,
-  inp, lbl, pasteImageFromClipboard, updateLatexNamePrefix,
+  inp, lbl, pasteImageFromClipboard, updateLatexNamePrefix, OverrideToggle,
 } from '../../components/admin/graph/BlockNodeShared';
 
 // ── 🟦 Tabellenberechnung ────────────────────────────────────────────────────
@@ -24,7 +24,7 @@ export function TableCalcNode({ id, data, selected }: NodeProps) {
   const { updateNodeData, dbTables } = useGraphCtx();
   const set = (p: Partial<TableCalcData>) => updateNodeData(id, p);
   return (
-    <Shell id={id} type="tablecalc" selected={selected}>
+    <Shell id={id} type="tablecalc" selected={selected} headerRight={<OverrideToggle checked={!!d.allowOverride} onChange={v => set({ allowOverride: v })} />}>
       <div style={lbl}>Name</div>
       <F value={d.name} placeholder="q_k" onChange={e => set({ name: e.target.value })} />
       <div style={lbl}>Quell-Tabelle (Zonen-Beiwerte)</div>

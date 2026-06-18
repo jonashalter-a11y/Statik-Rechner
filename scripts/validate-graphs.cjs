@@ -5,7 +5,7 @@ const ROOT = path.resolve(__dirname, '..');
 const CHECK_TYPES = new Set([
   'beamvisual', 'calc', 'cases', 'chartlookup', 'check', 'comment', 'condition',
   'dropdown', 'frame', 'groupcalc', 'image', 'loopblock', 'matrix', 'minmax',
-  'output', 'ref', 'section', 'stdcalc', 'tablecalc', 'tablevalue', 'title',
+  'output', 'ref', 'section', 'stdcalc', 'switchcalc', 'tablecalc', 'tablevalue', 'title',
   'variable', 'woodclass', 'summenblock', 'sum', 'summenblock_neu',
 ]);
 

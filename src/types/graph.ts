@@ -92,6 +92,7 @@ export interface CalcData {
   latex: string;          // Anzeige-Formel (LaTeX)
   expr: string;           // JS-Ausdruck zur Berechnung
   description?: string;
+  allowOverride?: boolean; // Frontend-User kann Wert manuell eingeben
 }
 
 export interface StdCalcData {
@@ -103,6 +104,7 @@ export interface StdCalcData {
   expr: string;           // JS-Ausdruck; nutzt einen im Frontend gewählten Tabellenwert
   picker_name: string;    // Variablenname des im Frontend wählbaren Werts (z.B. "c_pe")
   source_tablecalc?: string; // Node-ID des tablecalc, aus dem gewählt wird
+  allowOverride?: boolean; // Frontend-User kann Wert manuell eingeben
 }
 
 export interface TableCalcData {
@@ -113,6 +115,7 @@ export interface TableCalcData {
   table_ref?: string;     // db_tables.id (Quelle der Spaltenwerte/Zonen)
   zones: string[];        // Zonen-/Spaltennamen (z.B. ["A","B",...])
   expr: string;           // JS-Ausdruck je Zone; Platzhalter "cell" = Zonenwert
+  allowOverride?: boolean; // Frontend-User kann Werte pro Zone manuell eingeben
 }
 
 export interface ConditionData {
@@ -272,6 +275,7 @@ export interface MinMaxData {
   unit: string;
   latex: string;   // vollständige Formel, z.B. f = \min\begin{cases}a \\ b\end{cases}
   expr: string;    // auto-abgeleiteter JS-Ausdruck
+  allowOverride?: boolean; // Frontend-User kann Wert manuell eingeben
 }
 
 export interface ChartLookupData {
@@ -324,6 +328,7 @@ export interface CasesData {
     cond_expr: string;      // JS-Bedingung (leer = else/Standard) — nur für mode='expr'
     match_value?: string;   // Vergleichswert (für mode='select'), z.B. 'II'
   }>;
+  allowOverride?: boolean; // Frontend-User kann Wert manuell eingeben
 }
 
 export interface MatrixData {
@@ -465,6 +470,7 @@ export interface GroupCalcData {
   vars: GroupCalcVar[];
   options: GroupCalcOption[];
   outputs: GroupCalcOutput[];
+  allowOverride?: boolean; // Frontend-User kann Werte pro Output manuell eingeben
 }
 
 export type BlockData =

@@ -7,7 +7,7 @@ export interface SwitchCalcOption {
   expr: string;
 }
 
-export interface SwitchCalcData extends BlockData {
+export interface SwitchCalcData {
   kind: 'switchcalc';
   name: string;
   label: string;

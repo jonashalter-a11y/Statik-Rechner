@@ -51,7 +51,7 @@ export const inp: React.CSSProperties = {
 };
 export const lbl: React.CSSProperties = { fontSize: 7.5, color: '#6b7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em', marginBottom: 1, marginTop: 2 };
 
-export function Shell({ id, type, children, extraHandles, selected }: { id: string; type: string; children: React.ReactNode; extraHandles?: React.ReactNode; selected?: boolean }) {
+export function Shell({ id, type, children, extraHandles, selected, headerRight }: { id: string; type: string; children: React.ReactNode; extraHandles?: React.ReactNode; selected?: boolean; headerRight?: React.ReactNode }) {
   const { removeNode } = useGraphCtx();
   const t = THEME[type];
   return (
@@ -67,7 +67,10 @@ export function Shell({ id, type, children, extraHandles, selected }: { id: stri
       <Handle type="target" position={Position.Left} style={{ background: t.border, width: 7, height: 7 }} />
       <div style={{ background: t.border, color: '#fff', padding: '2px 6px', borderRadius: '3px 3px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 9.5, fontWeight: 700, lineHeight: 1.2, flexShrink: 0 }}>
         <span>{t.icon} {t.label}</span>
-        <button className="nodrag" onClick={() => removeNode(id)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}>✕</button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {headerRight}
+          <button className="nodrag" onClick={() => removeNode(id)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}>✕</button>
+        </div>
       </div>
       <div
         className="nodrag nowheel nopan"
@@ -402,5 +405,44 @@ export function NameChips({ targetId, onInsert, operators = Boolean(onInsert) }:
         </div>
       )}
     </div>
+  );
+}
+
+export function OverrideToggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label
+      className="nodrag"
+      title="Manuelle Werteingabe im Frontend erlauben"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '4px',
+        cursor: 'pointer',
+        padding: '2px 6px',
+        borderRadius: '2px',
+        background: 'rgba(255, 255, 255, 0.2)',
+        transition: 'all 0.15s ease',
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLLabelElement).style.background = 'rgba(255, 255, 255, 0.35)';
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLLabelElement).style.background = 'rgba(255, 255, 255, 0.2)';
+      }}
+    >
+      <input
+        type="checkbox"
+        className="nodrag"
+        checked={checked}
+        onChange={e => onChange(e.target.checked)}
+        style={{
+          cursor: 'pointer',
+          width: '14px',
+          height: '14px',
+          margin: '0',
+        }}
+      />
+      <span style={{ fontSize: '11px', fontWeight: 500, color: '#fff' }}>✏️</span>
+    </label>
   );
 }
