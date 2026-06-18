@@ -1,0 +1,375 @@
+{
+  "version": 1,
+  "exported_at": "2026-06-18T11:32:40.004Z",
+  "verification": {
+    "id": "ausklinkungen",
+    "norm_id": "sia265",
+    "chapter_id": "sia265_5_2_mqjf77sf",
+    "title": "Ausklinkungen",
+    "formula_latex": "k_{red} = \\frac{\\sqrt{h_{0,delta}}}{\\sqrt{h}}\\cdot \\frac{1}{\\sqrt{\\frac{h_{ef}}{h}-}\\left(\\frac{h_{ef}}{h}\\right)^2+0.8*\\frac{c}{h}*\\sqrt{\\frac{h}{h_{ef}}-\\left(\\frac{h_{ef}}{h}\\right)^2}}",
+    "formula_description": "",
+    "compute_expr": "",
+    "graph_json": "{\"version\":1,\"nodes\":[{\"id\":\"variable_mqjf82ic_1\",\"type\":\"variable\",\"position\":{\"x\":153,\"y\":211.5},\"data\":{\"kind\":\"variable\",\"name\":\"V_ed\",\"label\":\"Bemessungswert der Querkraft\",\"unit\":\"\\\\mathrm{N}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"variable_mqjf90yj_2\",\"type\":\"variable\",\"position\":{\"x\":151.75,\"y\":422},\"data\":{\"kind\":\"variable\",\"name\":\"b\",\"label\":\"Breite\",\"unit\":\"\\\\mathrm{mm}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false},\"style\":{\"width\":178,\"height\":181}},{\"id\":\"variable_mqjf9gzp_3\",\"type\":\"variable\",\"position\":{\"x\":151.75,\"y\":608},\"data\":{\"kind\":\"variable\",\"name\":\"h_ef\",\"label\":\"reduzierte Trägerhöhe\",\"unit\":\"\\\\mathrm{mm}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false},\"style\":{\"width\":180,\"height\":178}},{\"id\":\"woodclass_mqjfb8v9_4\",\"type\":\"woodclass\",\"position\":{\"x\":534.1186223239393,\"y\":206.0460841282137},\"data\":{\"kind\":\"woodclass\",\"label\":\"Aktuelle Holzklasse\"}},{\"id\":\"tablevalue_mqjfbc16_5\",\"type\":\"tablevalue\",\"position\":{\"x\":1001.3209246429105,\"y\":191.4810243436894},\"data\":{\"kind\":\"tablevalue\",\"name\":\"f_{v,d}\",\"label\":\"\",\"unit\":\"\\\\mathrm{N/mm^2}\",\"table_col\":1}},{\"id\":\"calc_mqjfbwnw_7\",\"type\":\"calc\",\"position\":{\"x\":889.8009104363794,\"y\":377.97408130587155},\"data\":{\"kind\":\"calc\",\"name\":\"k_{red}\",\"label\":\"Reduktionsbeiwert\",\"unit\":\"[]\",\"latex\":\"k_{red} = \\\\frac{\\\\sqrt{h_{0,delta}}}{\\\\sqrt{h}}\\\\cdot \\\\frac{1}{\\\\sqrt{\\\\frac{h_{ef}}{h}-}\\\\left(\\\\frac{h_{ef}}{h}\\\\right)^2+0.8*\\\\frac{c}{h}*\\\\sqrt{\\\\frac{h}{h_{ef}}-\\\\left(\\\\frac{h_{ef}}{h}\\\\right)^2}}\",\"expr\":\"((Math.sqrt(h_0_delta))/(Math.sqrt(h)))* ((1)/(Math.sqrt(((h_ef)/(h))-Math.pow((((h_ef)/(h))),2))+0.8*((c)/(h))*Math.sqrt(((h)/(h_ef))-Math.pow((((h_ef)/(h))),2))))\",\"allowOverride\":false},\"style\":{\"width\":467,\"height\":547}},{\"id\":\"variable_mqjfca45_9\",\"type\":\"variable\",\"position\":{\"x\":148.88514794336555,\"y\":817.1252500704622},\"data\":{\"kind\":\"variable\",\"name\":\"h\",\"label\":\"Höhe\",\"unit\":\"\\\\mathrm{mm}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false},\"style\":{\"width\":180,\"height\":178}},{\"id\":\"dropdown_mqjfea21_13\",\"type\":\"dropdown\",\"position\":{\"x\":471.38078866400565,\"y\":941.6543391614363},\"data\":{\"kind\":\"dropdown\",\"name\":\"h_{0,delta}\",\"label\":\"\",\"mode\":\"custom\",\"options\":[{\"label\":\"Vollholz, keilgezinktes Vollholz, Balkenschichtholz\",\"value\":\"25\"},{\"label\":\"Brettschichtholz\",\"value\":\"45\"}],\"unit\":\"\\\\mathrm{mm}\"}},{\"id\":\"variable_mqjfp0ae_14\",\"type\":\"variable\",\"position\":{\"x\":145.93648315838723,\"y\":1072.7885680141171},\"data\":{\"kind\":\"variable\",\"name\":\"c\",\"label\":\"Abstand Wirkungslinie der Auflagerkraft zur Ausklinkungsecke \",\"unit\":\"\\\\mathrm{mm}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"calc_mqjftn8l_21\",\"type\":\"calc\",\"position\":{\"x\":989.9142673961674,\"y\":1057.0692421482097},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\tau_{d}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"\\\\tau_{d} = 1.5\\\\cdot \\\\frac{V_{ed}}{b\\\\cdot h_{ef}}\",\"expr\":\"1.5* ((V_ed)/(b* h_ef))\"}},{\"id\":\"calc_mqjfvzwe_22\",\"type\":\"calc\",\"position\":{\"x\":1589.2543893833188,\"y\":483.9192122413001},\"data\":{\"kind\":\"calc\",\"name\":\"f_{v,d,eff}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"f_{v,d,eff}=f_{v,d}\\\\cdot k_{red}\",\"expr\":\"f_v_d* k_red\"}},{\"id\":\"check_mqjfx79u_25\",\"type\":\"check\",\"position\":{\"x\":2248.8247996293208,\"y\":706.5336075002991},\"data\":{\"kind\":\"check\",\"label\":\"\",\"latex\":\"\\\\tau_{d}\\\\leq f_{v,d,eff}\",\"expr\":\"(tau_d) <= (f_v_d_eff) ? 1 : 0\",\"unit\":\"\\\\mathrm{N/mm^2}\"}}],\"edges\":[{\"id\":\"e_mqjfbdnd_6\",\"source\":\"woodclass_mqjfb8v9_4\",\"target\":\"tablevalue_mqjfbc16_5\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqjfpvwq_15\",\"source\":\"dropdown_mqjfea21_13\",\"target\":\"calc_mqjfbwnw_7\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqjfpy8x_16\",\"source\":\"variable_mqjfp0ae_14\",\"target\":\"calc_mqjfbwnw_7\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqjfpzu3_17\",\"source\":\"variable_mqjfca45_9\",\"target\":\"calc_mqjfbwnw_7\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqjfq1f4_18\",\"source\":\"variable_mqjf9gzp_3\",\"target\":\"calc_mqjfbwnw_7\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqjfx0z8_23\",\"source\":\"tablevalue_mqjfbc16_5\",\"target\":\"calc_mqjfvzwe_22\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqjfx2z2_24\",\"source\":\"calc_mqjfbwnw_7\",\"target\":\"calc_mqjfvzwe_22\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqjfy7mx_26\",\"source\":\"calc_mqjfvzwe_22\",\"target\":\"check_mqjfx79u_25\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqjfyb9m_27\",\"source\":\"calc_mqjftn8l_21\",\"target\":\"check_mqjfx79u_25\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqjfyg7y_28\",\"source\":\"variable_mqjf82ic_1\",\"target\":\"calc_mqjftn8l_21\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqjfyk9n_29\",\"source\":\"variable_mqjf90yj_2\",\"target\":\"calc_mqjftn8l_21\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqjfyo67_30\",\"source\":\"variable_mqjf9gzp_3\",\"target\":\"calc_mqjftn8l_21\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}}]}",
+    "notes": "",
+    "active": 1
+  },
+  "chapter": {
+    "id": "sia265_5_2_mqjf77sf",
+    "sort_order": 51,
+    "norm_id": "sia265",
+    "parent_id": null,
+    "number": "5.2",
+    "title": "Ausklinkungen"
+  },
+  "variables": [],
+  "tables": [],
+  "graph": {
+    "version": 1,
+    "nodes": [
+      {
+        "id": "variable_mqjf82ic_1",
+        "type": "variable",
+        "position": {
+          "x": 153,
+          "y": 211.5
+        },
+        "data": {
+          "kind": "variable",
+          "name": "V_ed",
+          "label": "Bemessungswert der Querkraft",
+          "unit": "\\mathrm{N}",
+          "default_value": "0",
+          "inputKind": "number",
+          "options": [],
+          "hasDefault": false
+        }
+      },
+      {
+        "id": "variable_mqjf90yj_2",
+        "type": "variable",
+        "position": {
+          "x": 151.75,
+          "y": 422
+        },
+        "data": {
+          "kind": "variable",
+          "name": "b",
+          "label": "Breite",
+          "unit": "\\mathrm{mm}",
+          "default_value": "0",
+          "inputKind": "number",
+          "options": [],
+          "hasDefault": false
+        },
+        "style": {
+          "width": 178,
+          "height": 181
+        }
+      },
+      {
+        "id": "variable_mqjf9gzp_3",
+        "type": "variable",
+        "position": {
+          "x": 151.75,
+          "y": 608
+        },
+        "data": {
+          "kind": "variable",
+          "name": "h_ef",
+          "label": "reduzierte Trägerhöhe",
+          "unit": "\\mathrm{mm}",
+          "default_value": "0",
+          "inputKind": "number",
+          "options": [],
+          "hasDefault": false
+        },
+        "style": {
+          "width": 180,
+          "height": 178
+        }
+      },
+      {
+        "id": "woodclass_mqjfb8v9_4",
+        "type": "woodclass",
+        "position": {
+          "x": 534.1186223239393,
+          "y": 206.0460841282137
+        },
+        "data": {
+          "kind": "woodclass",
+          "label": "Aktuelle Holzklasse"
+        }
+      },
+      {
+        "id": "tablevalue_mqjfbc16_5",
+        "type": "tablevalue",
+        "position": {
+          "x": 1001.3209246429105,
+          "y": 191.4810243436894
+        },
+        "data": {
+          "kind": "tablevalue",
+          "name": "f_{v,d}",
+          "label": "",
+          "unit": "\\mathrm{N/mm^2}",
+          "table_col": 1
+        }
+      },
+      {
+        "id": "calc_mqjfbwnw_7",
+        "type": "calc",
+        "position": {
+          "x": 889.8009104363794,
+          "y": 377.97408130587155
+        },
+        "data": {
+          "kind": "calc",
+          "name": "k_{red}",
+          "label": "Reduktionsbeiwert",
+          "unit": "[]",
+          "latex": "k_{red} = \\frac{\\sqrt{h_{0,delta}}}{\\sqrt{h}}\\cdot \\frac{1}{\\sqrt{\\frac{h_{ef}}{h}-}\\left(\\frac{h_{ef}}{h}\\right)^2+0.8*\\frac{c}{h}*\\sqrt{\\frac{h}{h_{ef}}-\\left(\\frac{h_{ef}}{h}\\right)^2}}",
+          "expr": "((Math.sqrt(h_0_delta))/(Math.sqrt(h)))* ((1)/(Math.sqrt(((h_ef)/(h))-Math.pow((((h_ef)/(h))),2))+0.8*((c)/(h))*Math.sqrt(((h)/(h_ef))-Math.pow((((h_ef)/(h))),2))))",
+          "allowOverride": false
+        },
+        "style": {
+          "width": 467,
+          "height": 547
+        }
+      },
+      {
+        "id": "variable_mqjfca45_9",
+        "type": "variable",
+        "position": {
+          "x": 148.88514794336555,
+          "y": 817.1252500704622
+        },
+        "data": {
+          "kind": "variable",
+          "name": "h",
+          "label": "Höhe",
+          "unit": "\\mathrm{mm}",
+          "default_value": "0",
+          "inputKind": "number",
+          "options": [],
+          "hasDefault": false
+        },
+        "style": {
+          "width": 180,
+          "height": 178
+        }
+      },
+      {
+        "id": "dropdown_mqjfea21_13",
+        "type": "dropdown",
+        "position": {
+          "x": 471.38078866400565,
+          "y": 941.6543391614363
+        },
+        "data": {
+          "kind": "dropdown",
+          "name": "h_{0,delta}",
+          "label": "",
+          "mode": "custom",
+          "options": [
+            {
+              "label": "Vollholz, keilgezinktes Vollholz, Balkenschichtholz",
+              "value": "25"
+            },
+            {
+              "label": "Brettschichtholz",
+              "value": "45"
+            }
+          ],
+          "unit": "\\mathrm{mm}"
+        }
+      },
+      {
+        "id": "variable_mqjfp0ae_14",
+        "type": "variable",
+        "position": {
+          "x": 145.93648315838723,
+          "y": 1072.7885680141171
+        },
+        "data": {
+          "kind": "variable",
+          "name": "c",
+          "label": "Abstand Wirkungslinie der Auflagerkraft zur Ausklinkungsecke ",
+          "unit": "\\mathrm{mm}",
+          "default_value": "0",
+          "inputKind": "number",
+          "options": [],
+          "hasDefault": false
+        }
+      },
+      {
+        "id": "calc_mqjftn8l_21",
+        "type": "calc",
+        "position": {
+          "x": 989.9142673961674,
+          "y": 1057.0692421482097
+        },
+        "data": {
+          "kind": "calc",
+          "name": "\\tau_{d}",
+          "label": "",
+          "unit": "",
+          "latex": "\\tau_{d} = 1.5\\cdot \\frac{V_{ed}}{b\\cdot h_{ef}}",
+          "expr": "1.5* ((V_ed)/(b* h_ef))"
+        }
+      },
+      {
+        "id": "calc_mqjfvzwe_22",
+        "type": "calc",
+        "position": {
+          "x": 1589.2543893833188,
+          "y": 483.9192122413001
+        },
+        "data": {
+          "kind": "calc",
+          "name": "f_{v,d,eff}",
+          "label": "",
+          "unit": "",
+          "latex": "f_{v,d,eff}=f_{v,d}\\cdot k_{red}",
+          "expr": "f_v_d* k_red"
+        }
+      },
+      {
+        "id": "check_mqjfx79u_25",
+        "type": "check",
+        "position": {
+          "x": 2248.8247996293208,
+          "y": 706.5336075002991
+        },
+        "data": {
+          "kind": "check",
+          "label": "",
+          "latex": "\\tau_{d}\\leq f_{v,d,eff}",
+          "expr": "(tau_d) <= (f_v_d_eff) ? 1 : 0",
+          "unit": "\\mathrm{N/mm^2}"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e_mqjfbdnd_6",
+        "source": "woodclass_mqjfb8v9_4",
+        "target": "tablevalue_mqjfbc16_5",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mqjfpvwq_15",
+        "source": "dropdown_mqjfea21_13",
+        "target": "calc_mqjfbwnw_7",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mqjfpy8x_16",
+        "source": "variable_mqjfp0ae_14",
+        "target": "calc_mqjfbwnw_7",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mqjfpzu3_17",
+        "source": "variable_mqjfca45_9",
+        "target": "calc_mqjfbwnw_7",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mqjfq1f4_18",
+        "source": "variable_mqjf9gzp_3",
+        "target": "calc_mqjfbwnw_7",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mqjfx0z8_23",
+        "source": "tablevalue_mqjfbc16_5",
+        "target": "calc_mqjfvzwe_22",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mqjfx2z2_24",
+        "source": "calc_mqjfbwnw_7",
+        "target": "calc_mqjfvzwe_22",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mqjfy7mx_26",
+        "source": "calc_mqjfvzwe_22",
+        "target": "check_mqjfx79u_25",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mqjfyb9m_27",
+        "source": "calc_mqjftn8l_21",
+        "target": "check_mqjfx79u_25",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mqjfyg7y_28",
+        "source": "variable_mqjf82ic_1",
+        "target": "calc_mqjftn8l_21",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mqjfyk9n_29",
+        "source": "variable_mqjf90yj_2",
+        "target": "calc_mqjftn8l_21",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mqjfyo67_30",
+        "source": "variable_mqjf9gzp_3",
+        "target": "calc_mqjftn8l_21",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      }
+    ]
+  }
+}
