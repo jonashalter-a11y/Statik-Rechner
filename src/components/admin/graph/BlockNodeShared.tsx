@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Handle, Position, NodeProps, NodeResizer } from '@xyflow/react';
 import MathDisplay from '../../MathDisplay';
@@ -92,11 +92,19 @@ export const F = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HT
     if (typeof forwardedRef === 'function') forwardedRef(el);
     else if (forwardedRef) (forwardedRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
   };
+
+  // Nur DOM-Wert aktualisieren, wenn der Input nicht fokussiert ist
+  useLayoutEffect(() => {
+    if (ref.current && document.activeElement !== ref.current) {
+      ref.current.value = String(value ?? '');
+    }
+  }, [value]);
+
   return (
     <input
       ref={setRefs}
       className="nodrag"
-      value={String(value ?? '')}
+      defaultValue={String(value ?? '')}
       onChange={onChange}
       {...props}
       style={{ ...inp, ...(style || {}) }}
