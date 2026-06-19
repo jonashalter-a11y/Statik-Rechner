@@ -2544,6 +2544,10 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                 const substituteLatex = (tex: string) => {
                   let s = tex;
                   const entries = Object.entries(varVals).sort((a, b) => b[0].length - a[0].length);
+                  const replaceCompleteSymbol = (source: string, form: string, value: string) => {
+                    const esc = form.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    return source.replace(new RegExp(`(?<![\\\\A-Za-z0-9_])${esc}(?![A-Za-z0-9_])`, 'g'), value);
+                  };
                   for (const [jsName, val] of entries) {
                     const numStr = formatNumber(val);
                     // Formen zum Ausprobieren: d_i, d_{i}, und für Griechisch: \beta_0, \beta_{0}
@@ -2554,8 +2558,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                       jsName.replace(/_([A-Za-z0-9]+)$/g, '_{$1}'),          // d_{i}
                     ];
                     for (const form of forms) {
-                      const esc = form.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                      try { s = s.replace(new RegExp(esc + '(?![\\w{])', 'g'), numStr); } catch { /* */ }
+                      try { s = replaceCompleteSymbol(s, form, numStr); } catch { /* */ }
                     }
                   }
                   return s;

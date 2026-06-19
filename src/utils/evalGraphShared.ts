@@ -140,9 +140,10 @@ export function replaceLatexSymbol(formula: string, symbol: string, value: numbe
   if (!symbol) return formula;
 
   // Single-letter variables such as a, b and h must not be replaced inside
-  // LaTeX commands or longer names (\sigma, \frac, mean, ...).
+  // LaTeX commands, longer names (\sigma, \frac, mean, ...) or subscripts
+  // such as k_c/k_{c}.
   if (/^[A-Za-z]$/.test(symbol)) {
-    return formula.replace(new RegExp(`(?<![\\\\A-Za-z])${escapeRegExp(symbol)}(?![A-Za-z])`, 'g'), val);
+    return formula.replace(new RegExp(`(?<![\\\\A-Za-z0-9_])${escapeRegExp(symbol)}(?![A-Za-z0-9_])`, 'g'), val);
   }
 
   // Names with subscripts are matched as complete LaTeX symbols.

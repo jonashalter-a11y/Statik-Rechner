@@ -38,5 +38,29 @@
     "parent_id": null,
     "number": "5.2",
     "title": "Ausklinkungen"
+  },
+  {
+    "id": "6",
+    "norm_id": "sia265",
+    "parent_id": null,
+    "number": "6",
+    "title": "Verbindungen",
+    "sort_order": 52
+  },
+  {
+    "id": "sia265_6_2_duebel",
+    "norm_id": "sia265",
+    "parent_id": "6",
+    "number": "6.2",
+    "title": "Stabdübelverbindungen (Passbolzen)",
+    "sort_order": 53
+  },
+  {
+    "id": "sia265_5_8_mqks7icd",
+    "sort_order": 54,
+    "norm_id": "sia265",
+    "parent_id": null,
+    "number": "5.8",
+    "title": "Räumliche Stabilisierung und Verbände"
   }
 ]

@@ -1,0 +1,378 @@
+{
+  "version": 1,
+  "exported_at": "2026-06-19T11:18:30.633Z",
+  "verification": {
+    "norm_id": "sia265",
+    "chapter_id": "sia265_4_2_8_mqe59n3c",
+    "title": "k_c-Wert",
+    "formula_latex": "i =\\frac{1}{\\sqrt{12}}\\cdot h",
+    "formula_description": "",
+    "compute_expr": "",
+    "graph_json": "{\"version\":1,\"nodes\":[{\"id\":\"var_l\",\"type\":\"variable\",\"position\":{\"x\":55.38369082833027,\"y\":89.40245901001839},\"data\":{\"kind\":\"variable\",\"name\":\"l_{k}\",\"label\":\"Knicklänge\",\"unit\":\"mm\",\"default_value\":\"3000\",\"inputKind\":\"number\",\"description\":\"Länge des Druckstabes zwischen den Auflagern\",\"hasDefault\":false}},{\"id\":\"var_h\",\"type\":\"variable\",\"position\":{\"x\":42.569391628698554,\"y\":302.8707224753428},\"data\":{\"kind\":\"variable\",\"name\":\"h\",\"label\":\"Höhe\",\"unit\":\"mm\",\"default_value\":\"120\",\"inputKind\":\"number_comment\",\"description\":\"Querschnittshöhe des Stabes\",\"hasDefault\":false,\"comment\":\"Höhe oder Breite wo der Knicknachweis durchgeführt wird\"},\"style\":{\"width\":150,\"height\":145}},{\"id\":\"calc_i\",\"type\":\"calc\",\"position\":{\"x\":489.50354032385496,\"y\":25.01052274269152},\"data\":{\"kind\":\"calc\",\"name\":\"i\",\"label\":\"Trägheitsradius\",\"unit\":\"mm\",\"latex\":\"i =\\\\frac{1}{\\\\sqrt{12}}\\\\cdot h\",\"expr\":\"((1)/(Math.sqrt(12)))* h\",\"description\":\"Trägheitsradius für Rechteck-Querschnitt (schwache Achse)\"},\"style\":{\"width\":150,\"height\":118}},{\"id\":\"calc_lambda\",\"type\":\"calc\",\"position\":{\"x\":874.9582329793049,\"y\":171.48956676720667},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\lambda\",\"label\":\"Schlankheitsgrad\",\"unit\":\"[]\",\"latex\":\"\\\\lambda = \\\\frac{l_{k}}{i}\",\"expr\":\"((l_k)/(i))\",\"description\":\"Geometrischer Schlankheitsgrad (Längenverhältnis)\"},\"style\":{\"width\":251,\"height\":308}},{\"id\":\"calc_lambda_rel\",\"type\":\"calc\",\"position\":{\"x\":1254.4233014605952,\"y\":356.096932291531},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\lambda_rel\",\"label\":\"Relative Schlankheit\",\"unit\":\"[]\",\"latex\":\"\\\\lambda_{rel} = \\\\frac{\\\\lambda}{\\\\pi} \\\\cdot \\\\sqrt{\\\\frac{f_{c,0,k}}{E_{0,05}}}\",\"expr\":\"((lambda)/(pi)) * Math.sqrt(((f_c_0_k)/(E_0_05)))\",\"description\":\"SIA 265 4.2.8.4: λ / (57 für Vollholz, 60 für BSH)\"},\"style\":{\"width\":251,\"height\":308}},{\"id\":\"calc_k\",\"type\":\"calc\",\"position\":{\"x\":1617.449303974976,\"y\":526.5973887249559},\"data\":{\"kind\":\"calc\",\"name\":\"k\",\"label\":\"Hilfswert k\",\"unit\":\"-\",\"latex\":\"k = 0.5 \\\\cdot [1 + \\\\beta_c \\\\cdot (\\\\lambda_{rel} - 0.3) + \\\\lambda_{rel}^2]\",\"expr\":\"0.5 * (1 + beta_c * (lambda_rel - 0.3) + lambda_rel * lambda_rel)\",\"description\":\"SIA 265 4.2.8.2 Gleichung 31\"},\"style\":{\"width\":251,\"height\":308}},{\"id\":\"tablevalue_mqfa5jry_1\",\"type\":\"tablevalue\",\"position\":{\"x\":517.0707080091878,\"y\":669.4440256406024},\"data\":{\"kind\":\"tablevalue\",\"name\":\"f_c_0_k\",\"label\":\"\",\"unit\":\"\\\\mathrm{N/mm^2}\",\"table_col\":1}},{\"id\":\"woodclass_mqfa5up6_3\",\"type\":\"woodclass\",\"position\":{\"x\":94.14118764351338,\"y\":973.0896505456893},\"data\":{\"kind\":\"woodclass\",\"label\":\"Aktuelle Holzklasse\"}},{\"id\":\"tablevalue_mqfb7zmj_1\",\"type\":\"tablevalue\",\"position\":{\"x\":508.32193219628857,\"y\":857.9306682735203},\"data\":{\"kind\":\"tablevalue\",\"name\":\"beta_c\",\"label\":\"\",\"unit\":\"[]\",\"table_col\":1}},{\"id\":\"tablevalue_mqfbaevq_6\",\"type\":\"tablevalue\",\"position\":{\"x\":536.5118268607181,\"y\":1069.1063463924418},\"data\":{\"kind\":\"tablevalue\",\"name\":\"E_0_05\",\"label\":\"\",\"unit\":\"\\\\mathrm{N/mm^2}\",\"table_col\":1},\"style\":{\"width\":319,\"height\":143}},{\"id\":\"calc_mqfs2kpx_3\",\"type\":\"calc\",\"position\":{\"x\":1950.0160216967643,\"y\":164.59241921900605},\"data\":{\"kind\":\"calc\",\"name\":\"k_{c}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"k_{c} = \\\\frac{1}{k + \\\\sqrt{k^2 - \\\\lambda_{rel}^2}}\",\"expr\":\"((1)/(k + Math.sqrt(Math.pow(k,2) - Math.pow(lambda_rel,2))))\"}}],\"edges\":[{\"id\":\"e_l_A\",\"source\":\"var_l\",\"target\":\"calc_lambda\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_h_i\",\"source\":\"var_h\",\"target\":\"calc_i\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_i_lambda\",\"source\":\"calc_i\",\"target\":\"calc_lambda\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_lambda_lambdarel\",\"source\":\"calc_lambda\",\"target\":\"calc_lambda_rel\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_lambdarel_k\",\"source\":\"calc_lambda_rel\",\"target\":\"calc_k\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfa5y0s_4\",\"source\":\"woodclass_mqfa5up6_3\",\"target\":\"tablevalue_mqfa5jry_1\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfb8in4_2\",\"source\":\"woodclass_mqfa5up6_3\",\"target\":\"tablevalue_mqfb7zmj_1\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfba6qq_4\",\"source\":\"tablevalue_mqfb7zmj_1\",\"target\":\"calc_k\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfbac5q_5\",\"source\":\"tablevalue_mqfa5jry_1\",\"target\":\"calc_lambda_rel\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfbaust_7\",\"source\":\"tablevalue_mqfbaevq_6\",\"target\":\"calc_lambda_rel\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfbnjjf_11\",\"source\":\"woodclass_mqfa5up6_3\",\"target\":\"tablevalue_mqfbaevq_6\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfsbn2e_1\",\"source\":\"calc_k\",\"target\":\"calc_mqfs2kpx_3\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqfsbxh2_3\",\"source\":\"calc_lambda_rel\",\"target\":\"calc_mqfs2kpx_3\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}}],\"display_order\":[\"woodclass_mqfa5up6_3\",\"tablevalue_mqfa5jry_1\",\"tablevalue_mqfbaevq_6\",\"tablevalue_mqfb7zmj_1\",\"var_l\",\"var_h\",\"calc_i\",\"calc_lambda\",\"calc_lambda_rel\",\"calc_k\",\"calc_mqfs2kpx_3\"]}",
+    "notes": "",
+    "id": "k_c-Wert",
+    "active": 1
+  },
+  "chapter": {
+    "id": "sia265_4_2_8_mqe59n3c",
+    "norm_id": "sia265",
+    "parent_id": "4.2",
+    "number": "4.2.8",
+    "title": "Knicken (Stabilität von Druckstäben)",
+    "sort_order": 50
+  },
+  "variables": [],
+  "tables": [],
+  "graph": {
+    "version": 1,
+    "nodes": [
+      {
+        "id": "var_l",
+        "type": "variable",
+        "position": {
+          "x": 55.38369082833027,
+          "y": 89.40245901001839
+        },
+        "data": {
+          "kind": "variable",
+          "name": "l_{k}",
+          "label": "Knicklänge",
+          "unit": "mm",
+          "default_value": "3000",
+          "inputKind": "number",
+          "description": "Länge des Druckstabes zwischen den Auflagern",
+          "hasDefault": false
+        }
+      },
+      {
+        "id": "var_h",
+        "type": "variable",
+        "position": {
+          "x": 42.569391628698554,
+          "y": 302.8707224753428
+        },
+        "data": {
+          "kind": "variable",
+          "name": "h",
+          "label": "Höhe",
+          "unit": "mm",
+          "default_value": "120",
+          "inputKind": "number_comment",
+          "description": "Querschnittshöhe des Stabes",
+          "hasDefault": false,
+          "comment": "Höhe oder Breite wo der Knicknachweis durchgeführt wird"
+        },
+        "style": {
+          "width": 150,
+          "height": 145
+        }
+      },
+      {
+        "id": "calc_i",
+        "type": "calc",
+        "position": {
+          "x": 489.50354032385496,
+          "y": 25.01052274269152
+        },
+        "data": {
+          "kind": "calc",
+          "name": "i",
+          "label": "Trägheitsradius",
+          "unit": "mm",
+          "latex": "i =\\frac{1}{\\sqrt{12}}\\cdot h",
+          "expr": "((1)/(Math.sqrt(12)))* h",
+          "description": "Trägheitsradius für Rechteck-Querschnitt (schwache Achse)"
+        },
+        "style": {
+          "width": 150,
+          "height": 118
+        }
+      },
+      {
+        "id": "calc_lambda",
+        "type": "calc",
+        "position": {
+          "x": 874.9582329793049,
+          "y": 171.48956676720667
+        },
+        "data": {
+          "kind": "calc",
+          "name": "\\lambda",
+          "label": "Schlankheitsgrad",
+          "unit": "[]",
+          "latex": "\\lambda = \\frac{l_{k}}{i}",
+          "expr": "((l_k)/(i))",
+          "description": "Geometrischer Schlankheitsgrad (Längenverhältnis)"
+        },
+        "style": {
+          "width": 251,
+          "height": 308
+        }
+      },
+      {
+        "id": "calc_lambda_rel",
+        "type": "calc",
+        "position": {
+          "x": 1254.4233014605952,
+          "y": 356.096932291531
+        },
+        "data": {
+          "kind": "calc",
+          "name": "\\lambda_rel",
+          "label": "Relative Schlankheit",
+          "unit": "[]",
+          "latex": "\\lambda_{rel} = \\frac{\\lambda}{\\pi} \\cdot \\sqrt{\\frac{f_{c,0,k}}{E_{0,05}}}",
+          "expr": "((lambda)/(pi)) * Math.sqrt(((f_c_0_k)/(E_0_05)))",
+          "description": "SIA 265 4.2.8.4: λ / (57 für Vollholz, 60 für BSH)"
+        },
+        "style": {
+          "width": 251,
+          "height": 308
+        }
+      },
+      {
+        "id": "calc_k",
+        "type": "calc",
+        "position": {
+          "x": 1617.449303974976,
+          "y": 526.5973887249559
+        },
+        "data": {
+          "kind": "calc",
+          "name": "k",
+          "label": "Hilfswert k",
+          "unit": "-",
+          "latex": "k = 0.5 \\cdot [1 + \\beta_c \\cdot (\\lambda_{rel} - 0.3) + \\lambda_{rel}^2]",
+          "expr": "0.5 * (1 + beta_c * (lambda_rel - 0.3) + lambda_rel * lambda_rel)",
+          "description": "SIA 265 4.2.8.2 Gleichung 31"
+        },
+        "style": {
+          "width": 251,
+          "height": 308
+        }
+      },
+      {
+        "id": "tablevalue_mqfa5jry_1",
+        "type": "tablevalue",
+        "position": {
+          "x": 517.0707080091878,
+          "y": 669.4440256406024
+        },
+        "data": {
+          "kind": "tablevalue",
+          "name": "f_c_0_k",
+          "label": "",
+          "unit": "\\mathrm{N/mm^2}",
+          "table_col": 1
+        }
+      },
+      {
+        "id": "woodclass_mqfa5up6_3",
+        "type": "woodclass",
+        "position": {
+          "x": 94.14118764351338,
+          "y": 973.0896505456893
+        },
+        "data": {
+          "kind": "woodclass",
+          "label": "Aktuelle Holzklasse"
+        }
+      },
+      {
+        "id": "tablevalue_mqfb7zmj_1",
+        "type": "tablevalue",
+        "position": {
+          "x": 508.32193219628857,
+          "y": 857.9306682735203
+        },
+        "data": {
+          "kind": "tablevalue",
+          "name": "beta_c",
+          "label": "",
+          "unit": "[]",
+          "table_col": 1
+        }
+      },
+      {
+        "id": "tablevalue_mqfbaevq_6",
+        "type": "tablevalue",
+        "position": {
+          "x": 536.5118268607181,
+          "y": 1069.1063463924418
+        },
+        "data": {
+          "kind": "tablevalue",
+          "name": "E_0_05",
+          "label": "",
+          "unit": "\\mathrm{N/mm^2}",
+          "table_col": 1
+        },
+        "style": {
+          "width": 319,
+          "height": 143
+        }
+      },
+      {
+        "id": "calc_mqfs2kpx_3",
+        "type": "calc",
+        "position": {
+          "x": 1950.0160216967643,
+          "y": 164.59241921900605
+        },
+        "data": {
+          "kind": "calc",
+          "name": "k_{c}",
+          "label": "",
+          "unit": "",
+          "latex": "k_{c} = \\frac{1}{k + \\sqrt{k^2 - \\lambda_{rel}^2}}",
+          "expr": "((1)/(k + Math.sqrt(Math.pow(k,2) - Math.pow(lambda_rel,2))))"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e_l_A",
+        "source": "var_l",
+        "target": "calc_lambda",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_h_i",
+        "source": "var_h",
+        "target": "calc_i",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_i_lambda",
+        "source": "calc_i",
+        "target": "calc_lambda",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_lambda_lambdarel",
+        "source": "calc_lambda",
+        "target": "calc_lambda_rel",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_lambdarel_k",
+        "source": "calc_lambda_rel",
+        "target": "calc_k",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mqfa5y0s_4",
+        "source": "woodclass_mqfa5up6_3",
+        "target": "tablevalue_mqfa5jry_1",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mqfb8in4_2",
+        "source": "woodclass_mqfa5up6_3",
+        "target": "tablevalue_mqfb7zmj_1",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mqfba6qq_4",
+        "source": "tablevalue_mqfb7zmj_1",
+        "target": "calc_k",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mqfbac5q_5",
+        "source": "tablevalue_mqfa5jry_1",
+        "target": "calc_lambda_rel",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mqfbaust_7",
+        "source": "tablevalue_mqfbaevq_6",
+        "target": "calc_lambda_rel",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mqfbnjjf_11",
+        "source": "woodclass_mqfa5up6_3",
+        "target": "tablevalue_mqfbaevq_6",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mqfsbn2e_1",
+        "source": "calc_k",
+        "target": "calc_mqfs2kpx_3",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      },
+      {
+        "id": "e_mqfsbxh2_3",
+        "source": "calc_lambda_rel",
+        "target": "calc_mqfs2kpx_3",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
+      }
+    ],
+    "display_order": [
+      "woodclass_mqfa5up6_3",
+      "tablevalue_mqfa5jry_1",
+      "tablevalue_mqfbaevq_6",
+      "tablevalue_mqfb7zmj_1",
+      "var_l",
+      "var_h",
+      "calc_i",
+      "calc_lambda",
+      "calc_lambda_rel",
+      "calc_k",
+      "calc_mqfs2kpx_3"
+    ]
+  }
+}
