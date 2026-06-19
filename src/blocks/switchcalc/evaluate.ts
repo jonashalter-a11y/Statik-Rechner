@@ -6,9 +6,12 @@ import { SwitchCalcData } from './defaults';
 
 export function evaluateSwitchCalc(node: GraphNode, runtime: BlockEvalRuntime) {
   const d = node.data as unknown as SwitchCalcData;
-  const { symbols, results } = runtime;
+  const { symbols, results, inputs } = runtime;
 
-  const currentOption = d.options.find(o => o.id === d.selectedOptionId);
+  // Nutze die Auswahl vom Frontend (inputs[node.id]) oder fallback auf Block-Daten
+  const selectedId = inputs?.[node.id] || d.selectedOptionId || d.options[0]?.id;
+  const currentOption = d.options.find(o => o.id === selectedId);
+
   if (!currentOption) {
     results[node.id] = { value: NaN, substituted: '', substitutedLatex: '', missingSymbols: [] };
     return;

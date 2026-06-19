@@ -1243,13 +1243,16 @@ function defaultInputForNode(n: GraphNode, graph: VerificationGraph, tables: Rec
       || graph.nodes.find((x) => x.type === 'tablecalc');
     return (tc?.data as any)?.zones?.[0] ?? '';
   }
+  if (n.type === 'switchcalc') {
+    return (d as any)?.options?.[0]?.id ?? '';
+  }
   return undefined;
 }
 
 function graphInputKeys(graph: VerificationGraph): Set<string> {
   const keys = new Set<string>();
   for (const n of graph.nodes) {
-    if (defaultInputForNode(n, graph, {}) !== undefined || ['variable', 'dropdown', 'matrix', 'stdcalc', 'loopblock', 'polargrid'].includes(n.type)) {
+    if (defaultInputForNode(n, graph, {}) !== undefined || ['variable', 'dropdown', 'matrix', 'stdcalc', 'switchcalc', 'loopblock', 'polargrid'].includes(n.type)) {
       keys.add(n.id);
     }
   }
@@ -1279,6 +1282,9 @@ function graphInputSignature(graph: VerificationGraph): string {
         z_max: d.z_max ?? '',
         z_step: d.z_step ?? '',
         point_area: d.point_area ?? '',
+      } : null,
+      switchcalc: n.type === 'switchcalc' ? {
+        options: (d.options || []).map((o: any) => ({ id: o.id, label: o.label })),
       } : null,
       zones: n.type === 'stdcalc' || n.type === 'tablecalc' ? d.zones || null : null,
     };
@@ -2100,6 +2106,129 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                 )}
               </div>
             </div>
+          );
+        }
+
+        if (n.type === 'switchcalc') {
+          const d = n.data as any;
+          const options = d.options || [];
+          const selectedId = inputs[n.id] || d.selectedOptionId || options[0]?.id;
+          const selectedOption = options.find((o: any) => o.id === selectedId);
+          const r = ev?.results?.[n.id] || { value: NaN, substituted: '', substitutedLatex: '' };
+          const parentCondId = conditionAfterNode.get(n.id);
+
+          return (
+            <React.Fragment key={n.id}>
+              <div style={{ ...card, background: '#fff5f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <MathDisplay latex={d.name ? nameToLatex(d.name) : '?'} />
+                  <span style={{ color: '#6b7280', fontSize: 12 }}>{d.label}</span>
+                </div>
+
+                <div style={{ marginBottom: 10, padding: 10, background: '#fef5f0', border: '2px solid #ea580c', borderRadius: 6 }}>
+                  <div style={{ fontSize: 11, color: '#ea580c', fontWeight: 700, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>📋 {d.dropdownLabel}</div>
+                  <select
+                    disabled={readOnly}
+                    value={selectedId}
+                    onChange={e => setInput(n.id, e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      fontSize: 14,
+                      fontWeight: 600,
+                      border: '2px solid #ea580c',
+                      borderRadius: 4,
+                      background: '#fff',
+                      color: '#1f2937',
+                      cursor: readOnly ? 'not-allowed' : 'pointer',
+                      appearance: 'none',
+                      backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ea580c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                      backgroundRepeat: 'no-repeat',
+                      backgroundPosition: 'right 8px center',
+                      backgroundSize: '20px',
+                      paddingRight: 36,
+                    }}
+                  >
+                    {options.map((opt: any) => (
+                      <option key={opt.id} value={opt.id}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedOption && selectedOption.latex && (
+                  <div className="formula-block" style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 4, padding: '5px 8px', marginBottom: 4, overflowX: 'auto' }}>
+                    <MathDisplay latex={d.name && selectedOption.latex.trimStart().startsWith('=') ? `${nameToLatex(d.name)} ${selectedOption.latex.trimStart()}` : selectedOption.latex} display />
+                  </div>
+                )}
+
+                {(r.substitutedLatex || selectedOption?.latex) && (
+                  <div className="formula-block" style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '5px 8px', marginBottom: 4, overflowX: 'auto' }}>
+                    {(() => {
+                      const sub = (r.substitutedLatex || selectedOption?.latex || '').trimStart().startsWith('=') && d.name
+                        ? `${nameToLatex(d.name)} ${(r.substitutedLatex || selectedOption?.latex || '').trimStart()}`
+                        : (r.substitutedLatex || selectedOption?.latex || '');
+                      const resultPart = isFiniteNumber(r.value) ? ` = ${resultLatex(r.value, d.unit)}` : '';
+                      return <MathDisplay latex={`${sub}${resultPart}`} display />;
+                    })()}
+                  </div>
+                )}
+
+                {isFiniteNumber(r.value) && !readOnly && d.allowOverride && (
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => setOverrideModal({ nodeId: n.id, currentValue: inputs[`${n.id}_override`] ? parseFloat(String(inputs[`${n.id}_override`])) : (r.value ?? 0) })}
+                      style={{
+                        padding: '4px 6px',
+                        background: 'transparent',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: 3,
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        color: '#6b7280',
+                      }}
+                      title="Wert überschreiben"
+                    >
+                      ✏️
+                    </button>
+                    {inputs[`${n.id}_override`] && (
+                      <div style={{ display: 'flex', gap: 4, alignItems: 'center', background: '#fef3c7', border: '1px solid #fde68a', borderRadius: 3, padding: '2px 6px' }}>
+                        <span style={{ fontSize: 11, color: '#ea580c', fontWeight: 600 }}>
+                          {d.name ? nameToLatex(d.name) : '?'} = {inputs[`${n.id}_override`]} {d.unit ? `[${d.unit}]` : ''}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setInput(`${n.id}_override`, '')}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: '#ea580c',
+                            cursor: 'pointer',
+                            fontSize: 14,
+                            padding: 0,
+                            lineHeight: 1,
+                          }}
+                          title="Override löschen"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {(r.missingSymbols || []).length > 0 && (
+                  <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', borderRadius: 4, padding: '5px 8px', marginBottom: 4, fontSize: 12 }}>
+                    Fehlende: {(r.missingSymbols || []).map((name: string, i: number) => (
+                      <React.Fragment key={name}>{i > 0 && ', '}<MathDisplay latex={displayName(name)} /></React.Fragment>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {parentCondId && renderCondition(parentCondId)}
+            </React.Fragment>
           );
         }
 
