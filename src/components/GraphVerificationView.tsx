@@ -445,13 +445,19 @@ function fmtE(v: number): string {
 }
 
 type PolarGridPoint = { x: number; z: number };
+type PolarGridWall = { x1: number; z1: number; x2: number; z2: number; thickness?: number };
 type PolarGridState = {
   points: PolarGridPoint[];
+  walls: PolarGridWall[];
+  mode?: 'point' | 'wall';
   x_step?: string;
   z_step?: string;
   center_x?: number;
   center_z?: number;
   zoom?: number;
+  show_ip?: boolean;
+  show_cx?: boolean;
+  show_cz?: boolean;
 };
 
 const parseFinite = (value: unknown, fallback: number) => {
@@ -489,19 +495,44 @@ function parsePolarPoints(raw?: string): PolarGridPoint[] {
   }
 }
 
+function parsePolarWalls(raw?: string): PolarGridWall[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    const items = Array.isArray(parsed?.walls) ? parsed.walls : [];
+    return items
+      .map((w: any) => ({
+        x1: Number(w?.x1),
+        z1: Number(w?.z1),
+        x2: Number(w?.x2),
+        z2: Number(w?.z2),
+        thickness: Number(w?.thickness) || 1
+      }))
+      .filter((w: PolarGridWall) => Number.isFinite(w.x1) && Number.isFinite(w.z1) && Number.isFinite(w.x2) && Number.isFinite(w.z2));
+  } catch {
+    return [];
+  }
+}
+
 function parsePolarState(raw: string | undefined, data: any): PolarGridState {
   const defaults: PolarGridState = {
     points: [],
+    walls: [],
+    mode: 'point',
     x_step: String(data.x_step ?? '50'),
     z_step: String(data.z_step ?? '50'),
     center_x: 0,
     center_z: 0,
     zoom: 1,
+    show_ip: true,
+    show_cx: true,
+    show_cz: true,
   };
   if (!raw) return defaults;
   try {
     const parsed = JSON.parse(raw);
     const points = parsePolarPoints(raw);
+    const walls = parsePolarWalls(raw);
     if (Array.isArray(parsed)) return { ...defaults, points };
     return {
       ...defaults,
@@ -510,7 +541,12 @@ function parsePolarState(raw: string | undefined, data: any): PolarGridState {
       center_x: parseFinite(parsed?.center_x, defaults.center_x ?? 0),
       center_z: parseFinite(parsed?.center_z, defaults.center_z ?? 0),
       zoom: clamp(parseFinite(parsed?.zoom, defaults.zoom ?? 1), 0.125, 16),
+      mode: parsed?.mode === 'wall' ? 'wall' : 'point',
       points,
+      walls,
+      show_ip: parsed?.show_ip !== false,
+      show_cx: parsed?.show_cx !== false,
+      show_cz: parsed?.show_cz !== false,
     };
   } catch {
     return defaults;
@@ -556,6 +592,9 @@ function PolarGridPanel({ data, savedPoints, readOnly, onStateChange }: {
     if (hasPoint(x, z)) setPoints(points.filter(p => Math.abs(p.x - x) > 1e-9 || Math.abs(p.z - z) > 1e-9));
     else if (points.length < maxPoints) setPoints([...points, { x, z }]);
   };
+  const removeWall = (idx: number) => {
+    setState({ walls: walls.filter((_, i) => i !== idx) });
+  };
   const fmt = (v: number) => Number.isFinite(v) ? formatNumber(v) : '—';
   const coordUnit = data.coord_unit || '';
   const areaUnit = data.point_area_unit || '';
@@ -573,6 +612,43 @@ function PolarGridPanel({ data, savedPoints, readOnly, onStateChange }: {
       />
     </label>
   );
+  const walls = state.walls || [];
+  const mode = state.mode || 'point';
+  const wallStartRef = React.useRef<PolarGridPoint | null>(null);
+
+  // Berechne Schwerpunkt aus Punkten + Wänden
+  const allPoints = [...points];
+  for (const wall of walls) {
+    const dx = wall.x2 - wall.x1;
+    const dz = wall.z2 - wall.z1;
+    const len = Math.sqrt(dx * dx + dz * dz);
+    const step = 1;
+    const count = Math.max(2, Math.ceil(len / step));
+    for (let i = 0; i <= count; i++) {
+      const t = i / count;
+      allPoints.push({
+        x: wall.x1 + t * dx,
+        z: wall.z1 + t * dz
+      });
+    }
+  }
+
+  const area = walls.length === 0 ? pointArea : pointArea + walls.reduce((sum, w) => {
+    const dx = w.x2 - w.x1;
+    const dz = w.z2 - w.z1;
+    const len = Math.sqrt(dx * dx + dz * dz);
+    return sum + len * (w.thickness || 1);
+  }, 0);
+
+  const sumR2All = allPoints.reduce((sum, p) => sum + p.x * p.x + p.z * p.z, 0);
+  const sumX = allPoints.reduce((sum, p) => sum + p.x, 0);
+  const sumZ = allPoints.reduce((sum, p) => sum + p.z, 0);
+  const cx = allPoints.length > 0 ? sumX / allPoints.length : 0;
+  const cz = allPoints.length > 0 ? sumZ / allPoints.length : 0;
+
+  const ipValue = pointArea * sumR2;
+  const ipValueAll = area * sumR2All;
+
   const dragRef = React.useRef<{ x: number; y: number; cx: number; cz: number; moved: boolean } | null>(null);
   const setZoom = (nextZoom: number) => setState({ zoom: clamp(nextZoom, 0.125, 16) });
   const resetView = () => setState({ center_x: 0, center_z: 0, zoom: 1 });
@@ -598,31 +674,85 @@ function PolarGridPanel({ data, savedPoints, readOnly, onStateChange }: {
     setZoom(zoom * (e.deltaY < 0 ? 1.2 : 1 / 1.2));
   };
 
+  const handleCanvasClick = (x: number, z: number) => {
+    if (readOnly) return;
+    if (mode === 'point') {
+      toggle(x, z);
+    } else {
+      // Wall mode
+      if (!wallStartRef.current) {
+        wallStartRef.current = { x, z };
+      } else {
+        const newWall: PolarGridWall = {
+          x1: wallStartRef.current.x,
+          z1: wallStartRef.current.z,
+          x2: x,
+          z2: z,
+          thickness: 1
+        };
+        setState({ walls: [...walls, newWall] });
+        wallStartRef.current = null;
+      }
+    }
+  };
+
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', marginBottom: 8 }}>
         <div>
           <div style={{ fontWeight: 700, fontSize: 14, color: '#134e4a' }}>⊙ {data.label || 'Polar-Raster'}</div>
-          <div style={{ fontSize: 11, color: '#64748b' }}>{points.length} / {maxPoints} Punkte</div>
+          <div style={{ fontSize: 11, color: '#64748b' }}>{points.length} / {maxPoints} Punkte · {walls.length} Wände</div>
         </div>
-        {!readOnly && (
-          <button
-            onClick={() => setPoints([])}
-            disabled={points.length === 0}
-            style={{ border: '1px solid #99f6e4', background: points.length ? '#f0fdfa' : '#f8fafc', color: points.length ? '#0f766e' : '#94a3b8', borderRadius: 5, padding: '4px 8px', fontSize: 11, cursor: points.length ? 'pointer' : 'default' }}
-          >
-            Punkte löschen
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: 6, flexDirection: 'column', alignItems: 'flex-end' }}>
+          {!readOnly && (
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button
+                onClick={() => setState({ mode: 'point' })}
+                style={{ border: `1px solid ${mode === 'point' ? '#0f766e' : '#99f6e4'}`, background: mode === 'point' ? '#f0fdfa' : '#fff', color: '#0f766e', borderRadius: 5, padding: '4px 8px', fontSize: 11, cursor: 'pointer', fontWeight: mode === 'point' ? 700 : 400 }}
+              >
+                Punkt
+              </button>
+              <button
+                onClick={() => setState({ mode: 'wall' })}
+                style={{ border: `1px solid ${mode === 'wall' ? '#0f766e' : '#99f6e4'}`, background: mode === 'wall' ? '#f0fdfa' : '#fff', color: '#0f766e', borderRadius: 5, padding: '4px 8px', fontSize: 11, cursor: 'pointer', fontWeight: mode === 'wall' ? 700 : 400 }}
+              >
+                Wand
+              </button>
+            </div>
+          )}
+          {!readOnly && (
+            <button
+              onClick={() => { setPoints([]); setState({ walls: [] }); wallStartRef.current = null; }}
+              disabled={points.length === 0 && walls.length === 0}
+              style={{ border: '1px solid #99f6e4', background: (points.length || walls.length) ? '#f0fdfa' : '#f8fafc', color: (points.length || walls.length) ? '#0f766e' : '#94a3b8', borderRadius: 5, padding: '4px 8px', fontSize: 11, cursor: (points.length || walls.length) ? 'pointer' : 'default' }}
+            >
+              Alle löschen
+            </button>
+          )}
+        </div>
       </div>
 
       <div style={{ background: '#f0fdfa', border: '1px solid #99f6e4', borderRadius: 6, padding: '8px 10px', marginBottom: 10 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(86px, 1fr)) auto auto auto', gap: 8, alignItems: 'end' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(86px, 1fr)) auto auto auto', gap: 8, alignItems: 'end', marginBottom: 8 }}>
           {gridField('x_step', 'x Schritt')}
           {gridField('z_step', 'z Schritt')}
           <button disabled={readOnly} onClick={() => setZoom(zoom / 1.25)} style={{ border: '1px solid #99f6e4', borderRadius: 5, background: '#fff', color: '#0f766e', padding: '5px 9px', cursor: readOnly ? 'default' : 'pointer' }}>−</button>
           <button disabled={readOnly} onClick={() => setZoom(zoom * 1.25)} style={{ border: '1px solid #99f6e4', borderRadius: 5, background: '#fff', color: '#0f766e', padding: '5px 9px', cursor: readOnly ? 'default' : 'pointer' }}>+</button>
           <button disabled={readOnly} onClick={resetView} style={{ border: '1px solid #99f6e4', borderRadius: 5, background: '#fff', color: '#0f766e', padding: '5px 9px', fontSize: 11, cursor: readOnly ? 'default' : 'pointer' }}>Reset</button>
+        </div>
+        <div style={{ borderTop: '1px solid #99f6e4', paddingTop: 8, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, cursor: readOnly ? 'default' : 'pointer' }}>
+            <input type="checkbox" checked={state.show_ip !== false} disabled={readOnly} onChange={e => setState({ show_ip: e.target.checked })} />
+            <span>I_p anzeigen</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, cursor: readOnly ? 'default' : 'pointer' }}>
+            <input type="checkbox" checked={state.show_cx !== false} disabled={readOnly} onChange={e => setState({ show_cx: e.target.checked })} />
+            <span>x-Schwerpunkt</span>
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, cursor: readOnly ? 'default' : 'pointer' }}>
+            <input type="checkbox" checked={state.show_cz !== false} disabled={readOnly} onChange={e => setState({ show_cz: e.target.checked })} />
+            <span>z-Schwerpunkt</span>
+          </label>
         </div>
         <div style={{ fontSize: 10, color: '#64748b', marginTop: 6 }}>Zoom {formatNumber(zoom)}x · Mitte x={formatNumber(centerX)}, z={formatNumber(centerZ)}</div>
       </div>
@@ -634,9 +764,9 @@ function PolarGridPanel({ data, savedPoints, readOnly, onStateChange }: {
           onMouseDown={beginPan}
           onMouseMove={pan}
           onMouseUp={endPan}
-          onMouseLeave={endPan}
+          onMouseLeave={() => { endPan(); if (mode === 'wall') wallStartRef.current = null; }}
           onWheel={wheelZoom}
-          style={{ display: 'block', border: '1px solid #ccfbf1', borderRadius: 6, background: '#fff', cursor: readOnly ? 'default' : 'grab' }}
+          style={{ display: 'block', border: '1px solid #ccfbf1', borderRadius: 6, background: '#fff', cursor: readOnly ? 'default' : (mode === 'wall' ? 'crosshair' : 'grab') }}
         >
           <rect x={padL} y={padT} width={W - padL - padR} height={H - padT - padB} fill="#fbfefd" stroke="#99f6e4" />
           {xVals.map(x => (
@@ -654,13 +784,29 @@ function PolarGridPanel({ data, savedPoints, readOnly, onStateChange }: {
           <text x={W - 10} y={H - 22} fontSize={12} fill="#134e4a" fontWeight={700}>x</text>
           <text x={padL - 18} y={16} fontSize={12} fill="#134e4a" fontWeight={700}>z</text>
 
+          {/* Wände zeichnen */}
+          {walls.map((w, i) => (
+            <g key={`wall${i}`}>
+              <line x1={tx(w.x1)} y1={tz(w.z1)} x2={tx(w.x2)} y2={tz(w.z2)} stroke="#0f766e" strokeWidth={3} opacity={0.7} />
+              <circle cx={tx(w.x1)} cy={tz(w.z1)} r={4} fill="#0f766e" stroke="#fff" strokeWidth={1} style={{ cursor: readOnly ? 'default' : 'pointer' }} onClick={e => { e.stopPropagation(); removeWall(i); }} />
+              <circle cx={tx(w.x2)} cy={tz(w.z2)} r={4} fill="#0f766e" stroke="#fff" strokeWidth={1} style={{ cursor: readOnly ? 'default' : 'pointer' }} onClick={e => { e.stopPropagation(); removeWall(i); }} />
+            </g>
+          ))}
+
+          {/* Schwerpunkte anzeigen */}
+          {state.show_cx && <line x1={tx(cx)} y1={padT} x2={tx(cx)} y2={H - padB} stroke="#dc2626" strokeWidth={1} strokeDasharray="4 4" opacity={0.5} />}
+          {state.show_cz && <line x1={padL} y1={tz(cz)} x2={W - padR} y2={tz(cz)} stroke="#2563eb" strokeWidth={1} strokeDasharray="4 4" opacity={0.5} />}
+          {(state.show_cx || state.show_cz) && (
+            <circle cx={tx(cx)} cy={tz(cz)} r={5} fill="transparent" stroke="#7c3aed" strokeWidth={1.5} />
+          )}
+
           {xVals.flatMap(x => zVals.map(z => {
             const selected = hasPoint(x, z);
             return (
               <g
                 key={`${x}:${z}`}
                 onMouseDown={e => e.stopPropagation()}
-                onClick={() => toggle(x, z)}
+                onClick={() => { handleCanvasClick(x, z); }}
                 style={{ cursor: readOnly ? 'default' : 'pointer' }}
               >
                 <circle cx={tx(x)} cy={tz(z)} r={11} fill="transparent" />
@@ -671,16 +817,36 @@ function PolarGridPanel({ data, savedPoints, readOnly, onStateChange }: {
         </svg>
       </div>
 
-      <div style={{ background: '#f0fdfa', border: '1px solid #99f6e4', borderRadius: 6, padding: '7px 10px', overflowX: 'auto', marginBottom: 8 }}>
-        <MathDisplay
-          latex={`${data.name ? nameToLatex(data.name) : 'I_p'} = A_p \\cdot \\sum_{i=1}^{n}(x_i^2 + z_i^2) = ${fmt(pointArea)} \\cdot ${fmt(sumR2)} = ${fmt(ip)}${resultUnit ? `\\;[${resultUnit}]` : ''}`}
-          display
-        />
-      </div>
+      {state.show_ip && (
+        <div style={{ background: '#f0fdfa', border: '1px solid #99f6e4', borderRadius: 6, padding: '7px 10px', overflowX: 'auto', marginBottom: 8 }}>
+          <MathDisplay
+            latex={`${data.name ? nameToLatex(data.name) : 'I_p'} = A_p \\cdot \\sum_{i=1}^{n}(x_i^2 + z_i^2) = ${fmt(pointArea)} \\cdot ${fmt(sumR2)} = ${fmt(ipValue)}${resultUnit ? `\\;[${resultUnit}]` : ''}`}
+            display
+          />
+        </div>
+      )}
 
-      <div style={{ fontSize: 11, color: '#475569', display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: points.length ? 6 : 0 }}>
-        <span><b>A_p</b> = {fmt(pointArea)} {areaUnit}</span>
-        <span><b>Σ(x² + z²)</b> = {fmt(sumR2)} {coordUnit ? `${coordUnit}^2` : ''}</span>
+      {state.show_cx && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, padding: '7px 10px', marginBottom: 8 }}>
+          <MathDisplay
+            latex={`x_c = \\frac{\\sum x_i}{n} = ${fmt(cx)}${coordUnit ? `\\;[${coordUnit}]` : ''}`}
+            display
+          />
+        </div>
+      )}
+
+      {state.show_cz && (
+        <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, padding: '7px 10px', marginBottom: 8 }}>
+          <MathDisplay
+            latex={`z_c = \\frac{\\sum z_i}{n} = ${fmt(cz)}${coordUnit ? `\\;[${coordUnit}]` : ''}`}
+            display
+          />
+        </div>
+      )}
+
+      <div style={{ fontSize: 11, color: '#475569', display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: points.length || walls.length ? 6 : 0 }}>
+        <span><b>Ap / Fläche</b> = {fmt(area)} {areaUnit}</span>
+        <span><b>Σ(x² + z²)</b> = {fmt(sumR2All)} {coordUnit ? `${coordUnit}^2` : ''}</span>
       </div>
 
       {points.length > 0 && (

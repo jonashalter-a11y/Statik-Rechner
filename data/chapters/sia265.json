@@ -5,7 +5,7 @@
     "parent_id": null,
     "number": "4",
     "title": "Tragwerksanalyse und Bemessung",
-    "sort_order": 38
+    "sort_order": 0
   },
   {
     "id": "4.2",
@@ -13,15 +13,7 @@
     "parent_id": "4",
     "number": "4.2",
     "title": "Nachweis der Tragsicherheit",
-    "sort_order": 40
-  },
-  {
-    "id": "4.2.9",
-    "norm_id": "sia265",
-    "parent_id": "4.2",
-    "number": "4.2.9",
-    "title": "Stabilität von Biegeträgern (Kippen)",
-    "sort_order": 49
+    "sort_order": 1
   },
   {
     "id": "sia265_4_2_8_mqe59n3c",
@@ -29,15 +21,31 @@
     "parent_id": "4.2",
     "number": "4.2.8",
     "title": "Knicken (Stabilität von Druckstäben)",
-    "sort_order": 50
+    "sort_order": 2
+  },
+  {
+    "id": "4.2.9",
+    "norm_id": "sia265",
+    "parent_id": "4.2",
+    "number": "4.2.9",
+    "title": "Stabilität von Biegeträgern (Kippen)",
+    "sort_order": 3
   },
   {
     "id": "sia265_5_2_mqjf77sf",
-    "sort_order": 51,
+    "sort_order": 4,
     "norm_id": "sia265",
     "parent_id": null,
     "number": "5.2",
     "title": "Ausklinkungen"
+  },
+  {
+    "id": "sia265_5_8_mqks7icd",
+    "sort_order": 5,
+    "norm_id": "sia265",
+    "parent_id": null,
+    "number": "5.8",
+    "title": "Räumliche Stabilisierung und Verbände"
   },
   {
     "id": "6",
@@ -45,7 +53,7 @@
     "parent_id": null,
     "number": "6",
     "title": "Verbindungen",
-    "sort_order": 52
+    "sort_order": 6
   },
   {
     "id": "sia265_6_2_duebel",
@@ -53,14 +61,6 @@
     "parent_id": "6",
     "number": "6.2",
     "title": "Stabdübelverbindungen (Passbolzen)",
-    "sort_order": 53
-  },
-  {
-    "id": "sia265_5_8_mqks7icd",
-    "sort_order": 54,
-    "norm_id": "sia265",
-    "parent_id": null,
-    "number": "5.8",
-    "title": "Räumliche Stabilisierung und Verbände"
+    "sort_order": 7
   }
 ]

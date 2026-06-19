@@ -4,7 +4,7 @@ export function polargridDefaults(): BlockData {
   return {
     kind: 'polargrid',
     name: 'I_p',
-    label: 'Polares Flaechentraegheitsmoment',
+    label: 'Polares Flaechentraegheitsmoment mit Wänden',
     unit: 'mm^4',
     coord_unit: 'mm',
     point_area: '1',

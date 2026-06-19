@@ -4,7 +4,33 @@ Interaktiver Statik-Rechner für Schweizer Baunormen. Die Anwendung laedt ihre N
 
 ---
 
-## Features
+## Inhaltsverzeichnis
+
+1. [Features](#1-features)
+2. [Quick Start](#2-quick-start)
+3. [Architektur](#3-architektur)
+   - 3.1 [Stack](#31-stack)
+   - 3.2 [Datenspeicher: JSON-first](#32-datenspeicher-json-first)
+   - 3.3 [Block-Typen (Node-Editor)](#33-block-typen-node-editor)
+   - 3.4 [Dual-Norm-System](#34-dual-norm-system)
+4. [Statischer Betrieb](#4-statischer-betrieb)
+5. [Nachweise erstellen](#5-nachweise-erstellen)
+   - 5.1 [Workflow](#51-workflow)
+   - 5.2 [JSON-Format](#52-json-format)
+6. [Lokale API](#6-lokale-api)
+7. [Wichtige Berechnungen](#7-wichtige-berechnungen)
+   - 7.1 [Schneelast — SIA 261 §5.2 Gl. 9/10](#71-schneelast--sia-261-52-gl-910)
+   - 7.2 [Windlast — SIA 261 §6.2.1 Gl. 11/12](#72-windlast--sia-261-621-gl-1112)
+   - 7.3 [Lokaler Winddruck — SIA 261 §6.2.2](#73-lokaler-winddruck--sia-261-622)
+   - 7.4 [Globale Windkraft — SIA 261 §6.2.3 Gl. 15](#74-globale-windkraft--sia-261-623-gl-15)
+8. [Projektstruktur](#8-projektstruktur)
+9. [Anhang C: Windtabellen (Tab. 31–45)](#9-anhang-c-windtabellen-tab-3145)
+10. [Offene Punkte / Nächste Schritte](#10-offene-punkte--nächste-schritte)
+11. [Version History](#11-version-history)
+
+---
+
+## 1. Features
 
 **SIA 265:2021 — Holzbau**
 - 138 Kapitel, 13 Nachweise (Biegung, Schub, Knicken, Kippen, Torsion, Querzug)
@@ -30,7 +56,7 @@ Interaktiver Statik-Rechner für Schweizer Baunormen. Die Anwendung laedt ihre N
 
 ---
 
-## Quick Start
+## 2. Quick Start
 
 ```bash
 npm run dev
@@ -48,9 +74,9 @@ npm run build
 
 ---
 
-## Architektur
+## 3. Architektur
 
-### Stack
+### 3.1 Stack
 | Schicht | Technologie |
 |---------|-------------|
 | Datenquelle | JSON-Dateien im Repository |
@@ -60,7 +86,7 @@ npm run build
 | Formeln | KaTeX (Rendering), `new Function()` (Auswertung) |
 | Export | jsPDF, html2canvas |
 
-### Datenspeicher: JSON-first
+### 3.2 Datenspeicher: JSON-first
 Die dauerhafte Quelle sind JSON-Dateien:
 
 - `data/norms.json`: Normen und Navigation
@@ -74,12 +100,12 @@ Das Frontend laedt diese Dateien ueber `src/api.ts` direkt mit Vite.
 
 Wichtig: Ein statisches Browser-Frontend kann nicht direkt in Projektdateien schreiben. Aenderungen im Admin werden deshalb im Browser-`localStorage` gehalten. Dauerhafte Aenderungen an Nachweisen machst du ueber JSON-Export/Import oder indem du die passende JSON-Datei im Repository ersetzt.
 
-### Block-Typen (Node-Editor)
+### 3.3 Block-Typen (Node-Editor)
 `variable` 🟪 · `dropdown` 🟧 · `tablevalue` 🟩 · `calc` 🟥 · `stdcalc` 🟫 · `tablecalc` 🟦 · `condition` 🔶 · `output` ⬜
 
 Kanten: `workflow` (Standard) und `condition` (bedingte Ausführung)
 
-### Dual-Norm-System
+### 3.4 Dual-Norm-System
 Der Norm-Switcher im Header schaltet zwischen SIA 265 und SIA 261:
 - `setNormId(id)` → Kapitelbaum aus Cache
 - `loadNormData(id)` → Laden aus JSON-API (Kapitel + Verifikationen)
@@ -87,15 +113,15 @@ Der Norm-Switcher im Header schaltet zwischen SIA 265 und SIA 261:
 
 ---
 
-## Statischer Betrieb
+## 4. Statischer Betrieb
 
 Die App laeuft nur noch ueber Vite und liest lokale JSON-Dateien. Die Quelle der Wahrheit sind `data/` und `nachweise/`.
 
 ---
 
-## Nachweise erstellen
+## 5. Nachweise erstellen
 
-### Workflow
+### 5.1 Workflow
 
 1. **Admin-UI öffnen** → Nachweise → **Neuer Nachweis**
 2. **Node-Editor**: Blöcke aus Palette ziehen → mit Workflow-Kanten verbinden
@@ -105,7 +131,7 @@ Die App laeuft nur noch ueber Vite und liest lokale JSON-Dateien. Die Quelle der
 
 Wenn ein Nachweis dauerhaft in der App enthalten sein soll, lege die exportierte Datei unter `nachweise/<norm>/<id>.json` ab.
 
-### JSON-Format
+### 5.2 JSON-Format
 ```json
 {
   "id": "eindeutiger_snake_case_name",
@@ -129,7 +155,7 @@ Wenn ein Nachweis dauerhaft in der App enthalten sein soll, lege die exportierte
 
 ---
 
-## Lokale API
+## 6. Lokale API
 
 `src/api.ts` stellt zentrale Funktionen fuer die lokalen JSON-Daten bereit, zum Beispiel:
 
@@ -146,9 +172,9 @@ Diese Funktionen lesen aber direkt aus den JSON-Dateien und speichern Bearbeitun
 
 ---
 
-## Wichtige Berechnungen
+## 7. Wichtige Berechnungen
 
-### Schneelast — SIA 261 §5.2 Gl. 9/10
+### 7.1 Schneelast — SIA 261 §5.2 Gl. 9/10
 ```
 sk(h₀) = 0.4 · [1 + (h₀ / 350)²]   ≥ 0.9 kN/m²
 qk = μ₁ · Ce · CT · sk
@@ -158,7 +184,7 @@ qk = μ₁ · Ce · CT · sk
 
 **⚠️ Häufiger Fehler:** `(1 + h₀*h₀/350)` statt `(1 + Math.pow(h₀/350, 2))` dividiert falsch.
 
-### Windlast — SIA 261 §6.2.1 Gl. 11/12
+### 7.2 Windlast — SIA 261 §6.2.1 Gl. 11/12
 ```
 ch = 1.6 · (z / zg)^(2·αr) + 0.375
 qp = ch · qp0
@@ -170,20 +196,20 @@ Geländekategorien (Tab. 4):
 - GK III → zg=450, αr=0.23, zmin=5
 - GK IV → zg=526, αr=0.30, zmin=10
 
-### Lokaler Winddruck — SIA 261 §6.2.2
+### 7.3 Lokaler Winddruck — SIA 261 §6.2.2
 ```
 qk = (cpe − cpi) · qp · cd
 ```
 cpe-Werte aus Anhang C Tab. 31–45 (nach Gebäudeform h:b:d und Windwinkel θ)
 
-### Globale Windkraft — SIA 261 §6.2.3 Gl. 15
+### 7.4 Globale Windkraft — SIA 261 §6.2.3 Gl. 15
 ```
 Qk = cred · cd · cf · qp · Aref
 ```
 
 ---
 
-## Projektstruktur
+## 8. Projektstruktur
 
 ```
 data/
@@ -218,7 +244,7 @@ src/
 
 ---
 
-## Anhang-C-Windtabellen (Tab. 31–45)
+## 9. Anhang C: Windtabellen (Tab. 31–45)
 
 Alle Tabellen aus `Schneelast_Windlast.xlsm` verifiziert. Nur Tabellen mit Flag=True enthalten.
 
@@ -237,7 +263,7 @@ Alle Tabellen aus `Schneelast_Windlast.xlsm` verifiziert. Nur Tabellen mit Flag=
 
 ---
 
-## Offene Punkte / Nächste Schritte
+## 10. Offene Punkte / Nächste Schritte
 
 - [ ] **Eurocode 5** — Badge aktiv, Kapitel/Verifikationen noch nicht implementiert
 - [ ] **Kombinierte Lastfälle** — Schnee + Wind + Eigengewicht (Bemessungswerte QEd)
@@ -247,7 +273,7 @@ Alle Tabellen aus `Schneelast_Windlast.xlsm` verifiziert. Nur Tabellen mit Flag=
 
 ---
 
-## Version History
+## 11. Version History
 
 | Version | Inhalt |
 |---------|--------|
