@@ -17,8 +17,8 @@ export function evalFormula(expr: string, vars: Record<string, number>): number 
       .replace(/\\e\b/g, String(Math.E))
       .replace(/\be\b/g, String(Math.E));
 
-    const names = Object.keys(vars);
-    const values = Object.values(vars);
+    const names = Object.keys(vars).concat(['Math']);
+    const values = [...Object.values(vars), Math] as any[];
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
     const fn = new Function(...names, `"use strict"; return (${processedExpr});`);
     const result = fn(...values);
@@ -35,8 +35,8 @@ export function evalFormula(expr: string, vars: Record<string, number>): number 
 export function evalCondExpr(expr: string, vars: Record<string, string | number>): boolean {
   if (!expr?.trim()) return false;
   try {
-    const names = Object.keys(vars);
-    const values = Object.values(vars);
+    const names = Object.keys(vars).concat(['Math']);
+    const values = [...Object.values(vars), Math] as any[];
     // eslint-disable-next-line @typescript-eslint/no-implied-eval
     const fn = new Function(...names, `"use strict"; return !!(${expr});`);
     return !!fn(...values);

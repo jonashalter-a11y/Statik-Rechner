@@ -59,7 +59,26 @@ function replaceCmdParen(s: string, cmd: string, js: string): string {
   while (i < s.length) {
     if (s.startsWith(tag, i)) {
       let j = i + tag.length;
+      let power = ''; // Speichern von ^{...} oder ^n
       while (s[j] === ' ') j++;
+      // Überspringen von ^{...} oder ^n (z.B. \sin^2 oder \sin^{2})
+      if (s[j] === '^') {
+        j++;
+        while (s[j] === ' ') j++;
+        let powerVal = '';
+        if (s[j] === '{') {
+          const b = readBrace(s, j);
+          powerVal = b.inner;
+          j = b.end + 1;
+        } else {
+          let k = j;
+          while (k < s.length && /[\w.]/.test(s[k])) k++;
+          powerVal = s.slice(j, k);
+          j = k;
+        }
+        power = '**(' + powerVal + ')';
+        while (s[j] === ' ') j++;
+      }
       if (s[j] === '(') {
         let depth = 0;
         let replaced = false;
@@ -68,7 +87,7 @@ function replaceCmdParen(s: string, cmd: string, js: string): string {
           else if (s[k] === ')') {
             depth--;
             if (depth === 0) {
-              out += js + '(' + s.slice(j + 1, k) + ')';
+              out += '(' + js + '(' + s.slice(j + 1, k) + ')' + power + ')';
               i = k + 1;
               replaced = true;
               break;
@@ -111,7 +130,7 @@ function convertPowers(s: string): string {
     } else {
       let k = l; while (k >= 0 && /[\w.]/.test(s[k])) k--; lStart = k + 1; left = s.slice(k + 1, l + 1);
     }
-    s = s.slice(0, lStart) + 'Math.pow(' + left.trim() + ',' + right.trim() + ')' + s.slice(rEnd);
+    s = s.slice(0, lStart) + '(' + left.trim() + ')**(' + right.trim() + ')' + s.slice(rEnd);
   }
   return s;
 }
@@ -132,6 +151,10 @@ function latexExprToJs(tex: string): string {
   s = replaceCmdBrace(s, 'sqrt', 'Math.sqrt');
   s = replaceCmdBrace(s, 'log', 'Math.log10');
   s = replaceCmdParen(s, 'log', 'Math.log10');
+  s = replaceCmdBrace(s, 'arcsin', 'Math.asin');
+  s = replaceCmdParen(s, 'arcsin', 'Math.asin');
+  s = replaceCmdBrace(s, 'arccos', 'Math.acos');
+  s = replaceCmdParen(s, 'arccos', 'Math.acos');
   s = replaceCmdBrace(s, 'arctan', 'Math.atan');
   s = replaceCmdParen(s, 'arctan', 'Math.atan');
   s = replaceCmdBrace(s, 'atan', 'Math.atan');
@@ -254,6 +277,10 @@ export function latexToJs(tex: string): string {
   s = replaceCmdBrace(s, 'sqrt', 'Math.sqrt');
   s = replaceCmdBrace(s, 'log', 'Math.log10');
   s = replaceCmdParen(s, 'log', 'Math.log10');
+  s = replaceCmdBrace(s, 'arcsin', 'Math.asin');
+  s = replaceCmdParen(s, 'arcsin', 'Math.asin');
+  s = replaceCmdBrace(s, 'arccos', 'Math.acos');
+  s = replaceCmdParen(s, 'arccos', 'Math.acos');
   s = replaceCmdBrace(s, 'arctan', 'Math.atan');
   s = replaceCmdParen(s, 'arctan', 'Math.atan');
   s = replaceCmdBrace(s, 'atan', 'Math.atan');

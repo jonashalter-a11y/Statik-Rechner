@@ -362,6 +362,13 @@ const FORMULA_OPERATORS = [
   { latex: '\\frac{}{}', label: '\\frac', icon: '÷' },
   { latex: '\\cdot ', label: '\\cdot', icon: '·' },
   { latex: '\\sqrt{}', label: '\\sqrt', icon: '√' },
+  { latex: '\\sin ', label: '\\sin', icon: 'sin' },
+  { latex: '\\cos ', label: '\\cos', icon: 'cos' },
+  { latex: '\\tan ', label: '\\tan', icon: 'tan' },
+  { latex: '\\arcsin ', label: '\\arcsin', icon: 'asin' },
+  { latex: '\\arccos ', label: '\\arccos', icon: 'acos' },
+  { latex: '\\arctan ', label: '\\arctan', icon: 'atan' },
+  { latex: '\\left( \\right) ', label: '\\left( \\right)', icon: '()' },
   { latex: '\\leq ', label: '\\leq', icon: '≤' },
   { latex: '\\sum ', label: '\\sum', icon: 'Σ' },
   { latex: '\\geq ', label: '\\geq', icon: '≥' },
@@ -393,28 +400,20 @@ export function NameChips({ targetId, onInsert, operators = Boolean(onInsert) }:
             <button key={op.latex} className="nodrag" onClick={() => onInsert ? onInsert(op.latex) : insertName(targetId, op.latex)}
               title={op.label}
               style={{
-                border: 'none',
-                background: 'linear-gradient(135deg, #f87171 0%, #ef4444 100%)',
-                color: '#fff',
-                borderRadius: 5,
-                padding: '6px 10px',
+                border: '1px solid #fca5a5',
+                background: '#fee2e2',
+                color: '#dc2626',
+                borderRadius: 3,
+                padding: '1px 5px',
                 cursor: 'pointer',
-                lineHeight: 1,
-                fontSize: '18px',
-                fontWeight: 500,
-                fontFamily: 'monospace',
-                minWidth: '36px',
-                textAlign: 'center',
-                transition: 'all 0.15s ease',
-                boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)',
+                lineHeight: 1.2,
+                fontSize: 'inherit',
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.1) translateY(-2px)';
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 8px rgba(220, 38, 38, 0.35)';
+                (e.currentTarget as HTMLButtonElement).style.background = '#fecaca';
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1) translateY(0)';
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 2px 4px rgba(220, 38, 38, 0.2)';
+                (e.currentTarget as HTMLButtonElement).style.background = '#fee2e2';
               }}>
               {op.icon}
             </button>

@@ -13,6 +13,14 @@
     "active": 1,
     "norm_id": "sia265"
   },
+  "chapter": {
+    "id": "baustatik_1_mqed181s",
+    "norm_id": "sia265",
+    "parent_id": null,
+    "number": "1",
+    "title": "Mäder",
+    "sort_order": 9006
+  },
   "variables": [],
   "tables": [],
   "graph": {

@@ -42,8 +42,10 @@ export function computeWithSteps(computeExpr: string, vars: Record<string, numbe
   const substituted = substituteValues(computeExpr, vars);
   try {
     // Use Function() — same approach as evalFormula
-    const fn = new Function(...Object.keys(vars), `"use strict"; return (${computeExpr});`);
-    const result = fn(...Object.values(vars));
+    const names = Object.keys(vars).concat(['Math']);
+    const values = [...Object.values(vars), Math] as any[];
+    const fn = new Function(...names, `"use strict"; return (${computeExpr});`);
+    const result = fn(...values);
     return {
       result: typeof result === 'number' && isFinite(result) ? result : null,
       substituted,

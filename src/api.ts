@@ -1,3 +1,5 @@
+import { latexToJs } from './utils/latexToJs';
+
 type AnyRecord = Record<string, any>;
 
 const normUrls = import.meta.glob('../data/norms.json', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
@@ -43,26 +45,47 @@ async function loadJson(url: string) {
   return response.json();
 }
 
+// Resilientes Laden: ein einzelner Fehlschlag (Timeout bei grossen Dateien,
+// Dev-Server-Neustart mitten im Request) darf NICHT alle anderen Daten mitreissen.
+async function loadJsonSafe(url: string): Promise<any | null> {
+  try {
+    return await loadJson(url);
+  } catch (err) {
+    console.warn('[api] Datei konnte nicht geladen werden, wird übersprungen:', url, err);
+    return null;
+  }
+}
+
 async function buildInitialState(): Promise<LocalState> {
   const [norms, units, wood] = await Promise.all([
-    loadJson(Object.values(normUrls)[0]),
-    loadJson(Object.values(unitUrls)[0]),
-    loadJson(Object.values(woodUrls)[0]),
+    loadJsonSafe(Object.values(normUrls)[0]),
+    loadJsonSafe(Object.values(unitUrls)[0]),
+    loadJsonSafe(Object.values(woodUrls)[0]),
   ]);
 
   const chaptersByNorm: Record<string, AnyRecord[]> = {};
   await Promise.all(Object.entries(chapterUrls).map(async ([path, url]) => {
-    chaptersByNorm[fileStem(path)] = await loadJson(url);
+    const data = await loadJsonSafe(url);
+    if (data) chaptersByNorm[fileStem(path)] = data;
   }));
 
   const tablesByNorm: Record<string, AnyRecord[]> = {};
   await Promise.all(Object.entries(tableUrls).map(async ([path, url]) => {
-    tablesByNorm[fileStem(path)] = await loadJson(url);
+    const data = await loadJsonSafe(url);
+    if (data) tablesByNorm[fileStem(path)] = data;
   }));
 
-  const verificationPayloads = await Promise.all(Object.values(verificationUrls).map(loadJson));
+  const verificationPayloads = await Promise.all(Object.values(verificationUrls).map(loadJsonSafe));
   const verifications = verificationPayloads
-    .map(payload => normalizeVerificationPayload(payload))
+    .filter(Boolean)
+    .map(payload => {
+      try {
+        return normalizeVerificationPayload(payload);
+      } catch (err) {
+        console.warn('[api] Nachweis konnte nicht verarbeitet werden, wird übersprungen:', err);
+        return null;
+      }
+    })
     .filter(Boolean) as AnyRecord[];
 
   return {
@@ -70,8 +93,8 @@ async function buildInitialState(): Promise<LocalState> {
     chaptersByNorm,
     tablesByNorm,
     units: clone(units || []),
-    woodTypes: clone(wood.wood_types || []),
-    woodClasses: clone(wood.wood_classes || []),
+    woodTypes: clone(wood?.wood_types || []),
+    woodClasses: clone(wood?.wood_classes || []),
     verifications,
   };
 }
@@ -85,6 +108,20 @@ function readOverlay(): Partial<LocalState> | null {
   }
 }
 
+const verifId = (v: AnyRecord) => v?.verification?.id ?? v?.id;
+
+// Datei-Nachweise sind die Quelle der Wahrheit. Der localStorage-Overlay darf
+// NUR Nachweise hinzufügen, die (noch) keine Datei haben (z.B. im Admin neu
+// erstellt). Datei-Nachweise dürfen NICHT vom Overlay überschattet werden —
+// sonst verschwinden neu hinzugefügte Dateien oder direkte Datei-Änderungen
+// werden von veralteten localStorage-Kopien überschrieben.
+function mergeVerifications(base: AnyRecord[], overlay?: AnyRecord[]): AnyRecord[] {
+  if (!Array.isArray(overlay) || !overlay.length) return base;
+  const baseIds = new Set(base.map(verifId));
+  const overlayOnly = overlay.filter(v => !baseIds.has(verifId(v)));
+  return [...base, ...overlayOnly];
+}
+
 function mergeState(base: LocalState, overlay: Partial<LocalState> | null): LocalState {
   if (!overlay) return base;
   return {
@@ -92,7 +129,73 @@ function mergeState(base: LocalState, overlay: Partial<LocalState> | null): Loca
     ...overlay,
     chaptersByNorm: { ...base.chaptersByNorm, ...(overlay.chaptersByNorm || {}) },
     tablesByNorm: { ...base.tablesByNorm, ...(overlay.tablesByNorm || {}) },
+    verifications: mergeVerifications(base.verifications, overlay.verifications),
   };
+}
+
+// Selbstheilung: alte/korrupte expr-Felder (z.B. "Math.sinMath.pow(...)") aus
+// einer früheren, fehlerhaften latexToJs-Version werden aus dem latex neu generiert.
+const BROKEN_EXPR_RE = /(?:sin|cos|tan|asin|acos|atan|sqrt|log|exp|abs)Math\.|Math\.[a-z]+Math\./;
+
+function healGraphExprs(graph: any): boolean {
+  if (!graph || !Array.isArray(graph.nodes)) return false;
+  let changed = false;
+  for (const node of graph.nodes) {
+    const data = node?.data;
+    if (!data || typeof data.expr !== 'string' || !data.latex) continue;
+    if (BROKEN_EXPR_RE.test(data.expr)) {
+      try {
+        data.expr = latexToJs(data.latex);
+        changed = true;
+      } catch {
+        // latexToJs robust halten; defekte expr lieber stehen lassen als crashen
+      }
+    }
+  }
+  return changed;
+}
+
+function healVerifications(verifications: AnyRecord[] | undefined) {
+  if (!Array.isArray(verifications)) return;
+  for (const v of verifications) {
+    const graph = v.graph || safeJson(v.graph_json) || safeJson(v.verification?.graph_json);
+    if (!graph) continue;
+    if (healGraphExprs(graph)) {
+      const json = JSON.stringify(graph);
+      v.graph = graph;
+      v.graph_json = json;
+      if (v.verification) v.verification.graph_json = json;
+    }
+  }
+}
+
+// Sicherheitsnetz: Jeder Nachweis, dessen chapter_id im Kapitelbaum fehlt (z.B.
+// weil das im Admin erstellte Kapitel nur im localStorage lag und verloren ging),
+// bekommt ein automatisch erzeugtes Platzhalter-Kapitel. So kann ein verwaister
+// Nachweis NIE mehr unsichtbar verschwinden.
+function ensureReferencedChapters(st: LocalState) {
+  for (const v of st.verifications) {
+    const norm = v.verification?.norm_id || v.norm_id || 'sia265';
+    const chId = v.verification?.chapter_id || v.chapter_id;
+    if (!chId) continue;
+    const list = st.chaptersByNorm[norm] || (st.chaptersByNorm[norm] = []);
+    if (list.some(c => c.id === chId)) continue;
+    // Nummer aus der ID ableiten: Norm-Präfix und zufälligen Suffix entfernen.
+    let num = String(chId);
+    if (num.startsWith(norm + '_')) num = num.slice(norm.length + 1);
+    num = num.replace(/_[a-z0-9]{6,}$/i, '').replace(/_/g, '.');
+    // Falls ein Eltern-Kapitel mit passender Nummer existiert, dort einhängen.
+    const parentNum = num.includes('.') ? num.slice(0, num.lastIndexOf('.')) : null;
+    const parent = parentNum ? list.find(c => c.number === parentNum) : null;
+    list.push({
+      id: chId,
+      norm_id: norm,
+      parent_id: parent ? parent.id : null,
+      number: num,
+      title: `Kapitel ${num}`,
+      sort_order: 9000 + list.length,
+    });
+  }
 }
 
 let state: LocalState | null = null;
@@ -100,10 +203,25 @@ let statePromise: Promise<LocalState> | null = null;
 
 async function getState() {
   if (state) return state;
-  statePromise ||= buildInitialState().then(base => {
-    state = mergeState(base, readOverlay());
-    return state;
-  });
+  if (!statePromise) {
+    statePromise = buildInitialState()
+      .then(base => {
+        state = mergeState(base, readOverlay());
+        try {
+          healVerifications((state as any).verifications);
+          ensureReferencedChapters(state);
+        } catch (err) {
+          console.warn('[api] Selbstheilung der Daten fehlgeschlagen:', err);
+        }
+        return state;
+      })
+      .catch(err => {
+        // Fehlschlag NICHT cachen — sonst bleibt die App nach einem einzigen
+        // flaky Request dauerhaft leer. Nächster Aufruf darf neu versuchen.
+        statePromise = null;
+        throw err;
+      });
+  }
   return statePromise;
 }
 
