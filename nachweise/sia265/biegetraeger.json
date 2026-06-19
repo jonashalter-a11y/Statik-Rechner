@@ -9,7 +9,7 @@
     "formula_latex": "M_{Ed} = \\frac{q_{Ed}}{2} \\cdot \\left(l \\cdot x_{m} - x_{m}^2 \\right)",
     "formula_description": "",
     "compute_expr": "",
-    "graph_json": "{\"version\":1,\"nodes\":[{\"id\":\"variable_mqldtkmq_1\",\"type\":\"variable\",\"position\":{\"x\":351.49224434318535,\"y\":120.72578442231014},\"data\":{\"kind\":\"variable\",\"name\":\"q_{Ed}\",\"label\":\"\",\"unit\":\"\\\\mathrm{kN/m}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"variable_mqldtlzf_2\",\"type\":\"variable\",\"position\":{\"x\":345.9597176180411,\"y\":325.8517511803505},\"data\":{\"kind\":\"variable\",\"name\":\"h_{0}\",\"label\":\"Senkelobholz Trägerauflager\",\"unit\":\"\\\\mathrm{mm}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false},\"style\":{\"width\":150,\"height\":214}},{\"id\":\"variable_mqlecrbf_3\",\"type\":\"variable\",\"position\":{\"x\":341.87224013228695,\"y\":557.5099069345699},\"data\":{\"kind\":\"variable\",\"name\":\"\\\\alpha\",\"label\":\"oberer Trägerwinkel\",\"unit\":\"\\\\mathrm{°}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"variable_mqlee44k_4\",\"type\":\"variable\",\"position\":{\"x\":337.29289170724553,\"y\":753.9098114413425},\"data\":{\"kind\":\"variable\",\"name\":\"\\\\beta\",\"label\":\"unterer Trägerwinkel\",\"unit\":\"\\\\mathrm{°}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"variable_mqletmu2_8\",\"type\":\"variable\",\"position\":{\"x\":343.48107635626747,\"y\":-86.54822812415937},\"data\":{\"kind\":\"variable\",\"name\":\"l\",\"label\":\"Länge\",\"unit\":\"\\\\mathrm{mm}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"calc_mqletwpi_9\",\"type\":\"calc\",\"position\":{\"x\":615.2222169399951,\"y\":15.86167933463354},\"data\":{\"kind\":\"calc\",\"name\":\"M_{Ed}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"M_{Ed} = \\\\frac{q_{Ed}}{2} \\\\cdot \\\\left(l \\\\cdot x_{m} - x_{m}^2 \\\\right)\",\"expr\":\"((q_Ed)/(2)) * (l * x_m - Math.pow(x_m,2) )\"},\"style\":{\"width\":376,\"height\":263}},{\"id\":\"calc_mqlev7l6_10\",\"type\":\"calc\",\"position\":{\"x\":1005.1729742804644,\"y\":354.8462493230048},\"data\":{\"kind\":\"calc\",\"name\":\"W_{y}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"W_{y} = \\\\frac{b \\\\cdot h_{x}^2}{6}\",\"expr\":\"((b * Math.pow(h_x,2))/(6))\"},\"style\":{\"width\":468,\"height\":412}},{\"id\":\"calc_mqlez2zw_11\",\"type\":\"calc\",\"position\":{\"x\":1010.5930586994739,\"y\":789.1828268958519},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\sigma_{m,d}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"\\\\sigma_{m,d} = \\\\frac{M_{Ed}}{W_y}\",\"expr\":\"((M_Ed)/(W_y))\"}},{\"id\":\"calc_mqlf0mld_12\",\"type\":\"calc\",\"position\":{\"x\":1041.1274111071468,\"y\":-18.526121124577234},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\sigma_{m,\\\\alpha,d}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"\\\\sigma_{m,\\\\alpha,d} = \\\\frac{1}{\\\\cos^2 ( \\\\alpha - \\\\beta)\\\\cdot \\\\frac{180}{\\\\pi} } \\\\cdot \\\\sigma_{m,d}\",\"expr\":\"((1)/((Math.cos( alpha - beta)**(2))* ((180)/(pi)) )) * sigma_m_d\"},\"style\":{\"width\":447,\"height\":334}},{\"id\":\"variable_mqlf4qx2_13\",\"type\":\"variable\",\"position\":{\"x\":308.42904082904886,\"y\":954.9524261828594},\"data\":{\"kind\":\"variable\",\"name\":\"b\",\"label\":\"Breite\",\"unit\":\"\\\\mathrm{mm}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false},\"style\":{\"width\":181,\"height\":181}},{\"id\":\"tablevalue_mqlfg1du_1\",\"type\":\"tablevalue\",\"position\":{\"x\":425.5091441007879,\"y\":1772.6813058486598},\"data\":{\"kind\":\"tablevalue\",\"name\":\"E_0_05\",\"label\":\"\",\"unit\":\"N/mm^2\",\"table_col\":0}},{\"id\":\"woodclass_mqlfg1du_2\",\"type\":\"woodclass\",\"position\":{\"x\":160.37872950265603,\"y\":1789.3416077811132},\"data\":{\"kind\":\"woodclass\",\"label\":\"Aktuelle Holzklasse\"},\"style\":{\"width\":175,\"height\":138}},{\"id\":\"variable_mqlfg1du_4\",\"type\":\"variable\",\"position\":{\"x\":443.7453526309506,\"y\":2123.4450973184967},\"data\":{\"kind\":\"variable\",\"name\":\"h\",\"label\":\"Höhe\",\"unit\":\"mm\",\"default_value\":\"1440\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false},\"style\":{\"width\":167,\"height\":224}},{\"id\":\"calc_mqlfg1du_5\",\"type\":\"calc\",\"position\":{\"x\":808.5634667484636,\"y\":2042.093588114588},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\sigma_{m,crit}\",\"label\":\"\",\"unit\":\"N/mm^2\",\"latex\":\"\\\\sigma_{m,crit} = 0{,}75 \\\\cdot E_{0{,}05} \\\\cdot \\\\frac{b^2}{a \\\\cdot h_{ap}}\",\"expr\":\"0.75 * E_0_05 * ((Math.pow(b,2))/(a * h_ap))\"},\"style\":{\"width\":230,\"height\":315}},{\"id\":\"variable_mqlfg1du_6\",\"type\":\"variable\",\"position\":{\"x\":447.82374336294345,\"y\":2313.7973374453713},\"data\":{\"kind\":\"variable\",\"name\":\"a\",\"label\":\"Kipplänge\",\"unit\":\"mm\",\"default_value\":\"5000\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false},\"style\":{\"width\":167,\"height\":224}},{\"id\":\"woodclass_mqlfg1du_7\",\"type\":\"woodclass\",\"position\":{\"x\":826.5554894687335,\"y\":1851.5506256358024},\"data\":{\"kind\":\"woodclass\",\"label\":\"Aktuelle Holzklasse\"},\"style\":{\"width\":175,\"height\":138}},{\"id\":\"tablevalue_mqlfg1du_8\",\"type\":\"tablevalue\",\"position\":{\"x\":1068.0014217632793,\"y\":1833.5506256358024},\"data\":{\"kind\":\"tablevalue\",\"name\":\"f_m_k\",\"label\":\"\",\"unit\":\"N/mm^2\",\"table_col\":1},\"style\":{\"width\":230,\"height\":315}},{\"id\":\"calc_mqlfg1du_9\",\"type\":\"calc\",\"position\":{\"x\":1364.3927812505635,\"y\":2034.2128287521648},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\lambda_{rel,m}\",\"label\":\"\",\"unit\":\"[]\",\"latex\":\"\\\\lambda_{rel,m} = \\\\sqrt{\\\\frac{f_{m,k}}{\\\\sigma_{m,\\\\text{crit}}}}\",\"expr\":\"Math.sqrt(((f_m_k)/(sigma_m_crit)))\"},\"style\":{\"width\":230,\"height\":315}},{\"id\":\"condition_mqlfg1du_10\",\"type\":\"condition\",\"position\":{\"x\":1665.5513841532952,\"y\":2052.672151697622},\"data\":{\"kind\":\"condition\",\"label\":\"\",\"conditions\":[{\"id\":\"c1\",\"latex\":\"\\\\lambda_{\\\\text{rel},m} \\\\leq 0{,}75\",\"expr\":\"(lambda_rel_m) <= (0.75) ? 1 : 0\",\"match\":\"\"},{\"id\":\"c2\",\"latex\":\"0{,}75 \\\\cdot \\\\lambda_{\\\\text{rel},m} \\\\leq 1{,}4\",\"expr\":\"(0.75 * lambda_rel_m) <= (1.4) ? 1 : 0\",\"match\":\"\"},{\"id\":\"c3\",\"latex\":\"1{,}4 < \\\\lambda_{\\\\text{rel},m}\",\"expr\":\"(1.4) < (lambda_rel_m) ? 1 : 0\",\"match\":\"\"}],\"mode\":\"expr\"}},{\"id\":\"calc_mqlfg1du_11\",\"type\":\"calc\",\"position\":{\"x\":2020.891161820437,\"y\":1845.2820993573703},\"data\":{\"kind\":\"calc\",\"name\":\"k_m\",\"label\":\"\",\"unit\":\"[]\",\"latex\":\"k_m=1\",\"expr\":\"1\"},\"style\":{\"width\":230,\"height\":297}},{\"id\":\"calc_mqlfg1du_12\",\"type\":\"calc\",\"position\":{\"x\":2025.7545470236328,\"y\":2146.7608446703016},\"data\":{\"kind\":\"calc\",\"name\":\"k_m\",\"label\":\"\",\"unit\":\"[]\",\"latex\":\"k_m=1.56-0.75 \\\\cdot \\\\lambda_{\\\\text{rel},m}\",\"expr\":\"1.56-0.75 * lambda_rel_m\"},\"style\":{\"width\":230,\"height\":297}},{\"id\":\"calc_mqlfg1du_13\",\"type\":\"calc\",\"position\":{\"x\":2021.0076557636085,\"y\":2462.0039747880774},\"data\":{\"kind\":\"calc\",\"name\":\"k_m\",\"label\":\"\",\"unit\":\"[]\",\"latex\":\"k_{m} = \\\\frac{1}{\\\\lambda_{\\\\text{rel},m}^2}\",\"expr\":\"((1)/(Math.pow(lambda_rel_m,2)))\"},\"style\":{\"width\":230,\"height\":297}},{\"id\":\"calc_mqlfhdbe_26\",\"type\":\"calc\",\"position\":{\"x\":1629.8925476857023,\"y\":1334.421157914942},\"data\":{\"kind\":\"calc\",\"name\":\"k_{mc,\\\\alpha}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"k_{mc,\\\\alpha} = \\\\frac{f_{c,90,d}}{f_{m,d} \\\\cdot \\\\sin^2(\\\\alpha - \\\\beta) + f_{c,90,d} \\\\cdot \\\\cos^2(\\\\alpha - \\\\beta)}\\n\",\"expr\":\"((f_c_90_d)/(f_m_d * (Math.sin(alpha - beta)**(2)) + f_c_90_d * (Math.cos(alpha - beta)**(2))))\"}},{\"id\":\"tablevalue_mqlflh1m_30\",\"type\":\"tablevalue\",\"position\":{\"x\":1342.075458314225,\"y\":1780.6606089213146},\"data\":{\"kind\":\"tablevalue\",\"name\":\"f_m_d\",\"label\":\"\",\"unit\":\"\",\"table_col\":1}},{\"id\":\"variable_mqlfn7h4_32\",\"type\":\"variable\",\"position\":{\"x\":133.99331707525468,\"y\":2158.8017534526475},\"data\":{\"kind\":\"variable\",\"name\":\"h_{ap}\",\"label\":\"\",\"unit\":\"\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[]}},{\"id\":\"calc_mqlfoo9i_33\",\"type\":\"calc\",\"position\":{\"x\":2311.1509171023636,\"y\":1841.1471888054502},\"data\":{\"kind\":\"calc\",\"name\":\"f_{m,\\\\alpha,d}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"f_{m,\\\\alpha,d} = k_{mc,\\\\alpha}\\\\cdot f_{m,d}\",\"expr\":\"k_mc_alpha* f_m_d\"},\"style\":{\"width\":522,\"height\":333}},{\"id\":\"calc_mqlfpkxp_34\",\"type\":\"calc\",\"position\":{\"x\":2918.7864336015937,\"y\":1874.8550275071098},\"data\":{\"kind\":\"calc\",\"name\":\"f_{m,d,eff}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"f_{m,d,eff} = k_{m} \\\\cdot f_{m,\\\\alpha,d}\",\"expr\":\"k_m * f_m_alpha_d\"},\"style\":{\"width\":502,\"height\":332}},{\"id\":\"check_mqlfqtll_35\",\"type\":\"check\",\"position\":{\"x\":3522.2616220929376,\"y\":1918.7882692472253},\"data\":{\"kind\":\"check\",\"label\":\"\",\"latex\":\"\\\\sigma_{m,\\\\alpha,d}\\\\leq f_{m,d,eff}\",\"expr\":\"(sigma_m_alpha_d) <= (f_m_d_eff) ? 1 : 0\"}},{\"id\":\"variable_mqlgeuzx_1\",\"type\":\"variable\",\"position\":{\"x\":768.4857635083472,\"y\":1299.9395753954332},\"data\":{\"kind\":\"variable\",\"name\":\"f_{c,90,d}\",\"label\":\"\",\"unit\":\"\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"variable_mqlgrpw0_1\",\"type\":\"variable\",\"position\":{\"x\":589.162569624833,\"y\":836.0544199558086},\"data\":{\"kind\":\"variable\",\"name\":\"x_{m}\",\"label\":\"\",\"unit\":\"\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[]}},{\"id\":\"variable_mqlgs0xm_2\",\"type\":\"variable\",\"position\":{\"x\":312.2604061265327,\"y\":1306.9043471143045},\"data\":{\"kind\":\"variable\",\"name\":\"h_{x}\",\"label\":\"\",\"unit\":\"\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[]}}],\"edges\":[{\"id\":\"e_mqlfg1du_14\",\"source\":\"woodclass_mqlfg1du_2\",\"target\":\"tablevalue_mqlfg1du_1\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqlfg1du_15\",\"source\":\"tablevalue_mqlfg1du_1\",\"target\":\"calc_mqlfg1du_5\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqlfg1du_17\",\"source\":\"variable_mqlfg1du_4\",\"target\":\"calc_mqlfg1du_5\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqlfg1du_18\",\"source\":\"variable_mqlfg1du_6\",\"target\":\"calc_mqlfg1du_5\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqlfg1du_19\",\"source\":\"woodclass_mqlfg1du_7\",\"target\":\"tablevalue_mqlfg1du_8\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqlfg1du_20\",\"source\":\"calc_mqlfg1du_5\",\"target\":\"calc_mqlfg1du_9\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqlfg1du_21\",\"source\":\"tablevalue_mqlfg1du_8\",\"target\":\"calc_mqlfg1du_9\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqlfg1du_22\",\"source\":\"calc_mqlfg1du_9\",\"target\":\"condition_mqlfg1du_10\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqlfg1du_23\",\"source\":\"condition_mqlfg1du_10\",\"target\":\"calc_mqlfg1du_11\",\"sourceHandle\":\"c1\",\"targetHandle\":null,\"data\":{\"kind\":\"condition\",\"conditionId\":\"c1\"}},{\"id\":\"e_mqlfg1du_24\",\"source\":\"condition_mqlfg1du_10\",\"target\":\"calc_mqlfg1du_12\",\"sourceHandle\":\"c2\",\"targetHandle\":null,\"data\":{\"kind\":\"condition\",\"conditionId\":\"c2\"}},{\"id\":\"e_mqlfg1du_25\",\"source\":\"condition_mqlfg1du_10\",\"target\":\"calc_mqlfg1du_13\",\"sourceHandle\":\"c3\",\"targetHandle\":null,\"data\":{\"kind\":\"condition\",\"conditionId\":\"c3\"}}]}",
+    "graph_json": "{\"version\":1,\"nodes\":[{\"id\":\"variable_mqldtkmq_1\",\"type\":\"variable\",\"position\":{\"x\":351.49224434318535,\"y\":120.72578442231014},\"data\":{\"kind\":\"variable\",\"name\":\"q_{Ed}\",\"label\":\"\",\"unit\":\"\\\\mathrm{kN/m}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"variable_mqldtlzf_2\",\"type\":\"variable\",\"position\":{\"x\":345.9597176180411,\"y\":325.8517511803505},\"data\":{\"kind\":\"variable\",\"name\":\"h_{0}\",\"label\":\"Senkelobholz Trägerauflager\",\"unit\":\"\\\\mathrm{mm}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false},\"style\":{\"width\":150,\"height\":214}},{\"id\":\"variable_mqlecrbf_3\",\"type\":\"variable\",\"position\":{\"x\":341.87224013228695,\"y\":557.5099069345699},\"data\":{\"kind\":\"variable\",\"name\":\"\\\\alpha\",\"label\":\"oberer Trägerwinkel\",\"unit\":\"\\\\mathrm{°}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"variable_mqlee44k_4\",\"type\":\"variable\",\"position\":{\"x\":337.29289170724553,\"y\":753.9098114413425},\"data\":{\"kind\":\"variable\",\"name\":\"\\\\beta\",\"label\":\"unterer Trägerwinkel\",\"unit\":\"\\\\mathrm{°}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"variable_mqletmu2_8\",\"type\":\"variable\",\"position\":{\"x\":343.48107635626747,\"y\":-86.54822812415937},\"data\":{\"kind\":\"variable\",\"name\":\"l\",\"label\":\"Länge\",\"unit\":\"\\\\mathrm{mm}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"calc_mqletwpi_9\",\"type\":\"calc\",\"position\":{\"x\":615.2222169399951,\"y\":15.86167933463354},\"data\":{\"kind\":\"calc\",\"name\":\"M_{Ed}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"M_{Ed} = \\\\frac{q_{Ed}}{2} \\\\cdot \\\\left(l \\\\cdot x_{m} - x_{m}^2 \\\\right)\",\"expr\":\"((q_Ed)/(2)) * (l * x_m - Math.pow(x_m,2) )\"},\"style\":{\"width\":376,\"height\":263}},{\"id\":\"calc_mqlev7l6_10\",\"type\":\"calc\",\"position\":{\"x\":1005.1729742804644,\"y\":354.8462493230048},\"data\":{\"kind\":\"calc\",\"name\":\"W_{y}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"W_{y} = \\\\frac{b \\\\cdot h_{x}^2}{6}\",\"expr\":\"((b * (h_x)**(2))/(6))\"},\"style\":{\"width\":468,\"height\":412}},{\"id\":\"calc_mqlez2zw_11\",\"type\":\"calc\",\"position\":{\"x\":1010.5930586994739,\"y\":789.1828268958519},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\sigma_{m,d}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"\\\\sigma_{m,d} = \\\\frac{M_{Ed}}{W_y}\",\"expr\":\"((M_Ed)/(W_y))\"}},{\"id\":\"calc_mqlf0mld_12\",\"type\":\"calc\",\"position\":{\"x\":1041.1274111071468,\"y\":-18.526121124577234},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\sigma_{m,\\\\alpha,d}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"\\\\sigma_{m,\\\\alpha,d} = \\\\frac{1}{\\\\cos^2\\\\left((\\\\alpha - \\\\beta) \\\\cdot \\\\frac{\\\\pi}{180}\\\\right)} \\\\cdot \\\\sigma_{m,d}\\n\",\"expr\":\"((1)/((Math.cos((alpha - beta) * ((pi)/(180)))**(2)))) * sigma_m_d\"},\"style\":{\"width\":447,\"height\":334}},{\"id\":\"variable_mqlf4qx2_13\",\"type\":\"variable\",\"position\":{\"x\":308.42904082904886,\"y\":954.9524261828594},\"data\":{\"kind\":\"variable\",\"name\":\"b\",\"label\":\"Breite\",\"unit\":\"\\\\mathrm{mm}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false},\"style\":{\"width\":181,\"height\":181}},{\"id\":\"tablevalue_mqlfg1du_1\",\"type\":\"tablevalue\",\"position\":{\"x\":425.5091441007879,\"y\":1772.6813058486598},\"data\":{\"kind\":\"tablevalue\",\"name\":\"E_0_05\",\"label\":\"\",\"unit\":\"N/mm^2\",\"table_col\":0}},{\"id\":\"woodclass_mqlfg1du_2\",\"type\":\"woodclass\",\"position\":{\"x\":160.37872950265603,\"y\":1789.3416077811132},\"data\":{\"kind\":\"woodclass\",\"label\":\"Aktuelle Holzklasse\"},\"style\":{\"width\":175,\"height\":138}},{\"id\":\"calc_mqlfg1du_5\",\"type\":\"calc\",\"position\":{\"x\":808.5634667484636,\"y\":2042.093588114588},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\sigma_{m,crit}\",\"label\":\"\",\"unit\":\"N/mm^2\",\"latex\":\"\\\\sigma_{m,crit} = 0{,}75 \\\\cdot E_{0{,}05} \\\\cdot \\\\frac{b^2}{a \\\\cdot h_{ap}}\",\"expr\":\"0.75 * E_0_05 * ((Math.pow(b,2))/(a * h_ap))\"},\"style\":{\"width\":230,\"height\":315}},{\"id\":\"variable_mqlfg1du_6\",\"type\":\"variable\",\"position\":{\"x\":447.82374336294345,\"y\":2313.7973374453713},\"data\":{\"kind\":\"variable\",\"name\":\"a\",\"label\":\"Kipplänge\",\"unit\":\"mm\",\"default_value\":\"5000\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false},\"style\":{\"width\":167,\"height\":224}},{\"id\":\"woodclass_mqlfg1du_7\",\"type\":\"woodclass\",\"position\":{\"x\":826.5554894687335,\"y\":1851.5506256358024},\"data\":{\"kind\":\"woodclass\",\"label\":\"Aktuelle Holzklasse\"},\"style\":{\"width\":175,\"height\":138}},{\"id\":\"tablevalue_mqlfg1du_8\",\"type\":\"tablevalue\",\"position\":{\"x\":1068.0014217632793,\"y\":1833.5506256358024},\"data\":{\"kind\":\"tablevalue\",\"name\":\"f_m_k\",\"label\":\"\",\"unit\":\"N/mm^2\",\"table_col\":1},\"style\":{\"width\":230,\"height\":315}},{\"id\":\"calc_mqlfg1du_9\",\"type\":\"calc\",\"position\":{\"x\":1364.3927812505635,\"y\":2034.2128287521648},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\lambda_{rel,m}\",\"label\":\"\",\"unit\":\"[]\",\"latex\":\"\\\\lambda_{rel,m} = \\\\sqrt{\\\\frac{f_{m,k}}{\\\\sigma_{m,\\\\text{crit}}}}\",\"expr\":\"Math.sqrt(((f_m_k)/(sigma_m_crit)))\"},\"style\":{\"width\":230,\"height\":315}},{\"id\":\"condition_mqlfg1du_10\",\"type\":\"condition\",\"position\":{\"x\":1665.5513841532952,\"y\":2052.672151697622},\"data\":{\"kind\":\"condition\",\"label\":\"\",\"conditions\":[{\"id\":\"c1\",\"latex\":\"\\\\lambda_{\\\\text{rel},m} \\\\leq 0{,}75\",\"expr\":\"(lambda_rel_m) <= (0.75) ? 1 : 0\",\"match\":\"\"},{\"id\":\"c2\",\"latex\":\"0{,}75 \\\\cdot \\\\lambda_{\\\\text{rel},m} \\\\leq 1{,}4\",\"expr\":\"(0.75 * lambda_rel_m) <= (1.4) ? 1 : 0\",\"match\":\"\"},{\"id\":\"c3\",\"latex\":\"1{,}4 < \\\\lambda_{\\\\text{rel},m}\",\"expr\":\"(1.4) < (lambda_rel_m) ? 1 : 0\",\"match\":\"\"}],\"mode\":\"expr\"}},{\"id\":\"calc_mqlfg1du_11\",\"type\":\"calc\",\"position\":{\"x\":2020.891161820437,\"y\":1845.2820993573703},\"data\":{\"kind\":\"calc\",\"name\":\"k_m\",\"label\":\"\",\"unit\":\"[]\",\"latex\":\"k_m=1\",\"expr\":\"1\"},\"style\":{\"width\":230,\"height\":297}},{\"id\":\"calc_mqlfg1du_12\",\"type\":\"calc\",\"position\":{\"x\":2025.7545470236328,\"y\":2146.7608446703016},\"data\":{\"kind\":\"calc\",\"name\":\"k_m\",\"label\":\"\",\"unit\":\"[]\",\"latex\":\"k_m=1.56-0.75 \\\\cdot \\\\lambda_{\\\\text{rel},m}\",\"expr\":\"1.56-0.75 * lambda_rel_m\"},\"style\":{\"width\":230,\"height\":297}},{\"id\":\"calc_mqlfg1du_13\",\"type\":\"calc\",\"position\":{\"x\":2021.0076557636085,\"y\":2462.0039747880774},\"data\":{\"kind\":\"calc\",\"name\":\"k_m\",\"label\":\"\",\"unit\":\"[]\",\"latex\":\"k_{m} = \\\\frac{1}{\\\\lambda_{\\\\text{rel},m}^2}\",\"expr\":\"((1)/(Math.pow(lambda_rel_m,2)))\"},\"style\":{\"width\":230,\"height\":297}},{\"id\":\"calc_mqlfhdbe_26\",\"type\":\"calc\",\"position\":{\"x\":1629.8925476857023,\"y\":1334.421157914942},\"data\":{\"kind\":\"calc\",\"name\":\"k_{mc,\\\\alpha}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"k_{mc,\\\\alpha} = \\\\frac{f_{c,90,d}}{f_{m,d} \\\\cdot \\\\sin^2\\\\left((\\\\alpha - \\\\beta) \\\\cdot \\\\frac{\\\\pi}{180}\\\\right) + f_{c,90,d} \\\\cdot \\\\cos^2\\\\left((\\\\alpha - \\\\beta) \\\\cdot \\\\frac{\\\\pi}{180}\\\\right)}\\n\",\"expr\":\"((f_c_90_d)/(f_m_d * (Math.sin((alpha - beta) * ((pi)/(180)))**(2)) + f_c_90_d * (Math.cos((alpha - beta) * ((pi)/(180)))**(2))))\"}},{\"id\":\"tablevalue_mqlflh1m_30\",\"type\":\"tablevalue\",\"position\":{\"x\":1182.805761582258,\"y\":1550.250447649069},\"data\":{\"kind\":\"tablevalue\",\"name\":\"f_m_d\",\"label\":\"\",\"unit\":\"\",\"table_col\":1}},{\"id\":\"variable_mqlfn7h4_32\",\"type\":\"variable\",\"position\":{\"x\":133.99331707525468,\"y\":2158.8017534526475},\"data\":{\"kind\":\"variable\",\"name\":\"h_{ap}\",\"label\":\"\",\"unit\":\"\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[]}},{\"id\":\"calc_mqlfoo9i_33\",\"type\":\"calc\",\"position\":{\"x\":2311.1509171023636,\"y\":1841.1471888054502},\"data\":{\"kind\":\"calc\",\"name\":\"f_{m,\\\\alpha,d}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"f_{m,\\\\alpha,d} = k_{mc,\\\\alpha}\\\\cdot f_{m,d}\",\"expr\":\"k_mc_alpha* f_m_d\"},\"style\":{\"width\":522,\"height\":333}},{\"id\":\"calc_mqlfpkxp_34\",\"type\":\"calc\",\"position\":{\"x\":2918.7864336015937,\"y\":1874.8550275071098},\"data\":{\"kind\":\"calc\",\"name\":\"f_{m,d,eff}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"f_{m,d,eff} = k_{m} \\\\cdot f_{m,\\\\alpha,d}\",\"expr\":\"k_m * f_m_alpha_d\"},\"style\":{\"width\":502,\"height\":332}},{\"id\":\"check_mqlfqtll_35\",\"type\":\"check\",\"position\":{\"x\":3522.2616220929376,\"y\":1918.7882692472253},\"data\":{\"kind\":\"check\",\"label\":\"\",\"latex\":\"\\\\sigma_{m,\\\\alpha,d}\\\\leq f_{m,d,eff}\",\"expr\":\"(sigma_m_alpha_d) <= (f_m_d_eff) ? 1 : 0\"}},{\"id\":\"variable_mqlgeuzx_1\",\"type\":\"variable\",\"position\":{\"x\":768.4857635083472,\"y\":1299.9395753954332},\"data\":{\"kind\":\"variable\",\"name\":\"f_{c,90,d}\",\"label\":\"\",\"unit\":\"\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"variable_mqlgrpw0_1\",\"type\":\"variable\",\"position\":{\"x\":589.162569624833,\"y\":836.0544199558086},\"data\":{\"kind\":\"variable\",\"name\":\"x_{m}\",\"label\":\"\",\"unit\":\"\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[]}},{\"id\":\"variable_mqlgs0xm_2\",\"type\":\"variable\",\"position\":{\"x\":312.2604061265327,\"y\":1306.9043471143045},\"data\":{\"kind\":\"variable\",\"name\":\"h_{x}\",\"label\":\"\",\"unit\":\"\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[]}},{\"id\":\"title_mqliqu3r_2\",\"type\":\"title\",\"position\":{\"x\":1381.4791187033545,\"y\":3059.2454167959295},\"data\":{\"kind\":\"title\",\"label\":\"Biegemoment Trägermitte\",\"color\":\"#2563eb\"}},{\"id\":\"calc_mqlis05b_3\",\"type\":\"calc\",\"position\":{\"x\":1191.0996847869812,\"y\":3176.331017353813},\"data\":{\"kind\":\"calc\",\"name\":\"M_{Ed,mitte}\",\"label\":\"Moment in Mitte\",\"unit\":\"\",\"latex\":\"M_{Ed,mitte} = \\\\frac{q_{Ed}\\\\cdot l^2}{8}\",\"expr\":\"((q_Ed* (l)**(2))/(8))\"},\"style\":{\"width\":423,\"height\":382}},{\"id\":\"calc_mqlivqrz_4\",\"type\":\"calc\",\"position\":{\"x\":1201.3043473704186,\"y\":3607.84649374594},\"data\":{\"kind\":\"calc\",\"name\":\"W_{y,mitte}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"W_{y,mitte} = \\\\frac{b\\\\cdot h_{ap}^2}{6}\",\"expr\":\"((b* (h_ap)**(2))/(6))\"},\"style\":{\"width\":402,\"height\":421}},{\"id\":\"calc_mqlixrec_5\",\"type\":\"calc\",\"position\":{\"x\":1699.11416170482,\"y\":3618.321014017086},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\sigma_{m,d,mitte}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"\\\\sigma_{m,d,mitte} = \\\\lvert-\\\\frac{M_{Ed,mitte}}{W_{y,mitte}}\\\\rvert\",\"expr\":\"-((M_Ed_mitte)/(W_y_mitte))\"},\"style\":{\"width\":424,\"height\":418}},{\"id\":\"calc_mqliznnv_6\",\"type\":\"calc\",\"position\":{\"x\":2238.251644979287,\"y\":3739.137007303006},\"data\":{\"kind\":\"calc\",\"name\":\"f_{m,d,mitte,eff}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"f_{m,d,mitte,eff}=k_{r}\\\\cdot k_{m}\\\\cdot f_{m,d}\",\"expr\":\"k_r* k_m* f_m_d\"},\"style\":{\"width\":321,\"height\":256}},{\"id\":\"variable_mqlj0ivo_7\",\"type\":\"variable\",\"position\":{\"x\":1710.5447099532712,\"y\":5180.235507024777},\"data\":{\"kind\":\"variable\",\"name\":\"k_{r}\",\"label\":\"\",\"unit\":\"\",\"default_value\":\"1\",\"inputKind\":\"number_comment\",\"options\":[],\"hasDefault\":false,\"comment\":\"HBT S.64\"}},{\"id\":\"check_mqlj3qqy_8\",\"type\":\"check\",\"position\":{\"x\":2737.723794431084,\"y\":3757.919696698147},\"data\":{\"kind\":\"check\",\"label\":\"\",\"latex\":\"\\\\sigma_{m,d,mitte}\\\\leq f_{m,d,mitte,eff}\",\"expr\":\"(sigma_m_d_mitte) <= (f_m_d_mitte_eff) ? 1 : 0\"},\"style\":{\"width\":440,\"height\":311}},{\"id\":\"title_mqlj4f6u_9\",\"type\":\"title\",\"position\":{\"x\":1323.522630468573,\"y\":4372.239769192092},\"data\":{\"kind\":\"title\",\"label\":\"Biegerandspannung am Innenrand\",\"color\":\"#2563eb\"}},{\"id\":\"variable_mqlj5mfc_10\",\"type\":\"variable\",\"position\":{\"x\":1365.0891648267252,\"y\":4467.241745689118},\"data\":{\"kind\":\"variable\",\"name\":\"r\",\"label\":\"Krümmungsradius\",\"unit\":\"\\\\mathrm{mm}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"calc_mqlj64zb_11\",\"type\":\"calc\",\"position\":{\"x\":1896.2681689328956,\"y\":4411.318434969498},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\sigma_{m,d,Innenrand}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"\\\\sigma_{m,d,Innenrand} = \\\\lvert+\\\\frac{M_{Ed,mitte}}{W_{y,mitte}}\\\\cdot (1+\\\\frac{h_{ap}}{2\\\\cdot r})\\\\rvert\",\"expr\":\"+((M_Ed_mitte)/(W_y_mitte))* (1+((h_ap)/(2* r)))\"},\"style\":{\"width\":417,\"height\":430}},{\"id\":\"check_mqlj97hv_12\",\"type\":\"check\",\"position\":{\"x\":2354.0513094242287,\"y\":4503.120833854117},\"data\":{\"kind\":\"check\",\"label\":\"\",\"latex\":\"\\\\sigma_{m,d,Innenrand}\\\\leq f_{m,d}\",\"expr\":\"(sigma_m_d_Innenrand) <= (f_m_d) ? 1 : 0\"},\"style\":{\"width\":499,\"height\":327}},{\"id\":\"title_mqljb3vy_13\",\"type\":\"title\",\"position\":{\"x\":1257.3185014122885,\"y\":4956.66456118416},\"data\":{\"kind\":\"title\",\"label\":\"Biegerandspannung am Aussenrand\",\"color\":\"#2563eb\"}},{\"id\":\"calc_mqljbk74_14\",\"type\":\"calc\",\"position\":{\"x\":1252.6649027219394,\"y\":5067.0796145635},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\sigma_{m,d,Aussenrand}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"\\\\sigma_{m,d,Aussenrand} = \\\\lvert-\\\\frac{M_{Ed,mitte}}{W_{y,mitte}}\\\\rvert\",\"expr\":\"-((M_Ed_mitte)/(W_y_mitte))\"},\"style\":{\"width\":424,\"height\":418}},{\"id\":\"calc_mqljenol_15\",\"type\":\"calc\",\"position\":{\"x\":2079.381696751065,\"y\":5187.194632156739},\"data\":{\"kind\":\"calc\",\"name\":\"f_{m,d,Aussenrand,eff}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"f_{m,d,Aussenrand,eff}=k_{r}\\\\cdot k_{m}\\\\cdot f_{m,d}\",\"expr\":\"k_r* k_m* f_m_d\"},\"style\":{\"width\":321,\"height\":256}},{\"id\":\"check_mqljfj8d_16\",\"type\":\"check\",\"position\":{\"x\":2490.544531964423,\"y\":5207.787943813436},\"data\":{\"kind\":\"check\",\"label\":\"\",\"latex\":\"\\\\sigma_{m,d,Aussenrand}\\\\leq f_{m,d,Aussenrand,eff}\",\"expr\":\"(sigma_m_d_Aussenrand) <= (f_m_d_Aussenrand_eff) ? 1 : 0\"},\"style\":{\"width\":539,\"height\":326}},{\"id\":\"title_mqljh6iw_17\",\"type\":\"title\",\"position\":{\"x\":1316.7835203263116,\"y\":5714.665143154109},\"data\":{\"kind\":\"title\",\"label\":\"Biegerandspannung am rechtwinklig zur Faserrichtung\",\"color\":\"#2563eb\"}},{\"id\":\"calc_mqlji109_18\",\"type\":\"calc\",\"position\":{\"x\":1539.5302732729401,\"y\":5721.46809646172},\"data\":{\"kind\":\"calc\",\"name\":\"\\\\sigma_{m,d,rechtwinklig}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"\\\\sigma_{m,d,rechtwinklig} = \\\\lvert+\\\\frac{M_{Ed,mitte}}{W_{y,mitte}}\\\\cdot \\\\frac{h_{ap}}{4\\\\cdot r}\\\\rvert\",\"expr\":\"+((M_Ed_mitte)/(W_y_mitte))* ((h_ap)/(4* r))\"},\"style\":{\"width\":417,\"height\":430}},{\"id\":\"variable_mqljmp6j_1\",\"type\":\"variable\",\"position\":{\"x\":1242.601036304996,\"y\":5916.596462913122},\"data\":{\"kind\":\"variable\",\"name\":\"f_{f,90,d}\",\"label\":\"\",\"unit\":\"\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"check_mqljn8zd_2\",\"type\":\"check\",\"position\":{\"x\":2072.241197024703,\"y\":5889.441907259908},\"data\":{\"kind\":\"check\",\"label\":\"\",\"latex\":\"\\\\sigma_{m,d,rechtwinklig}\\\\leq f_{f,90,d}\",\"expr\":\"(sigma_m_d_rechtwinklig) <= (f_f_90_d) ? 1 : 0\"},\"style\":{\"width\":538,\"height\":344}}],\"edges\":[{\"id\":\"e_mqlfg1du_14\",\"source\":\"woodclass_mqlfg1du_2\",\"target\":\"tablevalue_mqlfg1du_1\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqlfg1du_15\",\"source\":\"tablevalue_mqlfg1du_1\",\"target\":\"calc_mqlfg1du_5\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqlfg1du_18\",\"source\":\"variable_mqlfg1du_6\",\"target\":\"calc_mqlfg1du_5\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqlfg1du_19\",\"source\":\"woodclass_mqlfg1du_7\",\"target\":\"tablevalue_mqlfg1du_8\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqlfg1du_20\",\"source\":\"calc_mqlfg1du_5\",\"target\":\"calc_mqlfg1du_9\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqlfg1du_21\",\"source\":\"tablevalue_mqlfg1du_8\",\"target\":\"calc_mqlfg1du_9\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqlfg1du_22\",\"source\":\"calc_mqlfg1du_9\",\"target\":\"condition_mqlfg1du_10\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}},{\"id\":\"e_mqlfg1du_23\",\"source\":\"condition_mqlfg1du_10\",\"target\":\"calc_mqlfg1du_11\",\"sourceHandle\":\"c1\",\"targetHandle\":null,\"data\":{\"kind\":\"condition\",\"conditionId\":\"c1\"}},{\"id\":\"e_mqlfg1du_24\",\"source\":\"condition_mqlfg1du_10\",\"target\":\"calc_mqlfg1du_12\",\"sourceHandle\":\"c2\",\"targetHandle\":null,\"data\":{\"kind\":\"condition\",\"conditionId\":\"c2\"}},{\"id\":\"e_mqlfg1du_25\",\"source\":\"condition_mqlfg1du_10\",\"target\":\"calc_mqlfg1du_13\",\"sourceHandle\":\"c3\",\"targetHandle\":null,\"data\":{\"kind\":\"condition\",\"conditionId\":\"c3\"}},{\"id\":\"e_mqli7p7a_1\",\"source\":\"woodclass_mqlfg1du_7\",\"target\":\"tablevalue_mqlflh1m_30\",\"sourceHandle\":null,\"targetHandle\":null,\"data\":{\"kind\":\"workflow\"}}],\"display_order\":[\"tablevalue_mqlfg1du_1\",\"tablevalue_mqlfg1du_8\",\"tablevalue_mqlflh1m_30\",\"variable_mqldtkmq_1\",\"variable_mqldtlzf_2\",\"variable_mqlecrbf_3\",\"variable_mqlee44k_4\",\"variable_mqletmu2_8\",\"variable_mqlf4qx2_13\",\"variable_mqlfn7h4_32\",\"variable_mqlgeuzx_1\",\"variable_mqlfg1du_6\",\"variable_mqlgrpw0_1\",\"variable_mqlgs0xm_2\",\"woodclass_mqlfg1du_2\",\"woodclass_mqlfg1du_7\",\"calc_mqletwpi_9\",\"calc_mqlev7l6_10\",\"calc_mqlez2zw_11\",\"calc_mqlf0mld_12\",\"calc_mqlfg1du_5\",\"calc_mqlfg1du_9\",\"condition_mqlfg1du_10\",\"calc_mqlfg1du_11\",\"calc_mqlfg1du_12\",\"calc_mqlfg1du_13\",\"calc_mqlfhdbe_26\",\"calc_mqlfoo9i_33\",\"calc_mqlfpkxp_34\",\"check_mqlfqtll_35\",\"title_mqliqu3r_2\",\"variable_mqlj0ivo_7\",\"calc_mqlis05b_3\",\"calc_mqlivqrz_4\",\"calc_mqlixrec_5\",\"calc_mqliznnv_6\",\"check_mqlj3qqy_8\",\"title_mqljb3vy_13\",\"variable_mqlj5mfc_10\",\"calc_mqljbk74_14\",\"calc_mqljenol_15\",\"check_mqljfj8d_16\",\"title_mqlj4f6u_9\",\"calc_mqlj64zb_11\",\"check_mqlj97hv_12\",\"title_mqljh6iw_17\",\"calc_mqlji109_18\",\"variable_mqljmp6j_1\",\"check_mqljn8zd_2\"]}",
     "notes": "",
     "active": 1
   },
@@ -153,7 +153,7 @@
           "label": "",
           "unit": "",
           "latex": "W_{y} = \\frac{b \\cdot h_{x}^2}{6}",
-          "expr": "((b * Math.pow(h_x,2))/(6))"
+          "expr": "((b * (h_x)**(2))/(6))"
         },
         "style": {
           "width": 468,
@@ -188,8 +188,8 @@
           "name": "\\sigma_{m,\\alpha,d}",
           "label": "",
           "unit": "",
-          "latex": "\\sigma_{m,\\alpha,d} = \\frac{1}{\\cos^2 ( \\alpha - \\beta)\\cdot \\frac{180}{\\pi} } \\cdot \\sigma_{m,d}",
-          "expr": "((1)/((Math.cos( alpha - beta)**(2))* ((180)/(pi)) )) * sigma_m_d"
+          "latex": "\\sigma_{m,\\alpha,d} = \\frac{1}{\\cos^2\\left((\\alpha - \\beta) \\cdot \\frac{\\pi}{180}\\right)} \\cdot \\sigma_{m,d}\n",
+          "expr": "((1)/((Math.cos((alpha - beta) * ((pi)/(180)))**(2)))) * sigma_m_d"
         },
         "style": {
           "width": 447,
@@ -247,28 +247,6 @@
         "style": {
           "width": 175,
           "height": 138
-        }
-      },
-      {
-        "id": "variable_mqlfg1du_4",
-        "type": "variable",
-        "position": {
-          "x": 443.7453526309506,
-          "y": 2123.4450973184967
-        },
-        "data": {
-          "kind": "variable",
-          "name": "h",
-          "label": "Höhe",
-          "unit": "mm",
-          "default_value": "1440",
-          "inputKind": "number",
-          "options": [],
-          "hasDefault": false
-        },
-        "style": {
-          "width": 167,
-          "height": 224
         }
       },
       {
@@ -473,16 +451,16 @@
           "name": "k_{mc,\\alpha}",
           "label": "",
           "unit": "",
-          "latex": "k_{mc,\\alpha} = \\frac{f_{c,90,d}}{f_{m,d} \\cdot \\sin^2(\\alpha - \\beta) + f_{c,90,d} \\cdot \\cos^2(\\alpha - \\beta)}\n",
-          "expr": "((f_c_90_d)/(f_m_d * (Math.sin(alpha - beta)**(2)) + f_c_90_d * (Math.cos(alpha - beta)**(2))))"
+          "latex": "k_{mc,\\alpha} = \\frac{f_{c,90,d}}{f_{m,d} \\cdot \\sin^2\\left((\\alpha - \\beta) \\cdot \\frac{\\pi}{180}\\right) + f_{c,90,d} \\cdot \\cos^2\\left((\\alpha - \\beta) \\cdot \\frac{\\pi}{180}\\right)}\n",
+          "expr": "((f_c_90_d)/(f_m_d * (Math.sin((alpha - beta) * ((pi)/(180)))**(2)) + f_c_90_d * (Math.cos((alpha - beta) * ((pi)/(180)))**(2))))"
         }
       },
       {
         "id": "tablevalue_mqlflh1m_30",
         "type": "tablevalue",
         "position": {
-          "x": 1342.075458314225,
-          "y": 1780.6606089213146
+          "x": 1182.805761582258,
+          "y": 1550.250447649069
         },
         "data": {
           "kind": "tablevalue",
@@ -614,6 +592,345 @@
           "inputKind": "number",
           "options": []
         }
+      },
+      {
+        "id": "title_mqliqu3r_2",
+        "type": "title",
+        "position": {
+          "x": 1381.4791187033545,
+          "y": 3059.2454167959295
+        },
+        "data": {
+          "kind": "title",
+          "label": "Biegemoment Trägermitte",
+          "color": "#2563eb"
+        }
+      },
+      {
+        "id": "calc_mqlis05b_3",
+        "type": "calc",
+        "position": {
+          "x": 1191.0996847869812,
+          "y": 3176.331017353813
+        },
+        "data": {
+          "kind": "calc",
+          "name": "M_{Ed,mitte}",
+          "label": "Moment in Mitte",
+          "unit": "",
+          "latex": "M_{Ed,mitte} = \\frac{q_{Ed}\\cdot l^2}{8}",
+          "expr": "((q_Ed* (l)**(2))/(8))"
+        },
+        "style": {
+          "width": 423,
+          "height": 382
+        }
+      },
+      {
+        "id": "calc_mqlivqrz_4",
+        "type": "calc",
+        "position": {
+          "x": 1201.3043473704186,
+          "y": 3607.84649374594
+        },
+        "data": {
+          "kind": "calc",
+          "name": "W_{y,mitte}",
+          "label": "",
+          "unit": "",
+          "latex": "W_{y,mitte} = \\frac{b\\cdot h_{ap}^2}{6}",
+          "expr": "((b* (h_ap)**(2))/(6))"
+        },
+        "style": {
+          "width": 402,
+          "height": 421
+        }
+      },
+      {
+        "id": "calc_mqlixrec_5",
+        "type": "calc",
+        "position": {
+          "x": 1699.11416170482,
+          "y": 3618.321014017086
+        },
+        "data": {
+          "kind": "calc",
+          "name": "\\sigma_{m,d,mitte}",
+          "label": "",
+          "unit": "",
+          "latex": "\\sigma_{m,d,mitte} = \\lvert-\\frac{M_{Ed,mitte}}{W_{y,mitte}}\\rvert",
+          "expr": "-((M_Ed_mitte)/(W_y_mitte))"
+        },
+        "style": {
+          "width": 424,
+          "height": 418
+        }
+      },
+      {
+        "id": "calc_mqliznnv_6",
+        "type": "calc",
+        "position": {
+          "x": 2238.251644979287,
+          "y": 3739.137007303006
+        },
+        "data": {
+          "kind": "calc",
+          "name": "f_{m,d,mitte,eff}",
+          "label": "",
+          "unit": "",
+          "latex": "f_{m,d,mitte,eff}=k_{r}\\cdot k_{m}\\cdot f_{m,d}",
+          "expr": "k_r* k_m* f_m_d"
+        },
+        "style": {
+          "width": 321,
+          "height": 256
+        }
+      },
+      {
+        "id": "variable_mqlj0ivo_7",
+        "type": "variable",
+        "position": {
+          "x": 1710.5447099532712,
+          "y": 5180.235507024777
+        },
+        "data": {
+          "kind": "variable",
+          "name": "k_{r}",
+          "label": "",
+          "unit": "",
+          "default_value": "1",
+          "inputKind": "number_comment",
+          "options": [],
+          "hasDefault": false,
+          "comment": "HBT S.64"
+        }
+      },
+      {
+        "id": "check_mqlj3qqy_8",
+        "type": "check",
+        "position": {
+          "x": 2737.723794431084,
+          "y": 3757.919696698147
+        },
+        "data": {
+          "kind": "check",
+          "label": "",
+          "latex": "\\sigma_{m,d,mitte}\\leq f_{m,d,mitte,eff}",
+          "expr": "(sigma_m_d_mitte) <= (f_m_d_mitte_eff) ? 1 : 0"
+        },
+        "style": {
+          "width": 440,
+          "height": 311
+        }
+      },
+      {
+        "id": "title_mqlj4f6u_9",
+        "type": "title",
+        "position": {
+          "x": 1323.522630468573,
+          "y": 4372.239769192092
+        },
+        "data": {
+          "kind": "title",
+          "label": "Biegerandspannung am Innenrand",
+          "color": "#2563eb"
+        }
+      },
+      {
+        "id": "variable_mqlj5mfc_10",
+        "type": "variable",
+        "position": {
+          "x": 1365.0891648267252,
+          "y": 4467.241745689118
+        },
+        "data": {
+          "kind": "variable",
+          "name": "r",
+          "label": "Krümmungsradius",
+          "unit": "\\mathrm{mm}",
+          "default_value": "0",
+          "inputKind": "number",
+          "options": [],
+          "hasDefault": false
+        }
+      },
+      {
+        "id": "calc_mqlj64zb_11",
+        "type": "calc",
+        "position": {
+          "x": 1896.2681689328956,
+          "y": 4411.318434969498
+        },
+        "data": {
+          "kind": "calc",
+          "name": "\\sigma_{m,d,Innenrand}",
+          "label": "",
+          "unit": "",
+          "latex": "\\sigma_{m,d,Innenrand} = \\lvert+\\frac{M_{Ed,mitte}}{W_{y,mitte}}\\cdot (1+\\frac{h_{ap}}{2\\cdot r})\\rvert",
+          "expr": "+((M_Ed_mitte)/(W_y_mitte))* (1+((h_ap)/(2* r)))"
+        },
+        "style": {
+          "width": 417,
+          "height": 430
+        }
+      },
+      {
+        "id": "check_mqlj97hv_12",
+        "type": "check",
+        "position": {
+          "x": 2354.0513094242287,
+          "y": 4503.120833854117
+        },
+        "data": {
+          "kind": "check",
+          "label": "",
+          "latex": "\\sigma_{m,d,Innenrand}\\leq f_{m,d}",
+          "expr": "(sigma_m_d_Innenrand) <= (f_m_d) ? 1 : 0"
+        },
+        "style": {
+          "width": 499,
+          "height": 327
+        }
+      },
+      {
+        "id": "title_mqljb3vy_13",
+        "type": "title",
+        "position": {
+          "x": 1257.3185014122885,
+          "y": 4956.66456118416
+        },
+        "data": {
+          "kind": "title",
+          "label": "Biegerandspannung am Aussenrand",
+          "color": "#2563eb"
+        }
+      },
+      {
+        "id": "calc_mqljbk74_14",
+        "type": "calc",
+        "position": {
+          "x": 1252.6649027219394,
+          "y": 5067.0796145635
+        },
+        "data": {
+          "kind": "calc",
+          "name": "\\sigma_{m,d,Aussenrand}",
+          "label": "",
+          "unit": "",
+          "latex": "\\sigma_{m,d,Aussenrand} = \\lvert-\\frac{M_{Ed,mitte}}{W_{y,mitte}}\\rvert",
+          "expr": "-((M_Ed_mitte)/(W_y_mitte))"
+        },
+        "style": {
+          "width": 424,
+          "height": 418
+        }
+      },
+      {
+        "id": "calc_mqljenol_15",
+        "type": "calc",
+        "position": {
+          "x": 2079.381696751065,
+          "y": 5187.194632156739
+        },
+        "data": {
+          "kind": "calc",
+          "name": "f_{m,d,Aussenrand,eff}",
+          "label": "",
+          "unit": "",
+          "latex": "f_{m,d,Aussenrand,eff}=k_{r}\\cdot k_{m}\\cdot f_{m,d}",
+          "expr": "k_r* k_m* f_m_d"
+        },
+        "style": {
+          "width": 321,
+          "height": 256
+        }
+      },
+      {
+        "id": "check_mqljfj8d_16",
+        "type": "check",
+        "position": {
+          "x": 2490.544531964423,
+          "y": 5207.787943813436
+        },
+        "data": {
+          "kind": "check",
+          "label": "",
+          "latex": "\\sigma_{m,d,Aussenrand}\\leq f_{m,d,Aussenrand,eff}",
+          "expr": "(sigma_m_d_Aussenrand) <= (f_m_d_Aussenrand_eff) ? 1 : 0"
+        },
+        "style": {
+          "width": 539,
+          "height": 326
+        }
+      },
+      {
+        "id": "title_mqljh6iw_17",
+        "type": "title",
+        "position": {
+          "x": 1316.7835203263116,
+          "y": 5714.665143154109
+        },
+        "data": {
+          "kind": "title",
+          "label": "Biegerandspannung am rechtwinklig zur Faserrichtung",
+          "color": "#2563eb"
+        }
+      },
+      {
+        "id": "calc_mqlji109_18",
+        "type": "calc",
+        "position": {
+          "x": 1539.5302732729401,
+          "y": 5721.46809646172
+        },
+        "data": {
+          "kind": "calc",
+          "name": "\\sigma_{m,d,rechtwinklig}",
+          "label": "",
+          "unit": "",
+          "latex": "\\sigma_{m,d,rechtwinklig} = \\lvert+\\frac{M_{Ed,mitte}}{W_{y,mitte}}\\cdot \\frac{h_{ap}}{4\\cdot r}\\rvert",
+          "expr": "+((M_Ed_mitte)/(W_y_mitte))* ((h_ap)/(4* r))"
+        },
+        "style": {
+          "width": 417,
+          "height": 430
+        }
+      },
+      {
+        "id": "variable_mqljmp6j_1",
+        "type": "variable",
+        "position": {
+          "x": 1242.601036304996,
+          "y": 5916.596462913122
+        },
+        "data": {
+          "kind": "variable",
+          "name": "f_{f,90,d}",
+          "label": "",
+          "unit": "",
+          "default_value": "0",
+          "inputKind": "number",
+          "options": [],
+          "hasDefault": false
+        }
+      },
+      {
+        "id": "check_mqljn8zd_2",
+        "type": "check",
+        "position": {
+          "x": 2072.241197024703,
+          "y": 5889.441907259908
+        },
+        "data": {
+          "kind": "check",
+          "label": "",
+          "latex": "\\sigma_{m,d,rechtwinklig}\\leq f_{f,90,d}",
+          "expr": "(sigma_m_d_rechtwinklig) <= (f_f_90_d) ? 1 : 0"
+        },
+        "style": {
+          "width": 538,
+          "height": 344
+        }
       }
     ],
     "edges": [
@@ -630,16 +947,6 @@
       {
         "id": "e_mqlfg1du_15",
         "source": "tablevalue_mqlfg1du_1",
-        "target": "calc_mqlfg1du_5",
-        "sourceHandle": null,
-        "targetHandle": null,
-        "data": {
-          "kind": "workflow"
-        }
-      },
-      {
-        "id": "e_mqlfg1du_17",
-        "source": "variable_mqlfg1du_4",
         "target": "calc_mqlfg1du_5",
         "sourceHandle": null,
         "targetHandle": null,
@@ -729,7 +1036,68 @@
           "kind": "condition",
           "conditionId": "c3"
         }
+      },
+      {
+        "id": "e_mqli7p7a_1",
+        "source": "woodclass_mqlfg1du_7",
+        "target": "tablevalue_mqlflh1m_30",
+        "sourceHandle": null,
+        "targetHandle": null,
+        "data": {
+          "kind": "workflow"
+        }
       }
+    ],
+    "display_order": [
+      "tablevalue_mqlfg1du_1",
+      "tablevalue_mqlfg1du_8",
+      "tablevalue_mqlflh1m_30",
+      "variable_mqldtkmq_1",
+      "variable_mqldtlzf_2",
+      "variable_mqlecrbf_3",
+      "variable_mqlee44k_4",
+      "variable_mqletmu2_8",
+      "variable_mqlf4qx2_13",
+      "variable_mqlfn7h4_32",
+      "variable_mqlgeuzx_1",
+      "variable_mqlfg1du_6",
+      "variable_mqlgrpw0_1",
+      "variable_mqlgs0xm_2",
+      "woodclass_mqlfg1du_2",
+      "woodclass_mqlfg1du_7",
+      "calc_mqletwpi_9",
+      "calc_mqlev7l6_10",
+      "calc_mqlez2zw_11",
+      "calc_mqlf0mld_12",
+      "calc_mqlfg1du_5",
+      "calc_mqlfg1du_9",
+      "condition_mqlfg1du_10",
+      "calc_mqlfg1du_11",
+      "calc_mqlfg1du_12",
+      "calc_mqlfg1du_13",
+      "calc_mqlfhdbe_26",
+      "calc_mqlfoo9i_33",
+      "calc_mqlfpkxp_34",
+      "check_mqlfqtll_35",
+      "title_mqliqu3r_2",
+      "variable_mqlj0ivo_7",
+      "calc_mqlis05b_3",
+      "calc_mqlivqrz_4",
+      "calc_mqlixrec_5",
+      "calc_mqliznnv_6",
+      "check_mqlj3qqy_8",
+      "title_mqljb3vy_13",
+      "variable_mqlj5mfc_10",
+      "calc_mqljbk74_14",
+      "calc_mqljenol_15",
+      "check_mqljfj8d_16",
+      "title_mqlj4f6u_9",
+      "calc_mqlj64zb_11",
+      "check_mqlj97hv_12",
+      "title_mqljh6iw_17",
+      "calc_mqlji109_18",
+      "variable_mqljmp6j_1",
+      "check_mqljn8zd_2"
     ]
   }
 }
