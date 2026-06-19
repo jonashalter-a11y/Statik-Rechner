@@ -19,6 +19,7 @@ import { evaluateLoopBlock } from './loopblock/evaluate';
 import { evaluateMatrix } from './matrix/evaluate';
 import { evaluateMinMax } from './minmax/evaluate';
 import { evaluateOutput } from './output/evaluate';
+import { evaluatePolargrid } from './polargrid/evaluate';
 import { evaluateRef } from './ref/evaluate';
 import { evaluateSection } from './section/evaluate';
 import { evaluateStdCalc } from './stdcalc/evaluate';
@@ -47,6 +48,7 @@ export const BLOCK_EVALUATORS: Record<string, BlockEvaluator> = {
   matrix: evaluateMatrix,
   minmax: evaluateMinMax,
   output: evaluateOutput,
+  polargrid: evaluatePolargrid,
   ref: evaluateRef,
   section: evaluateSection,
   stdcalc: evaluateStdCalc,

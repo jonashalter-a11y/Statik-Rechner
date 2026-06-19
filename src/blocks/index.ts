@@ -18,6 +18,7 @@ import { loopblockBlock } from './loopblock';
 import { matrixBlock } from './matrix';
 import { minmaxBlock } from './minmax';
 import { outputBlock } from './output';
+import { polargridBlock } from './polargrid';
 import { refBlock } from './ref';
 import { sectionBlock } from './section';
 import { stdcalcBlock } from './stdcalc';
@@ -44,6 +45,7 @@ export const BLOCK_DEFINITIONS = [
   matrixBlock,
   minmaxBlock,
   outputBlock,
+  polargridBlock,
   refBlock,
   sectionBlock,
   stdcalcBlock,

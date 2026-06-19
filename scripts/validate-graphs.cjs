@@ -5,7 +5,7 @@ const ROOT = path.resolve(__dirname, '..');
 const CHECK_TYPES = new Set([
   'beamvisual', 'calc', 'cases', 'chartlookup', 'check', 'comment', 'condition',
   'dropdown', 'frame', 'groupcalc', 'image', 'loopblock', 'matrix', 'minmax',
-  'output', 'ref', 'section', 'stdcalc', 'switchcalc', 'tablecalc', 'tablevalue', 'title',
+  'output', 'polargrid', 'ref', 'section', 'stdcalc', 'switchcalc', 'tablecalc', 'tablevalue', 'title',
   'variable', 'woodclass', 'summenblock', 'sum', 'summenblock_neu',
 ]);
 
@@ -81,6 +81,16 @@ function collectDependencies(graph) {
     if (['workflow', 'condition'].includes(edge.data?.kind || 'workflow')) add(edge.source, edge.target);
   }
 
+  const producerBySymbol = new Map();
+  for (const node of graph.nodes || []) {
+    const name = node.data?.name;
+    if (!name) continue;
+    const jsName = jsSymbolName(name);
+    if (/^[A-Za-z_$][\w$]*$/.test(jsName) && !producerBySymbol.has(jsName)) producerBySymbol.set(jsName, node.id);
+    const compact = jsName.replace(/_([A-Za-z]+)_(\d+)(?=_|$)/g, '_$1$2');
+    if (/^[A-Za-z_$][\w$]*$/.test(compact) && !producerBySymbol.has(compact)) producerBySymbol.set(compact, node.id);
+  }
+
   for (const node of graph.nodes || []) {
     const data = node.data || {};
     add(data.source_id, node.id);
@@ -93,6 +103,7 @@ function collectDependencies(graph) {
       const wired = (graph.edges || []).find(edge => edge.target === node.id && nodeById.get(edge.source)?.type === 'tablecalc')?.source;
       add(wired, node.id);
     }
+    for (const symbol of extractExprIdentifiers(data.expr)) add(producerBySymbol.get(symbol), node.id);
   }
 
   return deps;
@@ -133,6 +144,13 @@ function extractMissingSymbols(expr, symbols) {
   return [...new Set(ids.filter(id => !ignored.has(id) && !symbols.has(id)))];
 }
 
+function extractExprIdentifiers(expr) {
+  const cleaned = String(expr || '')
+    .replace(/Math\.[A-Za-z_$][\w$]*/g, '')
+    .replace(/\b(?:NaN|Infinity|undefined|null|true|false|Math|pi|e)\b/g, '');
+  return [...new Set(cleaned.match(/[A-Za-z_$][\w$]*/g) || [])];
+}
+
 function topoSort(graph) {
   const nodes = graph.nodes || [];
   const nodeById = new Map(nodes.map((node, index) => [node.id, { node, index }]));
@@ -144,7 +162,7 @@ function topoSort(graph) {
     indeg.set(dep.target, (indeg.get(dep.target) || 0) + 1);
   }
 
-  const inputTypes = new Set(['variable', 'dropdown', 'woodclass', 'tablevalue', 'chartlookup']);
+  const inputTypes = new Set(['variable', 'dropdown', 'woodclass', 'tablevalue', 'chartlookup', 'polargrid']);
   const priority = (id) => {
     const entry = nodeById.get(id);
     return [(entry && inputTypes.has(entry.node.type)) ? 0 : 1, entry?.index ?? 0];
@@ -210,7 +228,7 @@ function validateFormulaSymbols(graph, addWarning) {
       }
     }
 
-    if (['variable', 'dropdown', 'tablevalue', 'calc', 'stdcalc', 'minmax', 'cases'].includes(node.type)) addSymbol(symbols, data.name);
+    if (['variable', 'dropdown', 'tablevalue', 'calc', 'stdcalc', 'minmax', 'cases', 'polargrid'].includes(node.type)) addSymbol(symbols, data.name);
     if (node.type === 'chartlookup' && !data.all_series) addSymbol(symbols, data.name);
     if (node.type === 'matrix') {
       for (const col of Array.isArray(data.columns) ? data.columns : []) addSymbol(symbols, col?.name);

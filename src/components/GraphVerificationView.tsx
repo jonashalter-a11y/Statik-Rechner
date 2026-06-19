@@ -444,6 +444,270 @@ function fmtE(v: number): string {
   return String(Math.round(v * 1000) / 1000);
 }
 
+type PolarGridPoint = { x: number; z: number };
+type PolarGridState = {
+  points: PolarGridPoint[];
+  x_step?: string;
+  z_step?: string;
+  center_x?: number;
+  center_z?: number;
+  zoom?: number;
+};
+
+const parseFinite = (value: unknown, fallback: number) => {
+  const n = Number(String(value ?? '').replace(',', '.'));
+  return Number.isFinite(n) ? n : fallback;
+};
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function makeAxisValuesAround(centerRaw: unknown, spanRaw: unknown, stepRaw: unknown) {
+  const center = parseFinite(centerRaw, 0);
+  const span = Math.max(Math.abs(parseFinite(spanRaw, 500)), 1);
+  const step = Math.abs(parseFinite(stepRaw, 50)) || 50;
+  const lo = Math.floor((center - span / 2) / step) * step;
+  const hi = Math.ceil((center + span / 2) / step) * step;
+  const vals: number[] = [];
+  for (let v = lo; v <= hi + step * 1e-9 && vals.length < 601; v += step) {
+    vals.push(Math.round(v * 1e9) / 1e9);
+  }
+  return vals;
+}
+
+function parsePolarPoints(raw?: string): PolarGridPoint[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    const items = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.points) ? parsed.points : [];
+    return items
+      .map((p: any) => ({ x: Number(p?.x), z: Number(p?.z) }))
+      .filter((p: PolarGridPoint) => Number.isFinite(p.x) && Number.isFinite(p.z));
+  } catch {
+    return [];
+  }
+}
+
+function parsePolarState(raw: string | undefined, data: any): PolarGridState {
+  const defaults: PolarGridState = {
+    points: [],
+    x_step: String(data.x_step ?? '50'),
+    z_step: String(data.z_step ?? '50'),
+    center_x: 0,
+    center_z: 0,
+    zoom: 1,
+  };
+  if (!raw) return defaults;
+  try {
+    const parsed = JSON.parse(raw);
+    const points = parsePolarPoints(raw);
+    if (Array.isArray(parsed)) return { ...defaults, points };
+    return {
+      ...defaults,
+      ...(['x_step', 'z_step'] as const)
+        .reduce((acc, key) => ({ ...acc, [key]: parsed?.[key] != null ? String(parsed[key]) : defaults[key] }), {}),
+      center_x: parseFinite(parsed?.center_x, defaults.center_x ?? 0),
+      center_z: parseFinite(parsed?.center_z, defaults.center_z ?? 0),
+      zoom: clamp(parseFinite(parsed?.zoom, defaults.zoom ?? 1), 0.125, 16),
+      points,
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+function PolarGridPanel({ data, savedPoints, readOnly, onStateChange }: {
+  data: any;
+  savedPoints?: string;
+  readOnly?: boolean;
+  onStateChange?: (state: PolarGridState) => void;
+}) {
+  const state = React.useMemo(() => parsePolarState(savedPoints, data), [savedPoints, data]);
+  const points = state.points;
+  const zoom = clamp(parseFinite(state.zoom, 1), 0.125, 16);
+  const xStep = Math.abs(parseFinite(state.x_step, data.x_step ?? 50)) || 50;
+  const zStep = Math.abs(parseFinite(state.z_step, data.z_step ?? 50)) || 50;
+  const centerX = parseFinite(state.center_x, 0);
+  const centerZ = parseFinite(state.center_z, 0);
+  const xSpan = Math.max(xStep * 10 / zoom, xStep * 2);
+  const zSpan = Math.max(zStep * 10 / zoom, zStep * 2);
+  const xVals = React.useMemo(() => makeAxisValuesAround(centerX, xSpan, xStep), [centerX, xSpan, xStep]);
+  const zVals = React.useMemo(() => makeAxisValuesAround(centerZ, zSpan, zStep), [centerZ, zSpan, zStep]);
+  const xMin = Math.min(...xVals), xMax = Math.max(...xVals);
+  const zMin = Math.min(...zVals), zMax = Math.max(...zVals);
+  const maxPoints = Math.max(1, Math.floor(parseFinite(data.max_points, 200)));
+  const pointArea = parseFinite(data.point_area, 1);
+  const sumR2 = points.reduce((sum, p) => sum + p.x * p.x + p.z * p.z, 0);
+  const ip = pointArea * sumR2;
+
+  const W = 520, H = 360, padL = 52, padR = 24, padT = 24, padB = 42;
+  const spanX = xMax - xMin || 1;
+  const spanZ = zMax - zMin || 1;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+  const tx = (x: number) => padL + ((x - xMin) / spanX) * (W - padL - padR);
+  const tz = (z: number) => padT + ((zMax - z) / spanZ) * (H - padT - padB);
+  const hasPoint = (x: number, z: number) => points.some(p => Math.abs(p.x - x) < 1e-9 && Math.abs(p.z - z) < 1e-9);
+  const setState = (patch: Partial<PolarGridState>) => onStateChange?.({ ...state, ...patch, points: patch.points ?? points });
+  const setPoints = (next: PolarGridPoint[]) => setState({ points: next });
+  const toggle = (x: number, z: number) => {
+    if (readOnly) return;
+    if (hasPoint(x, z)) setPoints(points.filter(p => Math.abs(p.x - x) > 1e-9 || Math.abs(p.z - z) > 1e-9));
+    else if (points.length < maxPoints) setPoints([...points, { x, z }]);
+  };
+  const fmt = (v: number) => Number.isFinite(v) ? formatNumber(v) : '—';
+  const coordUnit = data.coord_unit || '';
+  const areaUnit = data.point_area_unit || '';
+  const resultUnit = data.unit || '';
+  const gridInputStyle: React.CSSProperties = { width: '100%', border: '1px solid #99f6e4', borderRadius: 5, padding: '4px 6px', fontSize: 12, boxSizing: 'border-box', background: readOnly ? '#f8fafc' : '#fff' };
+  const gridField = (key: keyof Pick<PolarGridState, 'x_step' | 'z_step'>, label: string) => (
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 86 }}>
+      <span style={{ fontSize: 10, color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>{label}</span>
+      <input
+        type="number"
+        value={state[key] ?? ''}
+        disabled={readOnly}
+        onChange={e => setState({ [key]: e.target.value } as Partial<PolarGridState>)}
+        style={gridInputStyle}
+      />
+    </label>
+  );
+  const dragRef = React.useRef<{ x: number; y: number; cx: number; cz: number; moved: boolean } | null>(null);
+  const setZoom = (nextZoom: number) => setState({ zoom: clamp(nextZoom, 0.125, 16) });
+  const resetView = () => setState({ center_x: 0, center_z: 0, zoom: 1 });
+  const beginPan = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (readOnly) return;
+    dragRef.current = { x: e.clientX, y: e.clientY, cx: centerX, cz: centerZ, moved: false };
+  };
+  const pan = (e: React.MouseEvent<SVGSVGElement>) => {
+    const drag = dragRef.current;
+    if (!drag || readOnly) return;
+    const dx = e.clientX - drag.x;
+    const dy = e.clientY - drag.y;
+    if (Math.abs(dx) + Math.abs(dy) > 2) drag.moved = true;
+    setState({
+      center_x: drag.cx - (dx / plotW) * spanX,
+      center_z: drag.cz + (dy / plotH) * spanZ,
+    });
+  };
+  const endPan = () => { dragRef.current = null; };
+  const wheelZoom = (e: React.WheelEvent<SVGSVGElement>) => {
+    if (readOnly) return;
+    e.preventDefault();
+    setZoom(zoom * (e.deltaY < 0 ? 1.2 : 1 / 1.2));
+  };
+
+  return (
+    <div style={{ fontFamily: 'system-ui, sans-serif' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 8 }}>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: '#134e4a' }}>⊙ {data.label || 'Polar-Raster'}</div>
+          <div style={{ fontSize: 11, color: '#64748b' }}>{points.length} / {maxPoints} Punkte</div>
+        </div>
+        {!readOnly && (
+          <button
+            onClick={() => setPoints([])}
+            disabled={points.length === 0}
+            style={{ border: '1px solid #99f6e4', background: points.length ? '#f0fdfa' : '#f8fafc', color: points.length ? '#0f766e' : '#94a3b8', borderRadius: 5, padding: '4px 8px', fontSize: 11, cursor: points.length ? 'pointer' : 'default' }}
+          >
+            Punkte löschen
+          </button>
+        )}
+      </div>
+
+      <div style={{ background: '#f0fdfa', border: '1px solid #99f6e4', borderRadius: 6, padding: '8px 10px', marginBottom: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(86px, 1fr)) auto auto auto', gap: 8, alignItems: 'end' }}>
+          {gridField('x_step', 'x Schritt')}
+          {gridField('z_step', 'z Schritt')}
+          <button disabled={readOnly} onClick={() => setZoom(zoom / 1.25)} style={{ border: '1px solid #99f6e4', borderRadius: 5, background: '#fff', color: '#0f766e', padding: '5px 9px', cursor: readOnly ? 'default' : 'pointer' }}>−</button>
+          <button disabled={readOnly} onClick={() => setZoom(zoom * 1.25)} style={{ border: '1px solid #99f6e4', borderRadius: 5, background: '#fff', color: '#0f766e', padding: '5px 9px', cursor: readOnly ? 'default' : 'pointer' }}>+</button>
+          <button disabled={readOnly} onClick={resetView} style={{ border: '1px solid #99f6e4', borderRadius: 5, background: '#fff', color: '#0f766e', padding: '5px 9px', fontSize: 11, cursor: readOnly ? 'default' : 'pointer' }}>Reset</button>
+        </div>
+        <div style={{ fontSize: 10, color: '#64748b', marginTop: 6 }}>Zoom {formatNumber(zoom)}x · Mitte x={formatNumber(centerX)}, z={formatNumber(centerZ)}</div>
+      </div>
+
+      <div style={{ overflowX: 'auto', marginBottom: 10 }}>
+        <svg
+          width={W}
+          height={H}
+          onMouseDown={beginPan}
+          onMouseMove={pan}
+          onMouseUp={endPan}
+          onMouseLeave={endPan}
+          onWheel={wheelZoom}
+          style={{ display: 'block', border: '1px solid #ccfbf1', borderRadius: 6, background: '#fff', cursor: readOnly ? 'default' : 'grab' }}
+        >
+          <rect x={padL} y={padT} width={W - padL - padR} height={H - padT - padB} fill="#fbfefd" stroke="#99f6e4" />
+          {xVals.map(x => (
+            <g key={`x${x}`}>
+              <line x1={tx(x)} y1={padT} x2={tx(x)} y2={H - padB} stroke={x === 0 ? '#0f766e' : '#94a3b8'} strokeWidth={x === 0 ? 1.4 : 1} strokeDasharray={x === 0 ? undefined : '2 3'} />
+              <text x={tx(x)} y={H - 20} textAnchor="middle" fontSize={10} fill="#64748b">{fmt(x)}</text>
+            </g>
+          ))}
+          {zVals.map(z => (
+            <g key={`z${z}`}>
+              <line x1={padL} y1={tz(z)} x2={W - padR} y2={tz(z)} stroke={z === 0 ? '#0f766e' : '#94a3b8'} strokeWidth={z === 0 ? 1.4 : 1} strokeDasharray={z === 0 ? undefined : '2 3'} />
+              <text x={padL - 10} y={tz(z) + 3} textAnchor="end" fontSize={10} fill="#64748b">{fmt(z)}</text>
+            </g>
+          ))}
+          <text x={W - 10} y={H - 22} fontSize={12} fill="#134e4a" fontWeight={700}>x</text>
+          <text x={padL - 18} y={16} fontSize={12} fill="#134e4a" fontWeight={700}>z</text>
+
+          {xVals.flatMap(x => zVals.map(z => {
+            const selected = hasPoint(x, z);
+            return (
+              <g
+                key={`${x}:${z}`}
+                onMouseDown={e => e.stopPropagation()}
+                onClick={() => toggle(x, z)}
+                style={{ cursor: readOnly ? 'default' : 'pointer' }}
+              >
+                <circle cx={tx(x)} cy={tz(z)} r={11} fill="transparent" />
+                <circle cx={tx(x)} cy={tz(z)} r={selected ? 6 : 3.5} fill={selected ? '#020617' : '#d1d5db'} stroke={selected ? '#020617' : '#94a3b8'} strokeWidth={1} />
+              </g>
+            );
+          }))}
+        </svg>
+      </div>
+
+      <div style={{ background: '#f0fdfa', border: '1px solid #99f6e4', borderRadius: 6, padding: '7px 10px', overflowX: 'auto', marginBottom: 8 }}>
+        <MathDisplay
+          latex={`${data.name ? nameToLatex(data.name) : 'I_p'} = A_p \\cdot \\sum_{i=1}^{n}(x_i^2 + z_i^2) = ${fmt(pointArea)} \\cdot ${fmt(sumR2)} = ${fmt(ip)}${resultUnit ? `\\;[${resultUnit}]` : ''}`}
+          display
+        />
+      </div>
+
+      <div style={{ fontSize: 11, color: '#475569', display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: points.length ? 6 : 0 }}>
+        <span><b>A_p</b> = {fmt(pointArea)} {areaUnit}</span>
+        <span><b>Σ(x² + z²)</b> = {fmt(sumR2)} {coordUnit ? `${coordUnit}^2` : ''}</span>
+      </div>
+
+      {points.length > 0 && (
+        <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 11 }}>
+          <thead>
+            <tr>
+              {['i', 'x', 'z', 'x² + z²'].map(h => (
+                <th key={h} style={{ textAlign: 'right', borderBottom: '1px solid #ccfbf1', padding: '3px 6px', color: '#0f766e' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {points.map((p, i) => (
+              <tr key={`${p.x}:${p.z}:${i}`}>
+                <td style={{ textAlign: 'right', padding: '3px 6px', borderBottom: '1px solid #f0fdfa' }}>{i + 1}</td>
+                <td style={{ textAlign: 'right', padding: '3px 6px', borderBottom: '1px solid #f0fdfa' }}>{fmt(p.x)}</td>
+                <td style={{ textAlign: 'right', padding: '3px 6px', borderBottom: '1px solid #f0fdfa' }}>{fmt(p.z)}</td>
+                <td style={{ textAlign: 'right', padding: '3px 6px', borderBottom: '1px solid #f0fdfa' }}>{fmt(p.x * p.x + p.z * p.z)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 function SectionCalcPanel({ label, savedShapes, onShapesChange }: {
   label: string;
   savedShapes?: string;
@@ -806,6 +1070,7 @@ function defaultInputForNode(n: GraphNode, graph: VerificationGraph, tables: Rec
     return t ? String(t.rows?.[0]?.[d.label_col ?? 0] ?? '') : '';
   }
   if (n.type === 'matrix') return String((d as any).rows?.[0]?.label ?? '');
+  if (n.type === 'polargrid') return JSON.stringify({ points: [] });
   if (n.type === 'stdcalc') {
     const srcEdge = graph.edges.find((e) => e.target === n.id);
     const tc = graph.nodes.find((x) => x.type === 'tablecalc' && srcEdge && x.id === srcEdge.source)
@@ -818,7 +1083,7 @@ function defaultInputForNode(n: GraphNode, graph: VerificationGraph, tables: Rec
 function graphInputKeys(graph: VerificationGraph): Set<string> {
   const keys = new Set<string>();
   for (const n of graph.nodes) {
-    if (defaultInputForNode(n, graph, {}) !== undefined || ['variable', 'dropdown', 'matrix', 'stdcalc', 'loopblock'].includes(n.type)) {
+    if (defaultInputForNode(n, graph, {}) !== undefined || ['variable', 'dropdown', 'matrix', 'stdcalc', 'loopblock', 'polargrid'].includes(n.type)) {
       keys.add(n.id);
     }
   }
@@ -840,6 +1105,15 @@ function graphInputSignature(graph: VerificationGraph): string {
       label_col: d.label_col ?? '',
       options: d.options || null,
       rows: n.type === 'matrix' ? d.rows?.map((r: any) => ({ id: r.id, label: r.label })) : null,
+      polargrid: n.type === 'polargrid' ? {
+        x_min: d.x_min ?? '',
+        x_max: d.x_max ?? '',
+        x_step: d.x_step ?? '',
+        z_min: d.z_min ?? '',
+        z_max: d.z_max ?? '',
+        z_step: d.z_step ?? '',
+        point_area: d.point_area ?? '',
+      } : null,
       zones: n.type === 'stdcalc' || n.type === 'tablecalc' ? d.zones || null : null,
     };
   }));
@@ -2081,6 +2355,19 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                 label={(d as any).label || ''}
                 savedShapes={inputs[n.id]}
                 onShapesChange={shapes => setInput(n.id, JSON.stringify(shapes))}
+              />
+            </div>
+          );
+        }
+
+        if (n.type === 'polargrid') {
+          return (
+            <div key={n.id} style={{ ...card, background: '#ecfdf5', borderColor: '#0f766e', padding: '10px 14px' }}>
+              <PolarGridPanel
+                data={d}
+                savedPoints={inputs[n.id]}
+                readOnly={readOnly}
+                onStateChange={state => setInput(n.id, JSON.stringify(state))}
               />
             </div>
           );

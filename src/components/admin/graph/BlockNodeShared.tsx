@@ -32,6 +32,7 @@ export const THEME: Record<string, { bg: string; border: string; icon: string; l
   matrix: { bg: '#ecfeff', border: '#0891b2', icon: '⊞', label: 'Materialtabelle' },
   minmax: { bg: '#fff1f2', border: '#be123c', icon: '↕', label: 'Min / Max' },
   output: { bg: '#f9fafb', border: '#6b7280', icon: '⬜', label: 'PDF / Ausgabe' },
+  polargrid: { bg: '#ecfdf5', border: '#0f766e', icon: '⊙', label: 'Polar-Raster' },
   ref: { bg: '#e0f2fe', border: '#0369a1', icon: '🔗', label: 'Referenz' },
   section: { bg: '#fdf4ff', border: '#9333ea', icon: '⊕', label: 'Querschnitt' },
   stdcalc: { bg: '#f5f0e8', border: '#92400e', icon: '🟫', label: 'Std-Berechnung' },

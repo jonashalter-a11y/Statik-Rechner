@@ -132,6 +132,16 @@ function latexExprToJs(tex: string): string {
   s = replaceCmdBrace(s, 'sqrt', 'Math.sqrt');
   s = replaceCmdBrace(s, 'log', 'Math.log10');
   s = replaceCmdParen(s, 'log', 'Math.log10');
+  s = replaceCmdBrace(s, 'arctan', 'Math.atan');
+  s = replaceCmdParen(s, 'arctan', 'Math.atan');
+  s = replaceCmdBrace(s, 'atan', 'Math.atan');
+  s = replaceCmdParen(s, 'atan', 'Math.atan');
+  s = replaceCmdBrace(s, 'sin', 'Math.sin');
+  s = replaceCmdParen(s, 'sin', 'Math.sin');
+  s = replaceCmdBrace(s, 'cos', 'Math.cos');
+  s = replaceCmdParen(s, 'cos', 'Math.cos');
+  s = replaceCmdBrace(s, 'tan', 'Math.tan');
+  s = replaceCmdParen(s, 'tan', 'Math.tan');
   for (const g of GREEK) {
     s = s.replace(new RegExp('\\\\' + g + '(?=\\b|_|\\{|$)', 'g'), g);
     s = s.replace(new RegExp('\\\\' + g[0].toUpperCase() + g.slice(1) + '(?=\\b|_|\\{|$)', 'g'), g);
@@ -244,6 +254,16 @@ export function latexToJs(tex: string): string {
   s = replaceCmdBrace(s, 'sqrt', 'Math.sqrt');
   s = replaceCmdBrace(s, 'log', 'Math.log10');
   s = replaceCmdParen(s, 'log', 'Math.log10');
+  s = replaceCmdBrace(s, 'arctan', 'Math.atan');
+  s = replaceCmdParen(s, 'arctan', 'Math.atan');
+  s = replaceCmdBrace(s, 'atan', 'Math.atan');
+  s = replaceCmdParen(s, 'atan', 'Math.atan');
+  s = replaceCmdBrace(s, 'sin', 'Math.sin');
+  s = replaceCmdParen(s, 'sin', 'Math.sin');
+  s = replaceCmdBrace(s, 'cos', 'Math.cos');
+  s = replaceCmdParen(s, 'cos', 'Math.cos');
+  s = replaceCmdBrace(s, 'tan', 'Math.tan');
+  s = replaceCmdParen(s, 'tan', 'Math.tan');
   for (const g of GREEK) {
     s = s.replace(new RegExp('\\\\' + g + '(?=\\b|_|\\{|$)', 'g'), g);
     s = s.replace(new RegExp('\\\\' + g[0].toUpperCase() + g.slice(1) + '(?=\\b|_|\\{|$)', 'g'), g);

@@ -17,6 +17,7 @@ import { LoopBlockNode } from '../../../blocks/loopblock/BackendNode';
 import { MatrixNode } from '../../../blocks/matrix/BackendNode';
 import { MinMaxNode } from '../../../blocks/minmax/BackendNode';
 import { OutputNode } from '../../../blocks/output/BackendNode';
+import { PolargridNode } from '../../../blocks/polargrid/BackendNode';
 import { RefNode } from '../../../blocks/ref/BackendNode';
 import { SectionNode } from '../../../blocks/section/BackendNode';
 import { StdCalcNode } from '../../../blocks/stdcalc/BackendNode';
@@ -43,6 +44,7 @@ export const nodeTypes = {
   matrix: MatrixNode,
   minmax: MinMaxNode,
   output: OutputNode,
+  polargrid: PolargridNode,
   ref: RefNode,
   section: SectionNode,
   stdcalc: StdCalcNode,

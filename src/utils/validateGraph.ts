@@ -98,7 +98,7 @@ function validateFormulaSymbols(
       }
     }
 
-    if (node.type === 'variable' || node.type === 'dropdown' || node.type === 'tablevalue' || node.type === 'calc' || node.type === 'stdcalc' || node.type === 'minmax' || node.type === 'cases') {
+    if (node.type === 'variable' || node.type === 'dropdown' || node.type === 'tablevalue' || node.type === 'calc' || node.type === 'stdcalc' || node.type === 'minmax' || node.type === 'cases' || node.type === 'polargrid') {
       addSymbol(symbols, d.name);
     }
     if (node.type === 'chartlookup') {

@@ -23,6 +23,7 @@ export type BlockType =
   | 'matrix'       // ⊞  Materialtabelle: Zeilen = Materialien, Spalten = berechnete Variablen
   | 'beamvisual'   // 🏗 Träger-Visualisierung (SVG)
   | 'section'      // ⊕ Querschnitt-Flächenträgheitsmoment
+  | 'polargrid'    // ⊙ Punkte-Raster: polares Flächenträgheitsmoment
   | 'comment'      // 💬 Kommentar-Block mit optionalem Extra (Link, Bild, Diagramm, Tabelle)
   | 'groupcalc'    // ⚙ Gruppenberechnung: inline Variablen + Fallauswahl + mehrere Ausgaben
   | 'loopblock'    // ⟳ Schleifenblock: n Iterationen mit Aggregation (z.B. Brandschutz-Schichten)
@@ -376,6 +377,23 @@ export interface SectionData {
   label: string;
 }
 
+export interface PolargridData {
+  kind: 'polargrid';
+  name: string;
+  label: string;
+  unit: string;
+  coord_unit: string;
+  point_area: string;
+  point_area_unit: string;
+  x_min: string;
+  x_max: string;
+  x_step: string;
+  z_min: string;
+  z_max: string;
+  z_step: string;
+  max_points: string;
+}
+
 export type CommentExtra = 'none' | 'link' | 'image' | 'chart' | 'table';
 
 export interface CommentData {
@@ -476,7 +494,7 @@ export interface GroupCalcData {
 export type BlockData =
   | VariableData | DropdownData | WoodClassData | TableValueData | CalcData
   | StdCalcData | TableCalcData | ChartLookupData | ConditionData | CheckData | MinMaxData | ImageBlockData
-  | TitleData | FrameData | RefData | CasesData | MatrixData | BeamVisualData | SectionData | CommentData
+  | TitleData | FrameData | RefData | CasesData | MatrixData | BeamVisualData | SectionData | PolargridData | CommentData
   | GroupCalcData | LoopBlockData | SummenblockData | SumData | OutputData | BeamvisualData | ChartlookupData | GroupcalcData | ImageData | LoopblockData | MinmaxData | StdcalcData | TablecalcData | TablevalueData | WoodclassData | SummenblockneuData | SwitchcalcData;
 
 // ── React-Flow-kompatible Node/Edge-Strukturen ──────────────────────────────

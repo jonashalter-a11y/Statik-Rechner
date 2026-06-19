@@ -1,14 +1,34 @@
 // ─── Graph-Auswertung ─────────────────────────────────────────────────────────
 import { VerificationGraph, GraphNode } from '../types/graph';
 import { BLOCK_EVALUATORS } from '../blocks/evaluators';
-import { BlockEvalRuntime, DbTableData, EvalContext, EvalResult, NodeResult } from './evalGraphShared';
+import { BlockEvalRuntime, DbTableData, deUmlaut, EvalContext, EvalResult, NodeResult, symbolAliases } from './evalGraphShared';
 
 export type { ChartJsonData, ChartSeriesData, DbTableData, EvalContext, EvalResult, NodeResult } from './evalGraphShared';
 
 export interface GraphDependency {
   source: string;
   target: string;
-  reason: 'edge' | 'data';
+  reason: 'edge' | 'data' | 'formula';
+}
+
+function jsSymbolAliases(name: string): string[] {
+  return symbolAliases(name)
+    .map(alias => deUmlaut(alias)
+      .replace(/\\/g, '')
+      .replace(/([A-Za-z0-9_])'+/g, '$1')
+      .replace(/_\{([^{}]+)\}/g, (_m, sub: string) => '_' + sub.replace(/[,\s.]+/g, '_'))
+      .replace(/[{},\s.]+/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, ''))
+    .filter(alias => /^[A-Za-z_$][\w$]*$/.test(alias));
+}
+
+function extractExprIdentifiers(expr: unknown): string[] {
+  if (typeof expr !== 'string' || !expr.trim()) return [];
+  const cleaned = expr
+    .replace(/Math\.[A-Za-z_$][\w$]*/g, '')
+    .replace(/\b(?:NaN|Infinity|undefined|null|true|false|Math|pi|e)\b/g, '');
+  return Array.from(new Set(cleaned.match(/[A-Za-z_$][\w$]*/g) || []));
 }
 
 export function collectGraphDependencies(graph: VerificationGraph): GraphDependency[] {
@@ -30,6 +50,15 @@ export function collectGraphDependencies(graph: VerificationGraph): GraphDepende
 
   flowEdges.forEach(e => addDependency(e.source, e.target, 'edge'));
 
+  const producerBySymbol = new Map<string, string>();
+  nodes.forEach(n => {
+    const name = String((n.data as any)?.name || '');
+    if (!name) return;
+    jsSymbolAliases(name).forEach(alias => {
+      if (!producerBySymbol.has(alias)) producerBySymbol.set(alias, n.id);
+    });
+  });
+
   // Einige Blöcke speichern ihre Quelle zusätzlich in data.*. Diese Abhängigkeiten
   // müssen auch ohne sichtbare Kante stabil vor dem Zielblock ausgewertet werden.
   nodes.forEach(n => {
@@ -46,6 +75,10 @@ export function collectGraphDependencies(graph: VerificationGraph): GraphDepende
       const wiredSource = flowEdges.find(e => e.target === n.id && nodeById.get(e.source)?.type === 'tablecalc')?.source;
       if (wiredSource) addDependency(wiredSource, n.id);
     }
+
+    extractExprIdentifiers(d.expr).forEach(symbol => {
+      addDependency(producerBySymbol.get(symbol), n.id, 'formula');
+    });
   });
 
   return dependencies;
@@ -67,7 +100,7 @@ export function topoSort(graph: VerificationGraph): GraphNode[] {
 
   // Eingabe-Blöcke immer zuerst: stellt sicher, dass symbols/strSymbols befüllt sind
   // bevor Berechnungsblöcke (calc, cases, …) ohne explizite Kanten ausgewertet werden.
-  const INPUT_TYPES = new Set(['variable', 'dropdown', 'woodclass', 'tablevalue', 'chartlookup']);
+  const INPUT_TYPES = new Set(['variable', 'dropdown', 'woodclass', 'tablevalue', 'chartlookup', 'polargrid']);
   const nodeIndex = new Map(nodes.map((n, i) => [n.id, i]));
   const byStablePriority = (a: string, b: string) => {
     const na = nodeById.get(a);
