@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "exported_at": "2026-06-20T19:08:44.855Z",
+  "verification": {
+    "id": "das",
+    "title": "Neasdfuer Nachweis",
+    "chapter_id": "lignum_erdbeben_1_1_mq4ywo6u",
+    "formula_latex": "",
+    "formula_description": "",
+    "compute_expr": "",
+    "graph_json": "{\"version\":1,\"nodes\":[],\"edges\":[]}",
+    "notes": "",
+    "active": 1,
+    "norm_id": "sia265"
+  },
+  "chapter": {
+    "id": "lignum_erdbeben_1_1_mq4ywo6u",
+    "norm_id": "sia265",
+    "parent_id": null,
+    "number": "lignum.erdbeben.1.1",
+    "title": "Kapitel lignum.erdbeben.1.1",
+    "sort_order": 9006
+  },
+  "variables": [],
+  "tables": [],
+  "graph": {
+    "version": 1,
+    "nodes": [],
+    "edges": []
+  }
+}

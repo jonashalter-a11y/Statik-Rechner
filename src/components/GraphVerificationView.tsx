@@ -17,7 +17,9 @@ import {
 } from 'recharts';
 import { computeBeam, BeamLoad, SupportKind } from '../utils/beamAnalysis';
 import { computeSection, CSShape, ShapeKind } from '../utils/sectionAnalysis';
-import { GraphNode, VerificationGraph } from '../types/graph';
+import { GraphNode, VerificationGraph, StiffnesscenterData } from '../types/graph';
+import { StiffnesscenterPanel } from './StiffnesscenterPanel';
+import { StiffnesscenterModal } from './StiffnesscenterModal';
 
 const CHART_COLORS = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#7c3aed', '#0891b2'];
 
@@ -1237,6 +1239,7 @@ function defaultInputForNode(n: GraphNode, graph: VerificationGraph, tables: Rec
   }
   if (n.type === 'matrix') return String((d as any).rows?.[0]?.label ?? '');
   if (n.type === 'polargrid') return JSON.stringify({ points: [] });
+  if (n.type === 'stiffnesscenter') return JSON.stringify({ walls: [] });
   if (n.type === 'stdcalc') {
     const srcEdge = graph.edges.find((e) => e.target === n.id);
     const tc = graph.nodes.find((x) => x.type === 'tablecalc' && srcEdge && x.id === srcEdge.source)
@@ -1252,7 +1255,7 @@ function defaultInputForNode(n: GraphNode, graph: VerificationGraph, tables: Rec
 function graphInputKeys(graph: VerificationGraph): Set<string> {
   const keys = new Set<string>();
   for (const n of graph.nodes) {
-    if (defaultInputForNode(n, graph, {}) !== undefined || ['variable', 'dropdown', 'matrix', 'stdcalc', 'switchcalc', 'loopblock', 'polargrid'].includes(n.type)) {
+    if (defaultInputForNode(n, graph, {}) !== undefined || ['variable', 'dropdown', 'matrix', 'stdcalc', 'switchcalc', 'loopblock', 'polargrid', 'stiffnesscenter'].includes(n.type)) {
       keys.add(n.id);
     }
   }
@@ -1326,6 +1329,7 @@ export default function GraphVerificationView({ verification, readOnly = false, 
   const [imageModal, setImageModal] = useState<{ src: string; label?: string; source?: string } | null>(null);
   const [chartModal, setChartModal] = useState<string | null>(null); // Node-ID
   const [overrideModal, setOverrideModal] = useState<{ nodeId: string; currentValue: number; zone?: string; outputId?: string } | null>(null);
+  const [stiffnesscenterModalId, setStiffnesscenterModalId] = useState<string | null>(null); // Node-ID
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const toggleSection = (id: string) => setCollapsedSections(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   const effectiveWoodType = woodTypeByVerif[verification.id] || '';
@@ -2663,6 +2667,64 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                 savedPoints={inputs[n.id]}
                 readOnly={readOnly}
                 onStateChange={state => setInput(n.id, JSON.stringify(state))}
+              />
+            </div>
+          );
+        }
+
+        if (n.type === 'stiffnesscenter') {
+          let savedData: Partial<StiffnesscenterData> = {};
+          try {
+            const state = JSON.parse(inputs[n.id] ?? '{}');
+            savedData = state.params ?? {};
+          } catch {}
+          const mergedData: StiffnesscenterData = { ...d, ...savedData };
+          const isModalOpen = stiffnesscenterModalId === n.id;
+
+          return (
+            <div key={n.id} style={{ ...card, background: '#f0f9ff', borderColor: '#0284c7', padding: '10px 14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <h3 style={{ margin: 0, fontSize: 12, fontWeight: 700, color: '#0284c7' }}>
+                  🏛️ {mergedData.label || 'Steifigkeitszentrum'}
+                </h3>
+                <button
+                  onClick={() => setStiffnesscenterModalId(isModalOpen ? null : n.id)}
+                  style={{
+                    fontSize: 10,
+                    padding: '4px 8px',
+                    background: '#0284c7',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 3,
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                  }}
+                >
+                  {isModalOpen ? '✕ Schließen' : '⛶ Öffnen im Fenster'}
+                </button>
+              </div>
+
+              {!isModalOpen && (
+                <div style={{ fontSize: 9, color: '#6b7280', padding: 6, background: '#ecfdf5', borderRadius: 3 }}>
+                  Klick auf "Öffnen im Fenster" für vollständige CAD-Ansicht
+                </div>
+              )}
+
+              <StiffnesscenterModal
+                open={isModalOpen}
+                data={mergedData}
+                savedState={inputs[n.id]}
+                readOnly={readOnly}
+                onClose={() => setStiffnesscenterModalId(null)}
+                onStateChange={state => setInput(n.id, state)}
+                onDataChange={patch => {
+                  const state = { params: { ...savedData, ...patch }, walls: [] };
+                  try {
+                    const prev = JSON.parse(inputs[n.id] ?? '{}');
+                    state.walls = prev.walls ?? [];
+                  } catch {}
+                  setInput(n.id, JSON.stringify(state));
+                }}
               />
             </div>
           );

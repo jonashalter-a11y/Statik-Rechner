@@ -21,6 +21,7 @@ import { PolargridNode } from '../../../blocks/polargrid/BackendNode';
 import { RefNode } from '../../../blocks/ref/BackendNode';
 import { SectionNode } from '../../../blocks/section/BackendNode';
 import { StdCalcNode } from '../../../blocks/stdcalc/BackendNode';
+import { StiffnesscenterNode } from '../../../blocks/stiffnesscenter/BackendNode';
 import { SwitchCalcNode } from '../../../blocks/switchcalc/BackendNode';
 import { TableCalcNode } from '../../../blocks/tablecalc/BackendNode';
 import { TableValueNode } from '../../../blocks/tablevalue/BackendNode';
@@ -48,6 +49,7 @@ export const nodeTypes = {
   ref: RefNode,
   section: SectionNode,
   stdcalc: StdCalcNode,
+  stiffnesscenter: StiffnesscenterNode,
   switchcalc: SwitchCalcNode,
   tablecalc: TableCalcNode,
   tablevalue: TableValueNode,

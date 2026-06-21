@@ -23,6 +23,7 @@ import { evaluatePolargrid } from './polargrid/evaluate';
 import { evaluateRef } from './ref/evaluate';
 import { evaluateSection } from './section/evaluate';
 import { evaluateStdCalc } from './stdcalc/evaluate';
+import { evaluateStiffnesscenter } from './stiffnesscenter/evaluate';
 import { evaluateSwitchCalc } from './switchcalc/evaluate';
 import { evaluateTableCalc } from './tablecalc/evaluate';
 import { evaluateTableValue } from './tablevalue/evaluate';
@@ -52,6 +53,7 @@ export const BLOCK_EVALUATORS: Record<string, BlockEvaluator> = {
   ref: evaluateRef,
   section: evaluateSection,
   stdcalc: evaluateStdCalc,
+  stiffnesscenter: evaluateStiffnesscenter,
   switchcalc: evaluateSwitchCalc,
   tablecalc: evaluateTableCalc,
   tablevalue: evaluateTableValue,

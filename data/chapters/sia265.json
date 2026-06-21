@@ -46,5 +46,13 @@
     "number": "5.8",
     "title": "Kapitel 5.8",
     "sort_order": 9005
+  },
+  {
+    "id": "lignum_erdbeben_1_1_mq4ywo6u",
+    "norm_id": "sia265",
+    "parent_id": null,
+    "number": "lignum.erdbeben.1.1",
+    "title": "Kapitel lignum.erdbeben.1.1",
+    "sort_order": 9006
   }
 ]

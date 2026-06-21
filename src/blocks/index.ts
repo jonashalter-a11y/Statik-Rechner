@@ -22,6 +22,7 @@ import { polargridBlock } from './polargrid';
 import { refBlock } from './ref';
 import { sectionBlock } from './section';
 import { stdcalcBlock } from './stdcalc';
+import { stiffnesscenterBlock } from './stiffnesscenter';
 import { switchcalcBlock } from './switchcalc';
 import { tablecalcBlock } from './tablecalc';
 import { tablevalueBlock } from './tablevalue';
@@ -49,6 +50,7 @@ export const BLOCK_DEFINITIONS = [
   refBlock,
   sectionBlock,
   stdcalcBlock,
+  stiffnesscenterBlock,
   switchcalcBlock,
   tablecalcBlock,
   tablevalueBlock,

@@ -36,6 +36,7 @@ export const THEME: Record<string, { bg: string; border: string; icon: string; l
   ref: { bg: '#e0f2fe', border: '#0369a1', icon: '🔗', label: 'Referenz' },
   section: { bg: '#fdf4ff', border: '#9333ea', icon: '⊕', label: 'Querschnitt' },
   stdcalc: { bg: '#f5f0e8', border: '#92400e', icon: '🟫', label: 'Std-Berechnung' },
+  stiffnesscenter: { bg: '#f0f9ff', border: '#0284c7', icon: '🏛️', label: 'Steifigkeitszentrum & Torsion' },
   switchcalc: { bg: '#fef3f2', border: '#ea580c', icon: '🟧', label: 'Switch Rechnung' },
   tablecalc: { bg: '#eff6ff', border: '#2563eb', icon: '🟦', label: 'Tabellenberechnung' },
   tablevalue: { bg: '#f0fdf4', border: '#16a34a', icon: '🟩', label: 'Tabellenwert' },

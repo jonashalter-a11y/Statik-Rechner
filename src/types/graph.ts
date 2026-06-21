@@ -33,6 +33,7 @@ export type BlockType =
   | 'summenblock_neu'
 
   | 'switchcalc'
+  | 'stiffnesscenter' // 🏛️ Steifigkeitszentrum & Torsion (2D-Wand-CAD, SIA 261)
 ;      // ⬜ PDF/Ausgabe
 
 export type EdgeKind = 'workflow' | 'condition';
@@ -491,11 +492,40 @@ export interface GroupCalcData {
   allowOverride?: boolean; // Frontend-User kann Werte pro Output manuell eingeben
 }
 
+// ── 🏛️ Steifigkeitszentrum & Torsion ───────────────────────────────────────
+// 2D-CAD-Eingabe von Wänden im Grundriss. Aus Lage + Steifigkeit k jeder Wand
+// wird das Steifigkeitszentrum S berechnet und mit dem geometrischen
+// Massenmittelpunkt M (Mitte des Grundrisses b_x × b_y) verglichen, um die
+// tatsächlichen sowie die bemessungsmassgebenden Exzentrizitäten nach
+// SIA 261:2020 zu ermitteln.
+export interface StiffnessWall {
+  id: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  // 'x' = horizontale Wand (Längsrichtung parallel x) → resistiert Erdbeben in x-Richtung → k_x
+  // 'y' = vertikale Wand (Längsrichtung parallel y) → resistiert Erdbeben in y-Richtung → k_y
+  axis: 'x' | 'y';
+  k: number; // Steifigkeit (relativ oder absolut), Standard 1.0
+}
+
+export interface StiffnesscenterData {
+  kind: 'stiffnesscenter';
+  name: string;              // LaTeX-Basisname des Steifigkeitszentrums (z.B. "S")
+  label: string;             // Bezeichnung
+  method: 'EKV' | 'ASV';     // Ersatzkraftverfahren | Antwortspektrumverfahren
+  b_x: string;                // Grundriss-Breite in x-Richtung [m]
+  b_y: string;                // Grundriss-Breite in y-Richtung [m]
+  walls: StiffnessWall[];
+}
+
 export type BlockData =
   | VariableData | DropdownData | WoodClassData | TableValueData | CalcData
   | StdCalcData | TableCalcData | ChartLookupData | ConditionData | CheckData | MinMaxData | ImageBlockData
   | TitleData | FrameData | RefData | CasesData | MatrixData | BeamVisualData | SectionData | PolargridData | CommentData
-  | GroupCalcData | LoopBlockData | SummenblockData | SumData | OutputData | BeamvisualData | ChartlookupData | GroupcalcData | ImageData | LoopblockData | MinmaxData | StdcalcData | TablecalcData | TablevalueData | WoodclassData | SummenblockneuData | SwitchcalcData;
+  | GroupCalcData | LoopBlockData | SummenblockData | SumData | OutputData | BeamvisualData | ChartlookupData | GroupcalcData | ImageData | LoopblockData | MinmaxData | StdcalcData | TablecalcData | TablevalueData | WoodclassData | SummenblockneuData | SwitchcalcData
+  | StiffnesscenterData;
 
 // ── React-Flow-kompatible Node/Edge-Strukturen ──────────────────────────────
 export interface GraphNode {

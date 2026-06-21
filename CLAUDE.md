@@ -148,6 +148,53 @@ var qp = ch * qp0;
 
 ---
 
+## Block `stiffnesscenter` — Steifigkeitszentrum & Torsion (SIA 261)
+
+**2D-CAD-Tool für Erdbebenauslegung nach SIA 261:2020 §4.3.3**
+
+Das interaktive Canvas-System mit zwei Komponenten:
+
+### Admin-Teil (BackendNode.tsx)
+- Minimal: b_x (Grundrissbreite), b_y (Grundrisstiefe), Rasterweite, Verfahren-Auswahl (EKV/ASV)
+- Info-Text weist auf das User-Frontend hin
+
+### Benutzer-Frontend (StiffnesscenterPanel.tsx) — Vollständiger Editor
+1. **Zeichen-Modi**
+   - 🏛️ "Grundrissrand": Rechteck-Drag setzt b_x, b_y automatisch
+   - 🧱 "Wände zeichnen": 1. Klick (Start) + 2. Klick (Ende) → Auto-Erkennung: hor. Wand (k_x) oder vert. Wand (k_y)
+
+2. **Navigation**
+   - 🔍 Zoom: Mausrad (Cursor-zentriert), skaliert 2–400 px/m
+   - 🔄 Pan: Mittlere Maustaste + ziehen
+   - ⤢ Zentrieren: Auto-Fit auf b_x × b_y
+
+3. **Live-Visualisierung**
+   - **M** (Kreuz): Geometrischer Massenmittelpunkt (b_x/2, b_y/2)
+   - **S** (Punkt): Berechnetes Steifigkeitszentrum aus Wand-Lagen + k-Werten
+   - **e_x, e_y** (gelb/grün): Tatsächliche Exzentrizitäten (M → S)
+   - **e_d,sup/inf** (orange/violett, gestrichelt): Design-Exzentrizitäten um M (SIA 261 §4.3.3.2.4)
+
+4. **Wand-Tabelle**
+   - Spalten: ID, Achse (k_x/k_y), Koordinaten, Hebelarm, editierbar k
+   - 🗑️ Delete-Button pro Wand
+
+### Berechnung (`evaluate.ts`)
+```typescript
+// x_S = Summe(k_y,i · x_i) / Summe(k_y)      // Steifigkeitszentrum in x (resistiert Erdbeben y)
+// y_S = Summe(k_x,i · y_i) / Summe(k_x)      // Steifigkeitszentrum in y (resistiert Erdbeben x)
+// e_x = x_S - b_x/2, e_y = y_S - b_y/2
+// e_d,x,sup = factor · e_y + 0.05·b_y  (Erdbeben x-Richtung, obere Ausmitte)
+// e_d,x,inf = e_y - 0.05·b_y           (untere Ausmitte)
+// factor: EKV = 1.5 (Ersatzkraftverfahren), ASV = 1.0 (räumliches Modell)
+```
+
+**Zugehörige Dateien:**
+- `src/blocks/stiffnesscenter/` (definition, defaults, BackendNode, evaluate, index)
+- `src/components/StiffnesscenterPanel.tsx` (Benutzer-UI)
+- `src/types/graph.ts` (StiffnesscenterData, StiffnessWall Interfaces)
+
+---
+
 ## Neue Block-Typen hinzufügen
 
 **Neue Blöcke werden automatisch registriert!**

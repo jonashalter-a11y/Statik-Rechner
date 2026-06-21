@@ -1,0 +1,196 @@
+{
+  "version": 1,
+  "exported_at": "2026-06-21T13:25:15.347Z",
+  "verification": {
+    "id": "stabilisierung",
+    "norm_id": "sia265",
+    "chapter_id": "sia265_5_8_mqks7icd",
+    "title": "Stabilisierung",
+    "formula_latex": "N_{Ed,moment} = (1-k_{m})\\cdot \\frac{M_{Ed}}{h}",
+    "formula_description": "",
+    "compute_expr": "",
+    "graph_json": "{\"version\":1,\"nodes\":[{\"id\":\"variable_mqnt5amy_1\",\"type\":\"variable\",\"position\":{\"x\":189,\"y\":89.5},\"data\":{\"kind\":\"variable\",\"name\":\"N_Ed\",\"label\":\"aus Normalkraft\",\"unit\":\"\\\\mathrm{kN}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"calc_mqnt61bh_2\",\"type\":\"calc\",\"position\":{\"x\":502.27982991131125,\"y\":85.50919515764416},\"data\":{\"kind\":\"calc\",\"name\":\"N_{Ed,moment}\",\"label\":\"\",\"unit\":\"\",\"latex\":\"N_{Ed,moment} = (1-k_{m})\\\\cdot \\\\frac{M_{Ed}}{h}\",\"expr\":\"(1-k_m)* ((M_Ed)/(h))\"},\"style\":{\"width\":334,\"height\":320}},{\"id\":\"variable_mqnt632y_3\",\"type\":\"variable\",\"position\":{\"x\":190.4041871721398,\"y\":292.78307491474897},\"data\":{\"kind\":\"variable\",\"name\":\"k_m\",\"label\":\"\",\"unit\":\"[]\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"variable_mqnt89e3_4\",\"type\":\"variable\",\"position\":{\"x\":185.97635165072225,\"y\":494.83786307911396},\"data\":{\"kind\":\"variable\",\"name\":\"h\",\"label\":\"Höhe\",\"unit\":\"\\\\mathrm{m}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"variable_mqnt8u7b_5\",\"type\":\"variable\",\"position\":{\"x\":185.25936818844974,\"y\":693.6319836362463},\"data\":{\"kind\":\"variable\",\"name\":\"M_{Ed}\",\"label\":\"\",\"unit\":\"\\\\mathrm{kNm}\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false}},{\"id\":\"calc_mqntcm6w_3\",\"type\":\"calc\",\"position\":{\"x\":508.6344243149189,\"y\":368.4225274077052},\"data\":{\"kind\":\"calc\",\"name\":\"N_{Ed,tot}\",\"label\":\"\",\"unit\":\"\\\\mathrm{kN}\",\"latex\":\"N_{Ed,tot} = N_{Ed}+N_{Ed,moment}\",\"expr\":\"N_Ed+N_Ed_moment\"},\"style\":{\"width\":292,\"height\":382}},{\"id\":\"switchcalc_mqntdps9_4\",\"type\":\"switchcalc\",\"position\":{\"x\":850.2362782798587,\"y\":175.0299890056498},\"data\":{\"kind\":\"switchcalc\",\"name\":\"F_{Ed}\",\"label\":\"Kraft die auf Kipphalterung oder Knickhalterung drückt\",\"unit\":\"\",\"dropdownLabel\":\"Methode\",\"options\":[{\"id\":\"opt1\",\"label\":\"Vollholz, keilgezinktes Vollholz und Balkenschichtholz \",\"latex\":\"F_{Ed} = \\\\pm\\\\frac{N_{Ed,tot}}{55}+V\",\"expr\":\"((N_Ed_tot)/(55))+V\"},{\"id\":\"opt2\",\"label\":\"Brettschichtholz\",\"latex\":\"F_{Ed} = \\\\pm\\\\frac{N_{Ed,tot}}{90}+V\",\"expr\":\"((N_Ed_tot)/(90))+V\"}],\"selectedOptionId\":\"opt2\"}},{\"id\":\"variable_mqntiw72_5\",\"type\":\"variable\",\"position\":{\"x\":192.67005010514478,\"y\":-146.19590590129113},\"data\":{\"kind\":\"variable\",\"name\":\"V\",\"label\":\"Querkraft von Wind oder andere Kräfte\",\"unit\":\"\",\"default_value\":\"0\",\"inputKind\":\"number\",\"options\":[],\"hasDefault\":false},\"style\":{\"width\":152,\"height\":197}}],\"edges\":[]}",
+    "notes": "",
+    "active": 1
+  },
+  "chapter": {
+    "id": "sia265_5_8_mqks7icd",
+    "norm_id": "sia265",
+    "parent_id": null,
+    "number": "5.8",
+    "title": "Kapitel 5.8",
+    "sort_order": 9005
+  },
+  "variables": [],
+  "tables": [],
+  "graph": {
+    "version": 1,
+    "nodes": [
+      {
+        "id": "variable_mqnt5amy_1",
+        "type": "variable",
+        "position": {
+          "x": 189,
+          "y": 89.5
+        },
+        "data": {
+          "kind": "variable",
+          "name": "N_Ed",
+          "label": "aus Normalkraft",
+          "unit": "\\mathrm{kN}",
+          "default_value": "0",
+          "inputKind": "number",
+          "options": [],
+          "hasDefault": false
+        }
+      },
+      {
+        "id": "calc_mqnt61bh_2",
+        "type": "calc",
+        "position": {
+          "x": 502.27982991131125,
+          "y": 85.50919515764416
+        },
+        "data": {
+          "kind": "calc",
+          "name": "N_{Ed,moment}",
+          "label": "",
+          "unit": "",
+          "latex": "N_{Ed,moment} = (1-k_{m})\\cdot \\frac{M_{Ed}}{h}",
+          "expr": "(1-k_m)* ((M_Ed)/(h))"
+        },
+        "style": {
+          "width": 334,
+          "height": 320
+        }
+      },
+      {
+        "id": "variable_mqnt632y_3",
+        "type": "variable",
+        "position": {
+          "x": 190.4041871721398,
+          "y": 292.78307491474897
+        },
+        "data": {
+          "kind": "variable",
+          "name": "k_m",
+          "label": "",
+          "unit": "[]",
+          "default_value": "0",
+          "inputKind": "number",
+          "options": [],
+          "hasDefault": false
+        }
+      },
+      {
+        "id": "variable_mqnt89e3_4",
+        "type": "variable",
+        "position": {
+          "x": 185.97635165072225,
+          "y": 494.83786307911396
+        },
+        "data": {
+          "kind": "variable",
+          "name": "h",
+          "label": "Höhe",
+          "unit": "\\mathrm{m}",
+          "default_value": "0",
+          "inputKind": "number",
+          "options": [],
+          "hasDefault": false
+        }
+      },
+      {
+        "id": "variable_mqnt8u7b_5",
+        "type": "variable",
+        "position": {
+          "x": 185.25936818844974,
+          "y": 693.6319836362463
+        },
+        "data": {
+          "kind": "variable",
+          "name": "M_{Ed}",
+          "label": "",
+          "unit": "\\mathrm{kNm}",
+          "default_value": "0",
+          "inputKind": "number",
+          "options": [],
+          "hasDefault": false
+        }
+      },
+      {
+        "id": "calc_mqntcm6w_3",
+        "type": "calc",
+        "position": {
+          "x": 508.6344243149189,
+          "y": 368.4225274077052
+        },
+        "data": {
+          "kind": "calc",
+          "name": "N_{Ed,tot}",
+          "label": "",
+          "unit": "\\mathrm{kN}",
+          "latex": "N_{Ed,tot} = N_{Ed}+N_{Ed,moment}",
+          "expr": "N_Ed+N_Ed_moment"
+        },
+        "style": {
+          "width": 292,
+          "height": 382
+        }
+      },
+      {
+        "id": "switchcalc_mqntdps9_4",
+        "type": "switchcalc",
+        "position": {
+          "x": 850.2362782798587,
+          "y": 175.0299890056498
+        },
+        "data": {
+          "kind": "switchcalc",
+          "name": "F_{Ed}",
+          "label": "Kraft die auf Kipphalterung oder Knickhalterung drückt",
+          "unit": "",
+          "dropdownLabel": "Methode",
+          "options": [
+            {
+              "id": "opt1",
+              "label": "Vollholz, keilgezinktes Vollholz und Balkenschichtholz ",
+              "latex": "F_{Ed} = \\pm\\frac{N_{Ed,tot}}{55}+V",
+              "expr": "((N_Ed_tot)/(55))+V"
+            },
+            {
+              "id": "opt2",
+              "label": "Brettschichtholz",
+              "latex": "F_{Ed} = \\pm\\frac{N_{Ed,tot}}{90}+V",
+              "expr": "((N_Ed_tot)/(90))+V"
+            }
+          ],
+          "selectedOptionId": "opt2"
+        }
+      },
+      {
+        "id": "variable_mqntiw72_5",
+        "type": "variable",
+        "position": {
+          "x": 192.67005010514478,
+          "y": -146.19590590129113
+        },
+        "data": {
+          "kind": "variable",
+          "name": "V",
+          "label": "Querkraft von Wind oder andere Kräfte",
+          "unit": "",
+          "default_value": "0",
+          "inputKind": "number",
+          "options": [],
+          "hasDefault": false
+        },
+        "style": {
+          "width": 152,
+          "height": 197
+        }
+      }
+    ],
+    "edges": []
+  }
+}

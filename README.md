@@ -101,7 +101,7 @@ Das Frontend laedt diese Dateien ueber `src/api.ts` direkt mit Vite.
 Wichtig: Ein statisches Browser-Frontend kann nicht direkt in Projektdateien schreiben. Aenderungen im Admin werden deshalb im Browser-`localStorage` gehalten. Dauerhafte Aenderungen an Nachweisen machst du ueber JSON-Export/Import oder indem du die passende JSON-Datei im Repository ersetzt.
 
 ### 3.3 Block-Typen (Node-Editor)
-`variable` 🟪 · `dropdown` 🟧 · `tablevalue` 🟩 · `calc` 🟥 · `stdcalc` 🟫 · `tablecalc` 🟦 · `condition` 🔶 · `output` ⬜
+`variable` 🟪 · `dropdown` 🟧 · `tablevalue` 🟩 · `calc` 🟥 · `stdcalc` 🟫 · `tablecalc` 🟦 · `condition` 🔶 · `output` ⬜ · `stiffnesscenter` 🏛️ (Steifigkeitszentrum & Torsion, SIA 261)
 
 Kanten: `workflow` (Standard) und `condition` (bedingte Ausführung)
 
@@ -284,3 +284,4 @@ Alle Tabellen aus `Schneelast_Windlast.xlsm` verifiziert. Nur Tabellen mit Flag=
 | v3.0 | Node-Editor (React Flow) für Nachweis-Erstellung: Block-/Graph-System, Live-Auswertung, Legacy-Adapter |
 | v3.1 | **Verifikationen JSON-basiert**, Admin-UI mit JSON-Import |
 | v3.2 | **Override-Toggle für Rechenblöcke**: Manuelle Werteingabe im Frontend, propagiert an downstream Blöcke |
+| v3.3 | **Block `stiffnesscenter`** 🏛️: interaktives 2D-CAD-Tool (Canvas) im Benutzer-Frontend für Wand-Eingabe, Live-Berechnung von Steifigkeitszentrum und Design-Exzentrizitäten (EKV/ASV) nach SIA 261:2020 |

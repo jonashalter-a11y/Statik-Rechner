@@ -13,6 +13,14 @@
     "notes": "",
     "active": 1
   },
+  "chapter": {
+    "id": "baustatik_1_mqed181s",
+    "norm_id": "baustatik",
+    "parent_id": null,
+    "number": "1",
+    "title": "Kapitel 1",
+    "sort_order": 9000
+  },
   "variables": [],
   "tables": [],
   "graph": {

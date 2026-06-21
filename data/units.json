@@ -45,6 +45,11 @@
     "sort_order": 10
   },
   {
+    "id": 25,
+    "sort_order": 11,
+    "latex": "\\mathrm{kNm}"
+  },
+  {
     "id": 12,
     "latex": "\\mathrm{mm^2}",
     "sort_order": 12
