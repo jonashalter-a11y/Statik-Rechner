@@ -5,7 +5,7 @@
 
 import { VerificationGraph, GraphNode } from '../types/graph';
 import { evalFormula, evalCondExpr } from './evalFormula';
-export { evalFormula, evalCondExpr } from './evalFormula';
+export { evalFormula, evalFormulaPM, evalCondExpr } from './evalFormula';
 import { latexToJs, latexCondToJs } from './latexToJs';
 export { latexToJs, latexCondToJs } from './latexToJs';
 import { substituteValues } from './substituteFormula';
@@ -17,6 +17,7 @@ export interface ChartJsonData { series: ChartSeriesData[]; xAxis?: { label?: st
 export interface DbTableData { headers: string[]; rows: string[][]; chart_json?: ChartJsonData | null; }
 export interface NodeResult {
   value?: number;                 // numerisches Ergebnis (variable, tablevalue, calc, stdcalc)
+  valuePM?: { plus: number; minus: number }; // ±-Formel: beide Vorzeichen-Fälle (value = maßgebend)
   substituted?: string;           // "mit Werten" (calc/stdcalc)
   substitutedLatex?: string;      // Anzeige-Formel mit eingesetzten Werten
   missingSymbols?: string[];      // Variablen, die in der Formel vorkommen, aber nicht definiert sind

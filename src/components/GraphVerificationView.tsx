@@ -2173,7 +2173,10 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                       const sub = (r.substitutedLatex || selectedOption?.latex || '').trimStart().startsWith('=') && d.name
                         ? `${nameToLatex(d.name)} ${(r.substitutedLatex || selectedOption?.latex || '').trimStart()}`
                         : (r.substitutedLatex || selectedOption?.latex || '');
-                      const resultPart = isFiniteNumber(r.value) ? ` = ${resultLatex(r.value, d.unit)}` : '';
+                      const pm = (r as any).valuePM;
+                      const resultPart = pm
+                        ? ` = ${resultLatex(pm.plus, d.unit)} \\;\\big/\\; ${resultLatex(pm.minus, d.unit)}`
+                        : (isFiniteNumber(r.value) ? ` = ${resultLatex(r.value, d.unit)}` : '');
                       return <MathDisplay latex={`${sub}${resultPart}`} display />;
                     })()}
                   </div>
@@ -2276,7 +2279,10 @@ export default function GraphVerificationView({ verification, readOnly = false, 
                         ? `${nameToLatex(d.name)} ${(r.substitutedLatex || d.latex || '').trimStart()}`
                         : (r.substitutedLatex || d.latex || '');
                       // GELBE BOX: Zeige substituierte Werte + Ergebnis wenn vorhanden
-                      const resultPart = isFiniteNumber(r.value) ? ` = ${resultLatex(r.value, d.unit)}` : '';
+                      const pm = (r as any).valuePM;
+                      const resultPart = pm
+                        ? ` = ${resultLatex(pm.plus, d.unit)} \\;\\big/\\; ${resultLatex(pm.minus, d.unit)}`
+                        : (isFiniteNumber(r.value) ? ` = ${resultLatex(r.value, d.unit)}` : '');
                       return <MathDisplay latex={`${sub}${resultPart}`} display />;
                     })()}
                   </div>

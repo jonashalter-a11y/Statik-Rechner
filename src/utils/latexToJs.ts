@@ -147,6 +147,7 @@ function latexExprToJs(tex: string): string {
   s = s.replace(/(\d),(\d)/g, '$1.$2');        // 0,4 → 0.4 (deutsches Dezimalkomma)
   s = s.replace(/\\,|\\;|\\!|\\quad|\\qquad/g, ' ');
   s = s.replace(/\\cdot|\\times|\\ast/g, '*');
+  s = s.replace(/\\pm\b/g, '±'); // ± bleibt erhalten → evalFormulaPM rechnet beide Vorzeichen
   s = replaceFrac(s);
   s = replaceCmdBrace(s, 'sqrt', 'Math.sqrt');
   s = replaceCmdBrace(s, 'log', 'Math.log10');
@@ -273,6 +274,7 @@ export function latexToJs(tex: string): string {
   s = s.replace(/(\d),(\d)/g, '$1.$2');        // 0,4 → 0.4 (deutsches Dezimalkomma ohne Klammern)
   s = s.replace(/\\,|\\;|\\!|\\quad|\\qquad/g, ' ');
   s = s.replace(/\\cdot|\\times|\\ast/g, '*');
+  s = s.replace(/\\pm\b/g, '±'); // ± bleibt erhalten → evalFormulaPM rechnet beide Vorzeichen
   s = replaceFrac(s);
   s = replaceCmdBrace(s, 'sqrt', 'Math.sqrt');
   s = replaceCmdBrace(s, 'log', 'Math.log10');

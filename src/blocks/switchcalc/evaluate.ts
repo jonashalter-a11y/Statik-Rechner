@@ -1,6 +1,6 @@
 import { GraphNode } from '../../types/graph';
 import {
-  BlockEvalRuntime, evalFormula, extractMissingSymbols, setSymbol, substituteValues, substituteLatexValues, latexToJs,
+  BlockEvalRuntime, evalFormulaPM, extractMissingSymbols, setSymbol, substituteValues, substituteLatexValues, latexToJs,
 } from '../../utils/evalGraphShared';
 import { SwitchCalcData } from './defaults';
 
@@ -17,12 +17,27 @@ export function evaluateSwitchCalc(node: GraphNode, runtime: BlockEvalRuntime) {
     return;
   }
 
-  const expr = currentOption.expr || (currentOption.latex ? latexToJs(currentOption.latex) : '');
+  let expr = currentOption.expr || (currentOption.latex ? latexToJs(currentOption.latex) : '');
+  // Hat die Anzeige-Formel ein ±, der gespeicherte expr aber nicht, leiten wir
+  // den expr aus der LaTeX ab — so wird die ±-Position korrekt übernommen.
+  if (!/±|\\pm\b/.test(expr) && /\\pm\b/.test(currentOption.latex || '')) {
+    expr = latexToJs(currentOption.latex);
+  }
   const missingSymbols = extractMissingSymbols(expr, symbols);
-  const v = evalFormula(expr, symbols);
+  const pm = evalFormulaPM(expr, symbols);
   const substituted = substituteValues(expr, symbols);
   const substitutedLatex = currentOption.latex ? substituteLatexValues(currentOption.latex, symbols) : '';
 
-  results[node.id] = { value: v ?? NaN, substituted, substitutedLatex, missingSymbols };
-  if (d.name && v != null) setSymbol(symbols, d.name, v);
+  if (pm.hasPM && pm.value != null && pm.valueAlt != null) {
+    const governing = Math.abs(pm.value) >= Math.abs(pm.valueAlt) ? pm.value : pm.valueAlt;
+    results[node.id] = {
+      value: governing, substituted, substitutedLatex, missingSymbols,
+      valuePM: { plus: pm.value, minus: pm.valueAlt },
+    };
+    if (d.name) setSymbol(symbols, d.name, governing);
+  } else {
+    const v = pm.value;
+    results[node.id] = { value: v ?? NaN, substituted, substitutedLatex, missingSymbols };
+    if (d.name && v != null) setSymbol(symbols, d.name, v);
+  }
 }

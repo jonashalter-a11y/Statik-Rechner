@@ -30,6 +30,20 @@ export function evalFormula(expr: string, vars: Record<string, number>): number 
   }
 }
 
+// Wertet einen Ausdruck mit ±-Operator aus und liefert BEIDE Vorzeichen-Fälle.
+// `±` (oder LaTeX `\pm`) im Ausdruck → value = Plus-Fall, valueAlt = Minus-Fall.
+// Ohne ± verhält es sich wie evalFormula (valueAlt = null, hasPM = false).
+export function evalFormulaPM(
+  expr: string,
+  vars: Record<string, number>
+): { value: number | null; valueAlt: number | null; hasPM: boolean } {
+  const hasPM = /±|\\pm\b/.test(expr || '');
+  if (!hasPM) return { value: evalFormula(expr, vars), valueAlt: null, hasPM: false };
+  const plusExpr = expr.replace(/\\pm\b/g, '±').replace(/±/g, '+');
+  const minusExpr = expr.replace(/\\pm\b/g, '±').replace(/±/g, '-');
+  return { value: evalFormula(plusExpr, vars), valueAlt: evalFormula(minusExpr, vars), hasPM: true };
+}
+
 // Für Bedingungsausdrücke: akzeptiert String- und Zahlenvariablen, gibt boolean zurück.
 // Erlaubt kombinierte Ausdrücke wie: GK === 'III' && z < 5
 export function evalCondExpr(expr: string, vars: Record<string, string | number>): boolean {
